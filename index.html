@@ -1,0 +1,872 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Carnet de jeux</title>
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Carnet de jeux">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}html{-webkit-text-size-adjust:100%}</style>
+</head>
+<body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one-column phone app, glass tab bar at the bottom, serif headlines over quiet sans data */
+:root{
+  --bg:#ffffff; --ink:#0c0c0c; --mute:#77767a; --line:rgba(12,12,12,.10);
+  --glass:rgba(255,255,255,.55); --glass-edge:rgba(255,255,255,.9); --glass-shadow:0 8px 32px rgba(0,0,0,.08); --cat-bg:#ffffff;
+  --chip:#f2f2f3; --inv-bg:#0c0c0c; --inv-ink:#ffffff; --blob:rgba(0,0,0,.07);
+  --serif:"Instrument Serif",Georgia,"Times New Roman",serif;
+  --sans:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0a0a0a; --ink:#f4f4f4; --mute:#8f8e93; --line:rgba(255,255,255,.12);
+  --glass:rgba(28,28,30,.55); --glass-edge:rgba(255,255,255,.14); --glass-shadow:0 8px 32px rgba(0,0,0,.5); --cat-bg:#0a0a0a;
+  --chip:#1c1c1e; --inv-bg:#f4f4f4; --inv-ink:#0a0a0a; --blob:rgba(255,255,255,.07); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0a0a0a; --ink:#f4f4f4; --mute:#8f8e93; --line:rgba(255,255,255,.12);
+  --glass:rgba(28,28,30,.55); --glass-edge:rgba(255,255,255,.14); --glass-shadow:0 8px 32px rgba(0,0,0,.5); --cat-bg:#0a0a0a;
+  --chip:#1c1c1e; --inv-bg:#f4f4f4; --inv-ink:#0a0a0a; --blob:rgba(255,255,255,.07); color-scheme:dark}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.blobs{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.blobs i{position:absolute;border-radius:50%;filter:blur(60px);background:var(--blob)}
+.blobs i:nth-child(1){width:60vw;height:60vw;top:-10vw;right:-20vw}
+.blobs i:nth-child(2){width:50vw;height:50vw;bottom:10vh;left:-20vw}
+main{position:relative;z-index:1;max-width:640px;margin:0 auto;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));padding-block:20px calc(110px + env(safe-area-inset-bottom,0px))}
+h1{font-family:var(--serif);font-weight:400;font-size:44px;line-height:1;letter-spacing:-.01em;margin:8px 0 4px;text-wrap:balance}
+h1 em{font-style:italic}
+h2{font-family:var(--serif);font-weight:400;font-size:26px;margin:28px 0 10px}
+.sub{color:var(--mute);margin:0 0 20px}
+.label{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.glass{background:var(--glass);border:1px solid var(--glass-edge);box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-edge);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);border-radius:24px}
+.btn{appearance:none;border:0;font:600 15px var(--sans);border-radius:999px;padding:14px 22px;cursor:pointer;background:var(--inv-bg);color:var(--inv-ink);display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.ghost{background:var(--chip);color:var(--ink)}
+.btn.block{width:100%}
+.btn:disabled{opacity:.35;cursor:default}
+.btn:focus-visible,.chip:focus-visible,.tab:focus-visible,td.cell:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{appearance:none;border:1px solid var(--line);background:var(--chip);color:var(--ink);font:500 15px var(--sans);border-radius:999px;padding:10px 16px;cursor:pointer;font-variant-numeric:tabular-nums}
+.chip.on{background:var(--inv-bg);color:var(--inv-ink);border-color:var(--inv-bg)}
+input[type=text]{width:100%;min-width:0;font:400 17px var(--sans);color:var(--ink);background:var(--chip);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.list{display:flex;flex-direction:column}
+.item{display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.avatar{width:42px;height:42px;border-radius:50%;flex:none;display:grid;place-items:center;font-family:var(--serif);font-size:22px;background:var(--inv-bg);color:var(--inv-ink)}
+.grow{flex:1;min-width:0}
+.name{font-weight:600}
+.meta{color:var(--mute);font-size:13px}
+.num{font-variant-numeric:tabular-nums}
+.empty{padding:28px 22px;text-align:center}
+.empty p{color:var(--mute);margin:6px 0 18px}
+.empty .serif{font-family:var(--serif);font-size:28px}
+/* score sheet */
+.sheet-wrap{overflow-x:auto;border-radius:24px;-webkit-overflow-scrolling:touch}
+table.sheet{border-collapse:separate;border-spacing:0;width:100%;font-variant-numeric:tabular-nums}
+.sheet th,.sheet td{padding:0;height:44px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+.sheet th.cat,.sheet td.cat{text-align:left;padding:0 12px 0 16px;position:sticky;left:0;background:var(--cat-bg);z-index:1;font-weight:500;min-width:128px}
+.sheet thead th{height:auto;padding:14px 8px 10px;font-weight:600;font-size:13px;vertical-align:bottom}
+.sheet thead th .avatar{margin:0 auto 6px;width:34px;height:34px;font-size:18px}
+.sheet td.cell{min-width:62px;cursor:pointer;font-size:17px}
+.sheet td.cell.empty-c{color:transparent}
+.sheet td.cell.empty-c::after{content:"";display:inline-block;width:18px;height:2px;border-radius:2px;background:var(--line);vertical-align:middle}
+.sheet td.cell.zero{color:var(--mute);text-decoration:line-through}
+.sheet td.cell.just{animation:pop .35s ease}
+@keyframes pop{0%{transform:scale(1.25)}100%{transform:scale(1)}}
+.sheet tr.sum td{font-weight:700;background:color-mix(in srgb,var(--chip) 60%,transparent)}
+.sheet tr.sum td.cat{background:var(--chip)}
+.sheet tr.total td{height:58px;font-family:var(--serif);font-size:28px;font-weight:400;border-bottom:0}
+.sheet tr.total td.cat{font-family:var(--sans);font-size:15px;font-weight:700}
+.sheet tr.section td{height:34px;border-bottom:0}
+.sheet .hint{display:block;font-size:11px;color:var(--mute);font-weight:400}
+.lead td.leader{position:relative}
+.crown{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-family:var(--sans);display:block;color:var(--mute)}
+/* bottom sheet */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:30}
+.panel{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));width:min(600px,calc(100% - 24px));z-index:31;padding:22px;border-radius:30px}
+.panel h3{font-family:var(--serif);font-weight:400;font-size:28px;margin:0}
+.panel .meta{margin:2px 0 16px}
+.panel .foot{display:flex;gap:10px;margin-top:18px}
+.panel .foot .btn{flex:1}
+.wheel-box{position:relative;height:260px;margin:4px 0 0}
+.wheel-band{position:absolute;left:0;right:0;top:50%;height:52px;transform:translateY(-50%);border-radius:18px;background:var(--chip);border:1px solid var(--line)}
+.wheel{position:relative;height:100%;overflow-y:auto;scroll-snap-type:y mandatory;padding-block:104px;scrollbar-width:none;-webkit-mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent);mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent);overscroll-behavior:contain;outline:none}
+.wheel::-webkit-scrollbar{display:none}
+.wi{height:52px;display:grid;place-items:center;scroll-snap-align:center;font-family:var(--serif);font-size:34px;font-variant-numeric:tabular-nums;cursor:pointer;transition:transform .12s,opacity .12s}
+.wheel:focus-visible + *, .wheel-box:focus-within .wheel-band{border-color:var(--ink)}
+/* tab bar */
+nav.tabs{position:fixed;z-index:20;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;gap:4px;padding:6px;border-radius:999px;width:min(420px,calc(100% - 32px))}
+.tab{appearance:none;border:0;background:transparent;color:var(--mute);font:600 13px var(--sans);flex:1;padding:12px 6px;border-radius:999px;cursor:pointer}
+.tab.on{background:var(--inv-bg);color:var(--inv-ink)}
+/* stats */
+.podium{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.award{padding:16px;border-radius:22px;min-width:0}
+.award .big{font-family:var(--serif);font-size:30px;line-height:1.05;margin:8px 0 2px;overflow-wrap:anywhere}
+.award .meta{font-size:13px}
+.award.hero{grid-column:1/-1;background:var(--inv-bg);color:var(--inv-ink);border-color:var(--inv-bg)}
+.award.hero .label,.award.hero .meta{color:color-mix(in srgb,var(--inv-ink) 65%,transparent)}
+.award.hero .big{font-size:44px}
+.tbl-wrap{overflow-x:auto}
+table.stats{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14px}
+.stats th,.stats td{padding:12px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+.stats th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-weight:600}
+.stats th:first-child,.stats td:first-child{text-align:left}
+.stats td.rank{font-family:var(--serif);font-size:20px;width:28px}
+.bar{height:4px;border-radius:4px;background:var(--line);margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ink)}
+.gcard{padding:16px 18px;border-radius:22px;display:flex;flex-direction:column;gap:8px}
+.gscores{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px}
+.gscores b{font-variant-numeric:tabular-nums}
+.stack{display:flex;flex-direction:column;gap:10px}
+.confirm{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.link{appearance:none;background:none;border:0;color:var(--mute);font:500 13px var(--sans);cursor:pointer;padding:6px 0;text-decoration:underline;text-underline-offset:3px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(16px + env(safe-area-inset-top,0px));z-index:40;padding:12px 18px;border-radius:999px;font-weight:600;font-size:14px}
+.note{font-size:13px;color:var(--mute);text-align:center;margin-top:12px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.hint{display:block;font-size:12px;line-height:1.35;color:var(--mute);font-weight:400;white-space:normal}
+.sheet .hint{font-size:11.5px;max-width:150px}
+.card{width:24px;height:34px;border-radius:6px;background:var(--inv-bg);color:var(--inv-ink);display:grid;place-items:center;font:700 11px var(--sans);font-variant-numeric:tabular-nums}
+.card:nth-child(2){transform:translateY(-4px) rotate(4deg)}.card:first-child{transform:rotate(-5deg)}
+.back{appearance:none;border:0;background:none;color:var(--mute);font:500 14px var(--sans);padding:6px 0;cursor:pointer}
+.games{display:flex;flex-direction:column;gap:12px}
+.gamecard{appearance:none;text-align:left;width:100%;color:var(--ink);font:inherit;cursor:pointer;padding:20px;display:flex;gap:16px;align-items:center}
+.gamecard .t{font-family:var(--serif);font-size:34px;line-height:1}
+.gamecard .dice{display:flex;gap:6px;flex:none}
+.die{width:30px;height:30px;border-radius:8px;background:var(--inv-bg);display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:5px}
+.die i{width:5px;height:5px;border-radius:50%;background:var(--inv-ink);place-self:center}
+.pill{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border-radius:999px;background:var(--inv-bg);color:var(--inv-ink);margin-top:8px}
+.pill.soft{background:var(--chip);color:var(--ink);border:1px solid var(--line)}
+details.rules{margin-top:16px;padding:4px 18px}
+details.rules summary{cursor:pointer;list-style:none;padding:14px 0;font-weight:600;display:flex;justify-content:space-between}
+details.rules summary::-webkit-details-marker{display:none}
+details.rules summary::after{content:"+";font-weight:400;color:var(--mute)}
+details.rules[open] summary::after{content:"–"}
+details.rules ul{margin:0 0 16px;padding-left:18px;color:var(--mute);font-size:13.5px;display:flex;flex-direction:column;gap:6px}
+details.rules b{color:var(--ink);font-weight:600}
+.tok{font-family:var(--serif);font-size:34px;line-height:1;font-variant-numeric:tabular-nums;text-align:right}
+.tok small{display:block;font-family:var(--sans);font-size:11px;color:var(--mute);letter-spacing:.08em;text-transform:uppercase}
+.item.out{opacity:.45}
+.field{display:flex;flex-direction:column;gap:8px;padding:14px 0;border-bottom:1px solid var(--line)}
+.field:last-of-type{border-bottom:0}
+.pickbtn{appearance:none;border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:18px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font:inherit;width:100%}
+.pickbtn .c{font-family:var(--serif);font-size:28px;line-height:1}
+.wi .s{font-family:var(--sans);font-size:12px;color:var(--mute);margin-left:10px}
+.wi{display:flex;align-items:center;justify-content:center}
+.seg{display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--chip);border:1px solid var(--line);margin-bottom:18px;width:fit-content;max-width:100%}
+.seg button{appearance:none;border:0;background:transparent;color:var(--mute);font:600 13px var(--sans);padding:9px 16px;border-radius:999px;cursor:pointer}
+.seg button.on{background:var(--inv-bg);color:var(--inv-ink)}
+.log{font-size:13.5px;color:var(--mute);display:flex;flex-direction:column;gap:4px}
+.log b{color:var(--ink);font-weight:600}
+</style>
+
+<div class="blobs" aria-hidden="true"><i></i><i></i></div>
+<main id="app"></main>
+<nav class="tabs glass" id="tabs" aria-label="Sections">
+  <button class="tab on" data-v="home" id="tab-home">Jeux</button>
+  <button class="tab" data-v="stats" id="tab-stats">Stats</button>
+  <button class="tab" data-v="history" id="tab-history">Historique</button>
+  <button class="tab" data-v="players" id="tab-players">Joueurs</button>
+</nav>
+<div id="overlay"></div>
+
+<script>
+(() => {
+/* ================= Yahtzee ================= */
+const UPPER = [
+  {id:'ones',label:'As',face:1},{id:'twos',label:'Deux',face:2},{id:'threes',label:'Trois',face:3},
+  {id:'fours',label:'Quatre',face:4},{id:'fives',label:'Cinq',face:5},{id:'sixes',label:'Six',face:6}];
+UPPER.forEach(c => c.hint = 'Somme des '+c.face);
+const LOWER = [
+  {id:'tk',label:'Brelan',hint:'3 dés pareils · somme des 5 dés'},
+  {id:'fk',label:'Carré',hint:'4 dés pareils · somme des 5 dés'},
+  {id:'fh',label:'Full',fixed:25,hint:'3 pareils + 2 pareils · 25'},
+  {id:'ss',label:'Petite suite',fixed:30,hint:'4 dés qui se suivent · 30'},
+  {id:'ls',label:'Grande suite',fixed:40,hint:'5 dés qui se suivent · 40'},
+  {id:'yz',label:'Yahtzee',fixed:50,hint:'5 dés pareils · 50'},
+  {id:'ch',label:'Chance',hint:'N’importe quoi · somme des 5 dés'}];
+const ALL = [...UPPER,...LOWER];
+const BONUS_AT = 63, BONUS = 35;
+function totals(sc){
+  sc = sc || {};
+  const up = UPPER.reduce((a,c)=>a+(sc[c.id]||0),0);
+  const bonus = up >= BONUS_AT ? BONUS : 0;
+  const yb = (sc.yb||0)*100;
+  const low = LOWER.reduce((a,c)=>a+(sc[c.id]||0),0) + yb;
+  return {up, bonus, low, yb, total: up+bonus+low};
+}
+const filled = sc => ALL.filter(c => sc && sc[c.id] !== undefined && sc[c.id] !== null).length;
+
+/* ================= 421 ================= */
+const POT = 21;
+const COMBOS = [
+  {id:'421',t:'4·2·1',v:10,n:'Le 421'},
+  {id:'111',t:'1·1·1',v:7,n:'Trois as'},
+  {id:'611',t:'6·1·1',v:6,n:'Deux as + 6'},
+  {id:'666',t:'6·6·6',v:6,n:'Brelan de 6'},
+  {id:'511',t:'5·1·1',v:5,n:'Deux as + 5'},
+  {id:'555',t:'5·5·5',v:5,n:'Brelan de 5'},
+  {id:'411',t:'4·1·1',v:4,n:'Deux as + 4'},
+  {id:'444',t:'4·4·4',v:4,n:'Brelan de 4'},
+  {id:'311',t:'3·1·1',v:3,n:'Deux as + 3'},
+  {id:'333',t:'3·3·3',v:3,n:'Brelan de 3'},
+  {id:'211',t:'2·1·1',v:2,n:'Deux as + 2'},
+  {id:'222',t:'2·2·2',v:2,n:'Brelan de 2'},
+  {id:'suite',t:'Suite',v:2,n:'1·2·3 à 4·5·6'},
+  {id:'autre',t:'Autre',v:1,n:'Le plus gros dé l’emporte'}];
+const DEF_RULES = {v421:10, nen:2};
+const rulesOf = L => Object.assign({}, DEF_RULES, (L && L.rules) || {});
+const combo = (id, rules) => { const c = COMBOS.find(c=>c.id===id) || COMBOS[COMBOS.length-1];
+  return c.id==='421' ? {...c, v:(rules||DEF_RULES).v421} : c; };
+function run421(L){
+  const RU = rulesOf(L);
+  const st = {tokens:{}, pot:POT, phase:'charge', out:[], done:false, loser:null, log:[]};
+  L.order.forEach(id => st.tokens[id]=0);
+  const active = () => L.order.filter(id => !st.out.includes(id));
+  for(const r of (L.rounds||[])){
+    const want = combo(r.c,RU).v + (r.nen?RU.nen:0); let a;
+    if(st.phase==='charge'){
+      a = Math.min(want, st.pot); st.tokens[r.l] += a; st.pot -= a;
+      st.log.push({...r, a, phase:'charge'});
+      if(st.pot===0){ st.phase='decharge'; L.order.forEach(id=>{ if(st.tokens[id]===0 && !st.out.includes(id)) st.out.push(id); }); }
+    } else {
+      a = Math.min(want, st.tokens[r.w]); st.tokens[r.w] -= a; st.tokens[r.l] += a;
+      st.log.push({...r, a, phase:'decharge'});
+      if(st.tokens[r.w]===0 && !st.out.includes(r.w)) st.out.push(r.w);
+    }
+    if(st.phase==='decharge' && active().length<=1){ st.done=true; st.loser=active()[0]||r.l; break; }
+  }
+  st.active = active();
+  return st;
+}
+
+/* ================= state & storage ================= */
+const GAMES = {
+  yahtzee:{name:'Yahtzee', doc:'current', min:1},
+  '421':{name:'421', doc:'g421', min:2},
+  skyjo:{name:'Skyjo', doc:'gsky', min:2}};
+const S = { players:{}, games:[], live:{yahtzee:null,'421':null,skyjo:null}, view:'home', ready:false, confirm:null, pick:{yahtzee:new Set(),'421':new Set(),skyjo:new Set()}, sky:{scores:{},closer:null}, sgame:'yahtzee', hfilter:'all', r421:{c:'421',w:null,l:null,nen:false}, rules421:{...DEF_RULES} };
+const kindOf = g => GAMES[g.game] ? g.game : 'yahtzee';
+let db = null;
+const $app = document.getElementById('app'), $ov = document.getElementById('overlay');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const initial = n => esc((n||'?').trim().charAt(0).toUpperCase());
+const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4);
+const plural = (n, w) => n+' '+w+(n>1?'s':'');
+
+/* Local storage (offline version). DATA SAFETY: the key 'yz-carnet' must never change.
+   Each save keeps the previous state under 'yz-carnet-prev'. New fields go through migrate(), never a reset. */
+const DATA_KEY = 'yz-carnet', PREV_KEY = 'yz-carnet-prev', DATA_V = 1;
+function migrate(d){
+  if(!d || typeof d!=='object') return null;
+  const out = {v:DATA_V, players:d.players||{}, games:Array.isArray(d.games)?d.games:[], lives:{}, rules421:d.rules421||null, savedAt:d.savedAt||0, exportedAt:d.exportedAt||0};
+  if(d.live && d.live.order) out.lives.yahtzee = d.live;
+  if(d.lives) Object.assign(out.lives, d.lives);
+  return out;
+}
+function applyData(d){
+  S.players = d.players; S.games = d.games;
+  S.live = Object.assign({yahtzee:null,'421':null,skyjo:null}, d.lives);
+  if(d.rules421) S.rules421 = {...DEF_RULES, ...d.rules421};
+  S.exportedAt = d.exportedAt||0;
+}
+const local = {
+  read(key){ try{ return migrate(JSON.parse(localStorage.getItem(key)||'null')); }catch(e){ return null; } },
+  load(){ const d = local.read(DATA_KEY) || local.read(PREV_KEY); if(d) applyData(d); },
+  snapshot(){ return {v:DATA_V, players:S.players, games:S.games, lives:S.live, rules421:S.rules421, savedAt:Date.now(), exportedAt:S.exportedAt||0}; },
+  save(){ try{ const cur = localStorage.getItem(DATA_KEY); if(cur) localStorage.setItem(PREV_KEY, cur);
+      localStorage.setItem(DATA_KEY, JSON.stringify(local.snapshot())); }
+    catch(e){ toast("Sauvegarde impossible sur ce téléphone. Exporte tes données par sécurité."); } }
+};
+async function exportData(){
+  S.exportedAt = Date.now(); local.save();
+  const day = new Date().toISOString().slice(0,10);
+  const name = `carnet-de-jeux-${day}.json`;
+  const blob = new Blob([JSON.stringify({app:'carnet-de-jeux', ...local.snapshot()}, null, 1)], {type:'application/json'});
+  try{ const file = new File([blob], name, {type:'application/json'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:'Sauvegarde Carnet de jeux'}); render(); return; } }
+  catch(e){ if(e && e.name==='AbortError') return; }
+  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000); render();
+}
+function importData(file){
+  const fr = new FileReader();
+  fr.onload = () => { let d; try{ d = migrate(JSON.parse(fr.result)); }catch(e){ d = null; }
+    if(!d || (!Object.keys(d.players).length && !d.games.length)){ toast("Ce fichier n'est pas une sauvegarde du Carnet de jeux."); return; }
+    let np=0, ng=0;
+    Object.entries(d.players).forEach(([id,p])=>{ if(!S.players[id]){ S.players[id]=p; np++; } });
+    const have = new Set(S.games.map(g=>g.id));
+    d.games.forEach(g=>{ if(g && g.id && !have.has(g.id)){ S.games.push(g); ng++; } });
+    Object.keys(d.lives||{}).forEach(k=>{ if(!S.live[k] && d.lives[k]) S.live[k]=d.lives[k]; });
+    local.save(); render(); toast(`${plural(np,'joueur')} et ${plural(ng,'partie')} ajoutés`); };
+  fr.readAsText(file);
+}
+const store = {
+  async addPlayer(name){ const id = uid(); const p = {name, createdAt:Date.now()};
+    if(db){ await db.doc('players/'+id).set(p); } else { S.players[id]=p; local.save(); render(); } },
+  async removePlayer(id){ if(db){ await db.doc('players/'+id).delete(); } else { delete S.players[id]; local.save(); render(); } },
+  async setLive(k, live){ S.live[k] = live; render();
+    if(db){ const ref = db.doc('live/'+GAMES[k].doc); if(live) await ref.set(live); else await ref.delete(); } else local.save(); },
+  async addGame(g){ const id = uid();
+    if(db){ await db.doc('games/'+id).set(g); } else { S.games.push({...g,id}); local.save(); render(); } },
+  async removeGame(id){ if(db){ await db.doc('games/'+id).delete(); } else { S.games = S.games.filter(g=>g.id!==id); local.save(); render(); } }
+};
+/* coalesced live writes, one per game */
+const sync = {};
+function saveLiveSoon(k){
+  render(); if(!db){ local.save(); return; }
+  const s = sync[k] || (sync[k] = {timer:null,busy:false,pending:false});
+  clearTimeout(s.timer); s.timer = setTimeout(()=>flushLive(k), 450);
+}
+async function flushLive(k){
+  const s = sync[k]; s.timer = null;
+  if(s.busy){ s.pending = true; return; }
+  s.busy = true;
+  try{ if(S.live[k]) await db.doc('live/'+GAMES[k].doc).set(S.live[k]); }catch(e){ toast("La partie n'a pas pu être enregistrée. Réessaie dans un instant."); }
+  s.busy = false; if(s.pending){ s.pending=false; flushLive(k); }
+}
+
+const sortedPlayers = () => Object.entries(S.players).sort((a,b)=>a[1].name.localeCompare(b[1].name,'fr'));
+const pname = (id, fallback) => (S.players[id] && S.players[id].name) || fallback || 'Joueur';
+const dieFace = n => { const P={1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]}[n];
+  return `<span class="die">${[1,2,3,4,5,6,7,8,9].map(i=>P.includes(i)?'<i></i>':'<span></span>').join('')}</span>`; };
+
+/* ================= home ================= */
+function viewHome(){
+  const y = S.live.yahtzee, q = S.live['421'], k = S.live.skyjo;
+  const yTurn = y ? Math.min(13, Math.min(...y.order.map(id=>filled(y.scores[id])))+1) : 0;
+  const qs = q ? run421(q) : null;
+  const n = k => S.games.filter(g=>kindOf(g)===k).length;
+  const cards = [-2,5,12].map(v=>`<span class="card">${v}</span>`).join('');
+  return `<div class="label">Carnet de jeux</div><h1>On joue <em>à quoi</em> ?</h1>
+  <p class="sub">Choisis un jeu. Les parties en cours t'attendent là où tu les as laissées.</p>
+  <div class="games">
+    <button class="gamecard glass" data-go="yahtzee" id="g-yahtzee">
+      <span class="dice">${dieFace(5)}${dieFace(5)}</span>
+      <span class="grow"><span class="t">Yahtzee</span><span class="hint">5 dés · 13 tours · le plus gros total gagne</span>
+      ${y ? `<span class="pill">En cours · tour ${yTurn}</span>` : `<span class="pill soft">${plural(n('yahtzee'),'partie')}</span>`}</span>
+    </button>
+    <button class="gamecard glass" data-go="421" id="g-421">
+      <span class="dice">${dieFace(4)}${dieFace(2)}${dieFace(1)}</span>
+      <span class="grow"><span class="t">421</span><span class="hint">3 dés · 21 jetons · le dernier qui en a perd</span>
+      ${q ? `<span class="pill">En cours · ${qs.phase==='charge'?'charge':'décharge'}</span>` : `<span class="pill soft">${plural(n('421'),'partie')}</span>`}</span>
+    </button>
+    <button class="gamecard glass" data-go="skyjo" id="g-skyjo">
+      <span class="dice">${cards}</span>
+      <span class="grow"><span class="t">Skyjo</span><span class="hint">Cartes de −2 à 12 · le plus petit total gagne</span>
+      ${k ? `<span class="pill">En cours · manche ${(k.rounds||[]).length+1}</span>` : `<span class="pill soft">${plural(n('skyjo'),'partie')}</span>`}</span>
+    </button>
+  </div>`;
+}
+
+/* ================= setup (shared) ================= */
+function viewSetup(k){
+  const ps = sortedPlayers(); const sel = S.pick[k]; const G = GAMES[k];
+  const back = `<button class="back" data-go="home">← Jeux</button>`;
+  if(!ps.length) return `${back}
+    <div class="label">${G.name} · nouvelle partie</div><h1>On <em>joue</em> ?</h1>
+    <p class="sub">Commence par ajouter les joueurs de ta bande.</p>
+    <div class="glass empty"><div class="serif">Aucun joueur pour l'instant</div><p>Chaque joueur ajouté garde ses stats d'une partie à l'autre.</p>
+    <button class="btn" data-go="players">Ajouter des joueurs</button></div>`;
+  const cnt = id => S.games.filter(g=>kindOf(g)===k && (g.results||[]).some(r=>r.id===id)).length;
+  const ok = sel.size >= G.min;
+  return `${back}
+    <div class="label">${G.name} · nouvelle partie</div><h1>Qui <em>joue</em> ce soir ?</h1>
+    <p class="sub">Sélectionne les joueurs dans l'ordre du tour.${k==='421'?' Il faut au moins deux joueurs.':k==='skyjo'?' De 2 à 8 joueurs.':''}</p>
+    <div class="glass" style="padding:8px 16px"><div class="list">${ps.map(([id,p])=>{
+      const order = [...sel].indexOf(id);
+      return `<div class="item" role="button" tabindex="0" data-pick="${id}" data-k="${k}" style="cursor:pointer"><div class="avatar" style="${order<0?'background:var(--chip);color:var(--ink)':''}">${order<0?initial(p.name):order+1}</div><div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">${plural(cnt(id),'partie')} de ${G.name}</div></div><span class="meta">${order<0?'':'Sélectionné'}</span></div>`;}).join('')}</div></div>
+    <div style="margin-top:18px"><button class="btn block" data-a="start" data-k="${k}" id="start-${k}" ${ok?'':'disabled'}>Lancer la partie${sel.size?' à '+sel.size:''}</button></div>
+    <p class="note">Il manque quelqu'un ? <button class="link" data-go="players">Ajoute-le</button></p>
+    ${k==='421' ? tableRules() + rules421(true, S.rules421) : k==='skyjo' ? rulesSky(true) : rulesYahtzee(true)}`;
+}
+
+const rulesYahtzee = (open) => `<details class="rules glass dense"${open?' open':''}><summary>Règles en bref</summary><ul>
+  <li>À ton tour, <b>3 lancers</b> maximum. Entre deux lancers, tu gardes les dés que tu veux.</li>
+  <li>Après le dernier lancer, tu remplis <b>une seule case</b>, même si ça fait 0. Chaque case ne sert qu'une fois.</li>
+  <li><b>Section haute</b> : on additionne seulement les dés de la valeur choisie. Trois 4 dans la case Quatre, ça fait 12.</li>
+  <li><b>Prime de 35</b> si la section haute atteint 63, soit trois dés de chaque valeur.</li>
+  <li><b>Brelan, carré, chance</b> : on compte la somme des cinq dés. Full 25, petite suite 30, grande suite 40, Yahtzee 50.</li>
+  <li><b>Yahtzee bonus</b> : +100 pour chaque nouveau Yahtzee si la case Yahtzee est déjà à 50.</li>
+  <li>13 tours. Le plus gros total gagne.</li></ul></details>`;
+const rules421 = (open, RU) => { RU = RU || DEF_RULES; return `<details class="rules glass dense"${open?' open':''}><summary>Règles en bref</summary><ul>
+  <li><b>${POT} jetons</b> au pot. Chaque manche, tout le monde lance 3 dés, jusqu'à 3 lancers. Le premier joueur fixe le nombre de lancers pour les autres.</li>
+  <li><b>Charge</b> : le plus faible de la manche prend dans le pot autant de jetons que vaut la meilleure combinaison.</li>
+  <li><b>Décharge</b>, une fois le pot vide : le meilleur donne ses jetons au plus faible. À 0 jeton, tu sors. Qui n'a rien pris pendant la charge est déjà sorti.</li>
+  <li>Le <b>dernier qui a encore des jetons</b> perd la partie.</li>
+  <li><b>Valeurs</b> : 421 = ${RU.v421} · trois as = 7 · deux as + x = x · brelan de x = x · suite = 2 · autre = 1.</li>
+  <li><b>Ordre</b> : 421, 1·1·1, 6·1·1, 6·6·6, 5·1·1, 5·5·5… puis les suites, puis le reste au plus gros dé.</li>
+  <li><b>Nénette</b> (2·2·1) : la pire combinaison.${RU.nen ? ` Celui qui la fait prend ${RU.nen} jetons de plus.` : ' À cette table, elle ne coûte rien de plus.'}</li></ul></details>`; };
+const tableRules = () => { const RU = S.rules421;
+  const opt = (key, val, txt) => `<button class="${RU[key]===val?'on':''}" data-rule="${key}" data-val="${val}">${txt}</button>`;
+  return `<div class="glass dense" style="padding:6px 18px 14px;margin-top:14px">
+    <div class="field"><span class="label">Règles de la table</span><span class="hint">Elles s'appliquent à la prochaine partie.</span></div>
+    <div class="field"><span>Valeur du 421</span><div class="seg" style="margin:0">${opt('v421',10,'10 jetons')}${opt('v421',8,'8 jetons')}</div></div>
+    <div class="field"><span>Nénette</span><div class="seg" style="margin:0">${opt('nen',2,'+2 jetons')}${opt('nen',0,'Sans pénalité')}</div></div>
+  </div>`; };
+
+/* ================= Yahtzee view ================= */
+function viewYahtzee(){
+  const L = S.live.yahtzee;
+  if(!L) return viewSetup('yahtzee');
+  const ids = L.order;
+  const tots = ids.map(id => totals(L.scores[id]));
+  const best = Math.max(...tots.map(t=>t.total));
+  const done = ids.every(id => filled(L.scores[id]) === ALL.length);
+  const turn = Math.min(...ids.map(id=>filled(L.scores[id]))) + 1;
+  const head = ids.map(id => `<th><div class="avatar">${initial(pname(id,L.names[id]))}</div>${esc(pname(id,L.names[id]))}</th>`).join('');
+  const row = c => `<tr><td class="cat">${c.label}<span class="hint">${c.hint}</span></td>${ids.map(id=>{
+    const v = (L.scores[id]||{})[c.id]; const has = v!==undefined && v!==null;
+    const just = S.just===id+c.id ? ' just':'';
+    return `<td class="cell${has?(v===0?' zero':''):' empty-c'}${just}" tabindex="0" role="button" data-p="${id}" data-c="${c.id}" aria-label="${esc(pname(id,L.names[id]))}, ${c.label}">${has?v:'–'}</td>`;}).join('')}</tr>`;
+  const sumRow = (label, key, hint, hintFn) => `<tr class="sum"><td class="cat">${label}${hint?`<span class="hint">${hint}</span>`:''}</td>${tots.map(t=>`<td>${t[key]}${hintFn?hintFn(t):''}</td>`).join('')}</tr>`;
+  return `<button class="back" data-go="home">← Jeux</button>
+  <div class="label">${done ? 'Partie terminée' : 'Tour '+Math.min(turn,13)+' sur 13'}</div>
+  <h1>Le <em>Yahtzee</em></h1>
+  <p class="sub">Touche une case pour noter le score.</p>
+  <div class="sheet-wrap glass dense"><table class="sheet">
+    <thead><tr><th class="cat"></th>${head}</tr></thead>
+    <tbody>
+      <tr class="section"><td class="cat label">Section haute</td>${ids.map(()=>'<td></td>').join('')}</tr>
+      ${UPPER.map(row).join('')}
+      ${sumRow('Sous-total','up','', t => t.up<BONUS_AT ? `<span class="hint">reste ${BONUS_AT-t.up}</span>`:'')}
+      ${sumRow('Prime','bonus','35 si 63 ou plus')}
+      <tr class="section"><td class="cat label">Section basse</td>${ids.map(()=>'<td></td>').join('')}</tr>
+      ${LOWER.map(row).join('')}
+      <tr><td class="cat">Yahtzee bonus<span class="hint">+100 par Yahtzee en plus</span></td>${ids.map(id=>{const n=(L.scores[id]||{}).yb||0;return `<td class="cell${n?'':' empty-c'}" tabindex="0" role="button" data-p="${id}" data-c="yb" aria-label="Yahtzee bonus">${n?'+'+n*100:'–'}</td>`}).join('')}</tr>
+      ${sumRow('Section basse','low')}
+      <tr class="total"><td class="cat">Total</td>${tots.map(t=>`<td>${t.total}${t.total===best&&best>0?'<span class="crown">en tête</span>':''}</td>`).join('')}</tr>
+    </tbody></table></div>
+  ${endControls('yahtzee', done, done?'Enregistrer cette partie dans l\'historique ?':'Toutes les cases ne sont pas remplies. Enregistrer quand même avec les scores actuels ?')}
+  ${rulesYahtzee(false)}`;
+}
+function endControls(k, done, question){
+  return `<div class="stack" style="margin-top:18px">
+    ${S.confirm==='end' ? `<div class="glass" style="padding:16px"><p style="margin:0 0 12px">${question}</p><div class="confirm"><button class="btn" data-a="end-yes" data-k="${k}">Enregistrer</button><button class="btn ghost" data-a="cancel">Continuer à jouer</button></div></div>`
+      : `<button class="btn block" data-a="end" ${k!=='yahtzee'&&!done?'hidden':''}>${done?'Enregistrer la partie':'Terminer la partie'}</button>`}
+    ${S.confirm==='abandon' ? `<div class="confirm" style="justify-content:center"><span class="meta">La partie sera effacée sans être comptée.</span><button class="btn ghost" data-a="abandon-yes" data-k="${k}">Effacer</button><button class="link" data-a="cancel">Annuler</button></div>`
+      : `<button class="link" style="align-self:center" data-a="abandon">Abandonner cette partie</button>`}
+  </div>`;
+}
+
+/* ================= 421 view ================= */
+function view421(){
+  const L = S.live['421'];
+  if(!L) return viewSetup('421');
+  const st = run421(L); const RU = rulesOf(L); const R = S.r421; const nm = id => esc(pname(id, L.names[id]));
+  const playing = st.phase==='charge' ? L.order : st.active;
+  if(R.w && !playing.includes(R.w)) R.w = null;
+  if(R.l && (!playing.includes(R.l) || R.l===R.w)) R.l = null;
+  const C = combo(R.c,RU); const want = C.v + (R.nen?RU.nen:0);
+  let preview = '';
+  if(R.w && R.l){
+    if(st.phase==='charge'){ const a=Math.min(want,st.pot); preview = `${nm(R.l)} prend ${plural(a,'jeton')} dans le pot.`; }
+    else { const a=Math.min(want,st.tokens[R.w]); preview = `${nm(R.w)} donne ${plural(a,'jeton')} à ${nm(R.l)}.${st.tokens[R.w]-a===0?' '+nm(R.w)+' sort de la partie.':''}`; }
+  }
+  const rank = id => { const i = st.out.indexOf(id); return i<0 ? '' : (i===0?'1er':(i+1)+'e')+' sorti'; };
+  const players = L.order.map(id => {
+    const out = st.out.includes(id); const t = st.tokens[id];
+    return `<div class="item${out?' out':''}"><div class="avatar">${initial(pname(id,L.names[id]))}</div><div class="grow"><div class="name">${nm(id)}</div><div class="meta">${out ? rank(id) : (st.done && id===st.loser ? 'Perd la partie' : '')}</div>
+      <div class="bar"><i style="width:${Math.round(t/POT*100)}%"></i></div></div><div class="tok">${t}<small>jeton${t>1?'s':''}</small></div></div>`;}).join('');
+  const chipsFor = (key, exclude) => playing.filter(id=>id!==exclude).map(id=>`<button class="chip${R[key]===id?' on':''}" data-r="${key}" data-id="${id}">${nm(id)}</button>`).join('');
+  const last = st.log.slice(-5).reverse();
+  return `<button class="back" data-go="home">← Jeux</button>
+  <div class="label">${st.done ? 'Partie terminée' : st.phase==='charge' ? `Charge · ${plural(st.pot,'jeton')} au pot` : 'Décharge · pot vide'}</div>
+  <h1>Le <em>421</em></h1>
+  <p class="sub">${st.done ? `${nm(st.loser)} est le dernier avec des jetons.` : st.phase==='charge' ? 'Le plus faible de la manche prend des jetons dans le pot.' : 'Le meilleur donne ses jetons au plus faible. À 0, tu sors.'}</p>
+  <div class="glass" style="padding:8px 16px"><div class="list">${players}</div></div>
+  ${st.done ? '' : `<div class="glass" style="padding:6px 18px 18px;margin-top:14px">
+    <div class="field"><span class="label">Meilleure combinaison</span>
+      <button class="pickbtn" data-a="combo" id="combo-btn"><span class="c">${C.t}</span><span class="meta">${C.n} · ${plural(C.v,'jeton')}</span></button>
+      <span class="hint">Elle fixe le nombre de jetons qui changent de main.</span></div>
+    <div class="field"><span class="label">Qui l'a faite ?</span><div class="chips">${chipsFor('w')}</div></div>
+    <div class="field"><span class="label">Qui a la plus faible ?</span><div class="chips">${chipsFor('l', R.w)}</div>
+      ${RU.nen?`<div class="chips"><button class="chip${R.nen?' on':''}" data-a="nen" id="nen">Il a fait une nénette 2·2·1 · +${RU.nen}</button></div>`:''}
+      <span class="hint">À égalité pour la plus faible, les joueurs concernés relancent.</span></div>
+    ${preview ? `<p class="hint" style="font-size:13.5px;margin:4px 0 12px">${preview}</p>` : ''}
+    <button class="btn block" data-a="round" id="round" ${R.w&&R.l?'':'disabled'}>Valider la manche</button>
+  </div>`}
+  ${st.log.length ? `<h2>Manches</h2><div class="glass" style="padding:14px 18px"><div class="log">${last.map((r,i)=>`<div><b>${st.log.length-i}.</b> ${combo(r.c,RU).t}${r.nen?' + nénette':''} · ${r.phase==='charge' ? `${nm(r.l)} prend ${r.a}` : `${nm(r.w)} donne ${r.a} à ${nm(r.l)}`}</div>`).join('')}</div>
+    <button class="link" data-a="undo" id="undo">Annuler la dernière manche</button></div>` : ''}
+  ${endControls('421', st.done, `Enregistrer la défaite de ${st.loser?nm(st.loser):''} dans l'historique ?`)}
+  ${rules421(false, rulesOf(L))}`;
+}
+
+/* ================= Skyjo ================= */
+const SKY_END = 100;
+function runSky(L){
+  const tot = {}, closed = {}, doubled = {}, bestRound = {}; L.order.forEach(id=>{tot[id]=0;closed[id]=0;doubled[id]=0;bestRound[id]=null;});
+  const log = [];
+  for(const r of (L.rounds||[])){
+    const fin = {...r.scores}; const c = r.closer; let dbl = false;
+    if(c && fin[c] > 0 && L.order.some(id => id!==c && r.scores[id] <= r.scores[c])){ fin[c] = r.scores[c]*2; dbl = true; doubled[c]++; }
+    if(c) closed[c]++;
+    L.order.forEach(id => { tot[id] += fin[id]||0; if(bestRound[id]===null || r.scores[id] < bestRound[id]) bestRound[id] = r.scores[id]; });
+    log.push({raw:r.scores, fin, closer:c, dbl});
+  }
+  const done = log.length>0 && L.order.some(id => tot[id] >= SKY_END);
+  const min = Math.min(...L.order.map(id=>tot[id]));
+  return {tot, closed, doubled, bestRound, log, done, winners: L.order.filter(id=>tot[id]===min), lead: min};
+}
+const rulesSky = (open) => `<details class="rules glass"${open?' open':''}><summary>Règles en bref</summary><ul>
+  <li>Chacun a <b>12 cartes</b> face cachée en 3 rangées de 4, et en retourne 2 au départ. Les cartes valent de <b>−2 à 12</b>.</li>
+  <li>À ton tour, tu prends la défausse ou la pioche. Tu échanges la carte avec une des tiennes, ou tu la jettes et retournes une carte cachée.</li>
+  <li><b>Colonne de 3 cartes identiques</b> : tu la défausses, elle ne compte plus.</li>
+  <li>Quand un joueur a retourné toutes ses cartes, chacun joue <b>un dernier tour</b>, puis on retourne tout et on additionne.</li>
+  <li>Celui qui a fini la manche doit avoir le <b>score le plus bas, seul</b>. Sinon ses points de la manche sont <b>doublés</b>, s'ils sont positifs.</li>
+  <li>La partie s'arrête quand quelqu'un atteint <b>${SKY_END} points</b>. Le plus petit total gagne.</li></ul></details>`;
+function viewSky(){
+  const L = S.live.skyjo;
+  if(!L) return viewSetup('skyjo');
+  const st = runSky(L); const R = S.sky; const nm = id => esc(pname(id, L.names[id]));
+  const order = [...L.order].sort((a,b)=>st.tot[a]-st.tot[b]);
+  const maxT = Math.max(SKY_END, ...L.order.map(id=>st.tot[id]));
+  const standings = order.map((id,i) => { const t = st.tot[id];
+    return `<div class="item"><div class="avatar">${initial(pname(id,L.names[id]))}</div><div class="grow"><div class="name">${nm(id)}</div>
+      <div class="meta">${st.done && st.winners.includes(id) ? 'Gagne la partie' : i===0 && st.log.length ? 'En tête' : t>=SKY_END-20 && !st.done ? 'Reste '+Math.max(0,SKY_END-t)+' avant '+SKY_END : ''}</div>
+      <div class="bar"><i style="width:${Math.max(0,Math.round(t/maxT*100))}%"></i></div></div><div class="tok">${t}<small>pts</small></div></div>`; }).join('');
+  const all = L.order.every(id => R.scores[id]!==undefined);
+  let preview = '';
+  if(all && R.closer){ const c=R.closer, v=R.scores[c];
+    const beaten = L.order.some(id => id!==c && R.scores[id] <= v);
+    preview = v>0 && beaten ? `${nm(c)} n'a pas le plus petit score seul : ses ${v} points passent à ${v*2}.` : `${nm(c)} a le plus petit score seul : pas de pénalité.`;
+    if(v<=0 && beaten) preview = `${nm(c)} n'a pas le plus petit score, mais son score n'est pas positif : pas de doublement.`; }
+  const rows = st.log.map((r,i)=>`<tr><td style="text-align:left" class="meta">M${i+1}</td>${L.order.map(id=>`<td>${r.fin[id]}${r.closer===id?(r.dbl?' <span class="meta">×2</span>':' <span class="meta">•</span>'):''}</td>`).join('')}</tr>`).reverse().join('');
+  return `<button class="back" data-go="home">← Jeux</button>
+  <div class="label">${st.done ? 'Partie terminée' : 'Manche '+(st.log.length+1)}</div>
+  <h1>Le <em>Skyjo</em></h1>
+  <p class="sub">${st.done ? `${st.winners.map(nm).join(' & ')} gagne avec ${st.lead} points.` : `Le plus petit total gagne. Fin de partie dès qu'un joueur atteint ${SKY_END}.`}</p>
+  <div class="glass" style="padding:8px 16px"><div class="list">${standings}</div></div>
+  ${st.done ? '' : `<div class="glass" style="padding:6px 18px 18px;margin-top:14px">
+    <div class="field"><span class="label">Points de la manche</span><span class="hint">Additionne les cartes encore devant chaque joueur. Les colonnes de 3 cartes identiques ne comptent pas.</span>
+      <div class="stack" style="gap:8px">${L.order.map(id=>`<button class="pickbtn" data-a="sky-score" data-id="${id}"><span>${nm(id)}</span><span class="c">${R.scores[id]===undefined?'–':R.scores[id]}</span></button>`).join('')}</div></div>
+    <div class="field"><span class="label">Qui a fini la manche ?</span><div class="chips">${L.order.map(id=>`<button class="chip${R.closer===id?' on':''}" data-closer="${id}">${nm(id)}</button>`).join('')}</div>
+      <span class="hint">Celui qui a retourné toutes ses cartes en premier. S'il n'a pas le plus petit score seul, ses points positifs sont doublés.</span></div>
+    ${preview ? `<p class="hint" style="font-size:13.5px;margin:4px 0 12px">${preview}</p>` : ''}
+    <button class="btn block" data-a="sky-round" id="sky-round" ${all&&R.closer?'':'disabled'}>Valider la manche</button>
+  </div>`}
+  ${st.log.length ? `<h2>Manches</h2><div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats">
+    <thead><tr><th></th>${L.order.map(id=>`<th>${nm(id)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+    <p class="hint" style="margin:8px 0">• a fini la manche · ×2 points doublés</p>
+    <button class="link" data-a="sky-undo" id="sky-undo">Annuler la dernière manche</button></div>` : ''}
+  ${endControls('skyjo', st.done, `Enregistrer la victoire de ${st.winners.map(nm).join(' & ')} dans l'historique ?`)}
+  ${rulesSky(false)}`;
+}
+function statsS(id){
+  const st = {played:0,wins:0,sum:0,best:null,closed:0,doubled:0,bestRound:null};
+  S.games.filter(g=>kindOf(g)==='skyjo').forEach(g => { const r=(g.results||[]).find(r=>r.id===id); if(!r) return;
+    st.played++; st.sum += r.total; st.best = st.best===null ? r.total : Math.min(st.best, r.total);
+    st.closed += r.closed||0; st.doubled += r.doubled||0;
+    if(r.bestRound!==null && r.bestRound!==undefined) st.bestRound = st.bestRound===null ? r.bestRound : Math.min(st.bestRound, r.bestRound);
+    if((g.winners||[]).includes(id)) st.wins++; });
+  st.avg = st.played ? Math.round(st.sum/st.played) : 0; st.rate = st.played ? st.wins/st.played : 0;
+  return st;
+}
+function statsSkyView(top, ids, nameOf){
+  const rows = [...ids].map(id => ({id, name:nameOf(id), ...statsS(id)}));
+  rows.sort((a,b)=> b.wins-a.wins || b.rate-a.rate || a.avg-b.avg);
+  const lo = f => [...rows].filter(r=>r[f]!==null).sort((a,b)=>a[f]-b[f])[0];
+  const hi = f => [...rows].sort((a,b)=>b[f]-a[f])[0];
+  const w=rows[0], most=hi('played'), avg=lo('avg'), rec=lo('best'), cl=hi('closed'), db2=hi('doubled'), br=lo('bestRound');
+  return top + `<div class="podium">
+    ${award('Le meilleur', w, plural(w.wins,'victoire'), Math.round(w.rate*100)+' % de victoires', true)}
+    ${award('Meilleure moyenne', avg, avg.avg+' pts', 'en fin de partie')}
+    ${award('Record', rec, rec.best+' pts', 'total le plus bas')}
+    ${award('Le plus assidu', most, plural(most.played,'partie'), '')}
+    ${award('Plus belle manche', br, br.bestRound+' pts', 'en une manche')}
+    ${award('Finit le plus vite', cl, cl.closed+' manches', 'terminées en premier')}
+    ${db2.doubled ? `<div style="grid-column:1/-1">${award('Trop gourmand', db2, db2.doubled+' fois doublé', 'a fini sans avoir le plus petit score')}</div>`:''}
+  </div>
+  <h2>Classement</h2>
+  <div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats">
+    <thead><tr><th></th><th>Joueur</th><th>V.</th><th>Parties</th><th>Moy.</th><th>Record</th><th>×2</th></tr></thead>
+    <tbody>${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px"><b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round(r.rate*100)}%"></i></div></td><td>${r.wins}</td><td>${r.played}</td><td>${r.avg}</td><td>${r.best}</td><td>${r.doubled}</td></tr>`).join('')}</tbody>
+  </table></div>
+  <p class="note">Au Skyjo, moins on a de points, mieux c'est. Classement par victoires, puis taux de victoire, puis moyenne la plus basse. La barre montre le taux de victoire.</p>`;
+}
+
+/* ================= players ================= */
+function statsY(id){
+  const st = {played:0,wins:0,points:0,best:0,yahtzees:0};
+  S.games.filter(g=>kindOf(g)==='yahtzee').forEach(g => { const r = (g.results||[]).find(r=>r.id===id); if(!r) return;
+    st.played++; st.points += r.total; st.best = Math.max(st.best, r.total);
+    st.yahtzees += (r.yz===50?1:0) + (r.yb||0);
+    if((g.winners||[]).includes(id)) st.wins++; });
+  st.avg = st.played ? Math.round(st.points/st.played) : 0;
+  st.rate = st.played ? st.wins/st.played : 0;
+  return st;
+}
+function stats4(id){
+  const st = {played:0,losses:0,first:0,n421:0};
+  S.games.filter(g=>kindOf(g)==='421').forEach(g => { const r = (g.results||[]).find(r=>r.id===id); if(!r) return;
+    st.played++; if(g.loser===id) st.losses++; if(g.firstOut===id) st.first++; st.n421 += r.n421||0; });
+  st.lossRate = st.played ? st.losses/st.played : 0;
+  return st;
+}
+function viewPlayers(){
+  const ps = sortedPlayers();
+  return `<div class="label">${plural(ps.length,'joueur')}</div><h1>Les <em>joueurs</em></h1>
+  <p class="sub">Ajoute autant de monde que tu veux. Les mêmes joueurs servent pour tous les jeux.</p>
+  <form id="addp" class="row" style="flex-wrap:nowrap"><input type="text" id="pname" placeholder="Prénom" maxlength="24" autocomplete="off" aria-label="Prénom du joueur"><button class="btn" type="submit" id="addbtn">Ajouter</button></form>
+  ${ps.length ? `<div class="glass" style="padding:8px 16px;margin-top:16px"><div class="list">${ps.map(([id,p])=>{const y=statsY(id), q=stats4(id), sk=statsS(id);
+    return `<div class="item"><div class="avatar">${initial(p.name)}</div><div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">Yahtzee ${y.played} · 421 ${q.played} · Skyjo ${sk.played}</div></div>
+    ${S.confirm==='rm-'+id ? `<div class="confirm"><button class="btn ghost" style="padding:8px 14px" data-rm-yes="${id}">Retirer</button><button class="link" data-a="cancel">Non</button></div>` : `<button class="link" data-rm="${id}">Retirer</button>`}</div>`;}).join('')}</div></div>
+    <p class="note">Retirer un joueur ne touche pas aux parties déjà jouées.</p>` : ''}
+  ${!db ? `<h2>Sauvegarde</h2>
+  <div class="glass" style="padding:16px 18px"><p style="margin:0 0 4px">Tout est enregistré dans ce téléphone, même hors ligne. Les mises à jour de l'app n'y touchent pas.</p>
+    <p class="hint" style="margin:0 0 14px">Exporte de temps en temps pour garder une copie ailleurs (Fichiers, iCloud, mail). Importer ajoute les parties du fichier sans rien effacer. ${S.exportedAt ? 'Dernier export : '+new Date(S.exportedAt).toLocaleDateString('fr-FR',{day:'numeric',month:'long'})+'.' : 'Aucun export pour l\u2019instant.'}</p>
+    <div class="row"><button class="btn" data-a="export" id="export">Exporter</button><label class="btn ghost" for="import-file" style="cursor:pointer">Importer</label>
+    <input type="file" id="import-file" accept="application/json,.json" hidden></div></div>` : ''}`;
+}
+
+/* ================= stats ================= */
+function lastName(id){ for(let i=S.games.length-1;i>=0;i--){ const r=(S.games[i].results||[]).find(r=>r.id===id); if(r) return r.name; } return 'Ancien joueur'; }
+const seg = (key, opts) => `<div class="seg" role="tablist">${opts.map(([v,t])=>`<button class="${S[key]===v?'on':''}" data-seg="${key}" data-val="${v}">${t}</button>`).join('')}</div>`;
+const award = (lab, r, val, sub, hero) => `<div class="award glass${hero?' hero':''}"><div class="label">${lab}</div><div class="big">${esc(r.name)}</div><div class="meta">${val}${sub?' · '+sub:''}</div></div>`;
+function viewStats(){
+  const k = S.sgame; const gs = S.games.filter(g=>kindOf(g)===k);
+  const top = `<div class="label">${plural(gs.length,'partie')} de ${GAMES[k].name}</div><h1>Les <em>stats</em></h1>
+    <p class="sub">Sur l'ensemble des parties enregistrées.</p>${seg('sgame',[['yahtzee','Yahtzee'],['421','421'],['skyjo','Skyjo']])}`;
+  if(!gs.length) return top + `<div class="glass empty"><div class="serif">Pas encore de partie</div><p>Termine une première partie de ${GAMES[k].name} et le classement apparaîtra ici.</p><button class="btn" data-go="${k}">Lancer une partie</button></div>`;
+  const ids = new Set(); gs.forEach(g=>(g.results||[]).forEach(r=>ids.add(r.id)));
+  const nameOf = id => pname(id, lastName(id));
+  const best = (rows, f) => [...rows].sort((a,b)=>b[f]-a[f])[0];
+  if(k==='skyjo') return statsSkyView(top, ids, nameOf);
+  if(k==='yahtzee'){
+    const rows = [...ids].map(id => ({id, name:nameOf(id), ...statsY(id)}));
+    rows.sort((a,b)=> b.wins-a.wins || b.rate-a.rate || b.avg-a.avg);
+    const w=rows[0], pts=best(rows,'points'), most=best(rows,'played'), rec=best(rows,'best'), avg=best(rows,'avg'), yz=best(rows,'yahtzees');
+    const maxAvg = Math.max(...rows.map(r=>r.avg),1);
+    return top + `<div class="podium">
+      ${award('Le meilleur', w, plural(w.wins,'victoire'), Math.round(w.rate*100)+' % de victoires', true)}
+      ${award('Le plus de points', pts, pts.points.toLocaleString('fr-FR')+' pts', '')}
+      ${award('Le plus assidu', most, plural(most.played,'partie'), '')}
+      ${award('Record', rec, rec.best+' pts', 'en une partie')}
+      ${award('Meilleure moyenne', avg, avg.avg+' pts', 'par partie')}
+      ${yz.yahtzees ? `<div style="grid-column:1/-1">${award('Roi du Yahtzee', yz, plural(yz.yahtzees,'Yahtzee'), 'bonus compris')}</div>`:''}
+    </div>
+    <h2>Classement</h2>
+    <div class="glass dense tbl-wrap" style="padding:4px 12px"><table class="stats">
+      <thead><tr><th></th><th>Joueur</th><th>V.</th><th>Parties</th><th>Moy.</th><th>Record</th><th>Total</th></tr></thead>
+      <tbody>${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px"><b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round(r.avg/maxAvg*100)}%"></i></div></td><td>${r.wins}</td><td>${r.played}</td><td>${r.avg}</td><td>${r.best}</td><td>${r.points.toLocaleString('fr-FR')}</td></tr>`).join('')}</tbody>
+    </table></div>
+    <p class="note">Classement par victoires, puis taux de victoire, puis moyenne. La barre montre la moyenne par partie.</p>`;
+  }
+  const rows = [...ids].map(id => ({id, name:nameOf(id), ...stats4(id)}));
+  rows.sort((a,b)=> a.lossRate-b.lossRate || b.played-a.played || b.first-a.first);
+  const w=rows[0], los=best(rows,'losses'), most=best(rows,'played'), fst=best(rows,'first'), q=best(rows,'n421');
+  return top + `<div class="podium">
+    ${award('Le plus malin', w, Math.round(w.lossRate*100)+' % de défaites', plural(w.played,'partie'), true)}
+    ${award('Paie la tournée', los, plural(los.losses,'défaite'), '')}
+    ${award('Le plus assidu', most, plural(most.played,'partie'), '')}
+    ${award('Sort en premier', fst, fst.first+' fois', '')}
+    ${award('Roi du 421', q, q.n421 ? plural(q.n421,'421') : 'Aucun 421', 'gagnants')}
+  </div>
+  <h2>Classement</h2>
+  <div class="glass dense tbl-wrap" style="padding:4px 12px"><table class="stats">
+    <thead><tr><th></th><th>Joueur</th><th>Déf.</th><th>Parties</th><th>1er sorti</th><th>421</th></tr></thead>
+    <tbody>${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px"><b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round((1-r.lossRate)*100)}%"></i></div></td><td>${r.losses}</td><td>${r.played}</td><td>${r.first}</td><td>${r.n421}</td></tr>`).join('')}</tbody>
+  </table></div>
+  <p class="note">Au 421, on compte les défaites : moins tu perds, mieux tu es classé. La barre montre la part de parties sans défaite.</p>`;
+}
+
+/* ================= history ================= */
+function viewHistory(){
+  const f = S.hfilter;
+  const gs = [...S.games].filter(g => f==='all' || kindOf(g)===f).sort((a,b)=>b.date-a.date);
+  const top = `<div class="label">${plural(gs.length,'partie')}</div><h1>Les <em>parties</em></h1>
+    <p class="sub">La plus récente en premier.</p>${seg('hfilter',[['all','Tout'],['yahtzee','Yahtzee'],['421','421'],['skyjo','Skyjo']])}`;
+  if(!gs.length) return top + `<div class="glass empty"><div class="serif">Rien d'enregistré</div><p>Chaque partie terminée arrive ici avec la date et les scores de chacun.</p></div>`;
+  const fmt = d => new Date(d).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  return top + `<div class="stack">${gs.map(g=>{
+    const k = kindOf(g); const nm = r => esc(pname(r.id,r.name));
+    let title, body;
+    if(k==='421'){ const L = (g.results||[]).find(r=>r.id===g.loser)||{}; const F=(g.results||[]).find(r=>r.id===g.firstOut);
+      title = `${nm(L)} <em>perd</em>`; body = `<div class="gscores">${F?`<span>1er sorti <b>${nm(F)}</b></span>`:''}<span><b>${g.rounds||0}</b> manches</span></div>`; }
+    else if(k==='skyjo'){ const res=[...(g.results||[])].sort((a,b)=>a.total-b.total);
+      title = `${res.filter(r=>(g.winners||[]).includes(r.id)).map(nm).join(' & ')} <em>gagne</em>`;
+      body = `<div class="gscores">${res.map(r=>`<span>${nm(r)} <b>${r.total}</b></span>`).join('')}<span><b>${g.rounds||0}</b> manches</span></div>`; }
+    else { const res=[...(g.results||[])].sort((a,b)=>b.total-a.total);
+      title = `${res.filter(r=>(g.winners||[]).includes(r.id)).map(nm).join(' & ')} <em>gagne</em>`;
+      body = `<div class="gscores">${res.map(r=>`<span>${nm(r)} <b>${r.total}</b></span>`).join('')}</div>`; }
+    return `<div class="gcard glass"><div class="row" style="justify-content:space-between"><span class="label">${GAMES[k].name} · ${fmt(g.date)}</span>
+      ${S.confirm==='rg-'+g.id ? `<span class="confirm"><button class="btn ghost" style="padding:6px 12px;font-size:13px" data-rg-yes="${g.id}">Supprimer</button><button class="link" data-a="cancel">Non</button></span>`:`<button class="link" data-rg="${g.id}">Supprimer</button>`}</div>
+      <div style="font-family:var(--serif);font-size:26px;line-height:1.1">${title}</div>${body}</div>`;}).join('')}</div>`;
+}
+
+/* ================= wheel picker ================= */
+function wheel({who, title, meta, opts, start, onOk, onClear}){
+  let idx = Math.max(0, start);
+  $ov.innerHTML = `<div class="scrim" data-close></div><div class="panel glass" role="dialog" aria-label="${esc(title)}">
+    <div class="label">${esc(who)}</div><h3>${esc(title)}</h3><div class="meta">${meta}</div>
+    <div class="wheel-box"><div class="wheel-band" aria-hidden="true"></div>
+      <div class="wheel" id="wheel" tabindex="0" role="listbox" aria-label="${esc(title)}">${opts.map((o,i)=>`<div class="wi" role="option" data-i="${i}">${o.t}${o.s?`<span class="s">${o.s}</span>`:''}</div>`).join('')}</div></div>
+    <div class="foot">${onClear?'<button class="btn ghost" data-clear>Effacer</button>':'<button class="btn ghost" data-close>Fermer</button>'}<button class="btn" data-ok>Valider</button></div></div>`;
+  const w = document.getElementById('wheel'); const items = [...w.children]; const H = 52;
+  const paint = () => { const mid = w.scrollTop / H;
+    items.forEach((el,i)=>{ const d = Math.min(Math.abs(i-mid),3); el.style.opacity = 1 - d*0.3; el.style.transform = `scale(${1 - d*0.14})`; el.setAttribute('aria-selected', i===idx); }); };
+  let raf=0; w.addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(()=>{ idx = Math.max(0,Math.min(opts.length-1, Math.round(w.scrollTop/H))); paint(); }); });
+  const to = (i, smooth) => { idx = Math.max(0,Math.min(opts.length-1,i)); w.scrollTo({top: idx*H, behavior: smooth?'smooth':'auto'}); paint(); };
+  requestAnimationFrame(()=>to(idx,false));
+  const ok = () => { closePanel(); onOk(opts[idx]); };
+  w.addEventListener('keydown', e => { if(e.key==='ArrowDown'){e.preventDefault();to(idx+1,true);} else if(e.key==='ArrowUp'){e.preventDefault();to(idx-1,true);} else if(e.key==='Enter'){e.preventDefault();ok();} });
+  $ov.onclick = e => {
+    if(e.target.closest('[data-close]')){ closePanel(); return; }
+    const it = e.target.closest('.wi'); if(it){ to(Number(it.dataset.i), true); return; }
+    if(e.target.closest('[data-ok]')) ok();
+    else if(e.target.closest('[data-clear]')){ closePanel(); onClear(); }
+  };
+  w.focus({preventScroll:true});
+}
+function closePanel(){ $ov.innerHTML=''; $ov.onclick=null; }
+document.addEventListener('keydown', e => { if(e.key==='Escape') closePanel(); });
+
+function openCell(pid, cid){
+  const L = S.live.yahtzee; const c = ALL.find(x=>x.id===cid); const cur = (L.scores[pid]||{})[cid];
+  let opts, title = c ? c.label : 'Yahtzee bonus', meta, def = 0;
+  if(cid==='yb'){ opts=[0,1,2,3,4].map(n=>({v:n,t:n?'+'+n*100:'0'})); meta='Un nouveau Yahtzee alors que la case Yahtzee est déjà à 50 rapporte 100.'; }
+  else if(c.face){ opts=[0,1,2,3,4,5].map(n=>({v:n*c.face,t:String(n*c.face)})); meta=`Additionne seulement les ${c.face}. Exemple : trois ${c.face} = ${3*c.face}.`; }
+  else if(c.fixed){ opts=[{v:0,t:'0'},{v:c.fixed,t:String(c.fixed)}]; def=c.fixed; meta=c.hint.split(' · ')[0]+'. Sinon, la case est barrée à 0.'; }
+  else { opts=[{v:0,t:'0'}].concat(Array.from({length:26},(_,i)=>({v:i+5,t:String(i+5)}))); meta = c.id==='ch' ? 'Aucune condition : additionne les cinq dés.' : c.hint.split(' · ')[0]+', puis additionne les cinq dés, pas seulement ceux qui sont pareils.'; }
+  const start = cur!==undefined && cur!==null ? cur : def;
+  const set = v => { const sc = {...(L.scores[pid]||{})}; if(v===null) delete sc[cid]; else sc[cid]=v;
+    L.scores = {...L.scores, [pid]: sc}; S.just = pid+cid; saveLiveSoon('yahtzee'); setTimeout(()=>{S.just=null},400); };
+  wheel({who:pname(pid,L.names[pid]), title, meta, opts, start: opts.findIndex(o=>o.v===start), onOk:o=>set(o.v), onClear:()=>set(null)});
+}
+
+let toastT; function toast(msg){ clearTimeout(toastT); let t=document.querySelector('.toast'); if(!t){t=document.createElement('div');t.className='toast glass';document.body.appendChild(t);} t.textContent=msg; toastT=setTimeout(()=>t.remove(),2400); }
+
+/* ================= render & events ================= */
+function render(){
+  if(!S.ready){ $app.innerHTML = `<div class="label">Carnet de jeux</div><h1>Un <em>instant</em>…</h1><p class="sub">Chargement des joueurs et des parties.</p>`; return; }
+  if(S.locked){ $app.innerHTML = `<div class="label">Carnet de jeux</div><h1>Accès <em>réservé</em></h1><p class="sub">Ce carnet est personnel. Seul son propriétaire peut voir et noter les parties.</p>`; return; }
+  const v = S.view;
+  $app.innerHTML = v==='players'?viewPlayers():v==='stats'?viewStats():v==='history'?viewHistory():v==='yahtzee'?viewYahtzee():v==='421'?view421():v==='skyjo'?viewSky():viewHome();
+  const tabv = GAMES[v] ? 'home' : v;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.v===tabv));
+  const f = document.getElementById('addp');
+  if(f) f.onsubmit = async e => { e.preventDefault(); const i=document.getElementById('pname'); const n=i.value.trim(); if(!n) return;
+    if(Object.values(S.players).some(p=>p.name.toLowerCase()===n.toLowerCase())){ toast(n+' est déjà dans la liste.'); return; }
+    i.value=''; try{ await store.addPlayer(n); toast(n+' ajouté'); }catch(err){ toast("Impossible d'ajouter "+n+'. Réessaie.'); }
+    setTimeout(()=>{const x=document.getElementById('pname'); x&&x.focus();},50); };
+}
+function go(v){ S.view=v; S.confirm=null; render(); window.scrollTo(0,0); }
+document.getElementById('tabs').onclick = e => { const t=e.target.closest('.tab'); if(t) go(t.dataset.v); };
+
+async function saveFinished(k){
+  if(k==='yahtzee'){ const L=S.live.yahtzee;
+    const results = L.order.map(id=>{const sc=L.scores[id]||{}; const t=totals(sc); return {id, name:pname(id,L.names[id]), total:t.total, up:t.up, bonus:t.bonus, yz:sc.yz||0, yb:sc.yb||0};});
+    const max = Math.max(...results.map(r=>r.total));
+    return {game:'yahtzee', date:Date.now(), startedAt:L.startedAt, results, winners: results.filter(r=>r.total===max).map(r=>r.id)};
+  }
+  if(k==='skyjo'){ const L=S.live.skyjo; const st=runSky(L);
+    const results = L.order.map(id=>({id, name:pname(id,L.names[id]), total:st.tot[id], closed:st.closed[id], doubled:st.doubled[id], bestRound:st.bestRound[id]}));
+    return {game:'skyjo', date:Date.now(), startedAt:L.startedAt, results, winners:st.winners, rounds:st.log.length};
+  }
+  const L=S.live['421']; const st=run421(L);
+  const results = L.order.map(id=>({id, name:pname(id,L.names[id]), rank: id===st.loser ? L.order.length : st.out.indexOf(id)+1,
+    n421: st.log.filter(r=>r.w===id && r.c==='421').length}));
+  return {game:'421', date:Date.now(), startedAt:L.startedAt, results, loser:st.loser, firstOut:st.out[0]||null, rounds:st.log.length};
+}
+
+$app.addEventListener('click', async e => {
+  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],td.cell'); if(!el) return;
+  if(el.matches('td.cell')){ openCell(el.dataset.p, el.dataset.c); return; }
+  if(el.dataset.go){ go(el.dataset.go); return; }
+  if(el.dataset.seg){ S[el.dataset.seg]=el.dataset.val; render(); return; }
+  if(el.dataset.closer){ S.sky.closer = S.sky.closer===el.dataset.closer ? null : el.dataset.closer; render(); return; }
+  if(el.dataset.rule){ S.rules421 = {...S.rules421, [el.dataset.rule]: Number(el.dataset.val)}; render();
+    if(db){ try{ await db.doc('settings/r421').set(S.rules421); }catch(err){ toast("Le réglage n'a pas pu être enregistré."); } } else local.save(); return; }
+  if(el.dataset.r){ const R=S.r421; R[el.dataset.r] = R[el.dataset.r]===el.dataset.id ? null : el.dataset.id; render(); return; }
+  if(el.dataset.pick){ const s=S.pick[el.dataset.k]; s.has(el.dataset.pick)?s.delete(el.dataset.pick):s.add(el.dataset.pick); render(); return; }
+  if(el.dataset.rm){ S.confirm='rm-'+el.dataset.rm; render(); return; }
+  if(el.dataset.rmYes){ const id=el.dataset.rmYes; S.confirm=null; try{ await store.removePlayer(id); }catch(err){ toast('Impossible de retirer ce joueur.'); } return; }
+  if(el.dataset.rg){ S.confirm='rg-'+el.dataset.rg; render(); return; }
+  if(el.dataset.rgYes){ const id=el.dataset.rgYes; S.confirm=null; try{ await store.removeGame(id); toast('Partie supprimée'); }catch(err){ toast('Impossible de supprimer la partie.'); } return; }
+  const a = el.dataset.a, k = el.dataset.k;
+  if(a==='cancel'){ S.confirm=null; render(); }
+  else if(a==='start'){ const order=[...S.pick[k]]; const names={}; order.forEach(id=>names[id]=S.players[id].name);
+    S.pick[k]=new Set(); S.r421={c:'421',w:null,l:null,nen:false}; S.sky={scores:{},closer:null};
+    await store.setLive(k, k==='yahtzee' ? {order, names, scores:{}, startedAt:Date.now()} : k==='skyjo' ? {order, names, rounds:[], startedAt:Date.now()} : {order, names, rounds:[], rules:{...S.rules421}, startedAt:Date.now()}); }
+  else if(a==='combo'){ const i = COMBOS.findIndex(c=>c.id===S.r421.c);
+    wheel({who:'Meilleure combinaison', title:'Combinaison', meta:'De la plus forte à la plus faible. Le chiffre à droite, c’est le nombre de jetons.', opts:COMBOS.map(c=>combo(c.id,rulesOf(S.live['421']))).map(c=>({v:c.id,t:c.t,s:plural(c.v,'jeton')})), start:i, onOk:o=>{S.r421.c=o.v; render();}}); }
+  else if(a==='sky-score'){ const id=el.dataset.id, L=S.live.skyjo; const cur=S.sky.scores[id];
+    const opts=[]; for(let v=-24; v<=144; v++) opts.push({v, t:v<0?'−'+(-v):String(v)});
+    wheel({who:pname(id,L.names[id]), title:'Points de la manche', meta:'Somme des cartes restantes, de −2 à 12 chacune. Une colonne de 3 cartes identiques ne compte pas.',
+      opts, start: opts.findIndex(o=>o.v===(cur===undefined?0:cur)), onOk:o=>{ S.sky.scores={...S.sky.scores,[id]:o.v}; render(); },
+      onClear:()=>{ const sc={...S.sky.scores}; delete sc[id]; S.sky.scores=sc; render(); }}); }
+  else if(a==='sky-round'){ const L=S.live.skyjo, R=S.sky; if(!R.closer || !L.order.every(id=>R.scores[id]!==undefined)) return;
+    L.rounds=[...(L.rounds||[]), {scores:{...R.scores}, closer:R.closer}]; S.sky={scores:{},closer:null}; saveLiveSoon('skyjo'); window.scrollTo({top:0,behavior:'smooth'}); }
+  else if(a==='sky-undo'){ const L=S.live.skyjo; L.rounds=(L.rounds||[]).slice(0,-1); saveLiveSoon('skyjo'); }
+  else if(a==='export'){ exportData(); }
+  else if(a==='nen'){ S.r421.nen=!S.r421.nen; render(); }
+  else if(a==='round'){ const R=S.r421, L=S.live['421']; if(!R.w||!R.l) return;
+    L.rounds = [...(L.rounds||[]), {c:R.c, w:R.w, l:R.l, nen:R.nen}];
+    S.r421 = {c:'421', w:null, l:null, nen:false}; saveLiveSoon('421'); }
+  else if(a==='undo'){ const L=S.live['421']; L.rounds = (L.rounds||[]).slice(0,-1); saveLiveSoon('421'); }
+  else if(a==='end'){ S.confirm='end'; render(); }
+  else if(a==='abandon'){ S.confirm='abandon'; render(); }
+  else if(a==='abandon-yes'){ S.confirm=null; await store.setLive(k, null); }
+  else if(a==='end-yes'){ S.confirm=null;
+    try{ const g = await saveFinished(k); await store.addGame(g); await store.setLive(k, null); toast('Partie enregistrée'); S.sgame=k; go('stats'); }
+    catch(err){ toast("La partie n'a pas pu être enregistrée. Réessaie."); render(); } }
+});
+$app.addEventListener('change', e => { if(e.target.id==='import-file' && e.target.files[0]){ importData(e.target.files[0]); e.target.value=''; } });
+$app.addEventListener('keydown', e => { if((e.key==='Enter'||e.key===' ') && e.target.matches('td.cell,[data-pick]')){ e.preventDefault(); e.target.click(); } });
+
+/* ================= boot ================= */
+async function boot(){
+  render();
+  const c = window.claude;
+  const [d, u] = c && c.use ? await Promise.all([c.use('db').catch(()=>null), c.use('user').catch(()=>null)]) : [null,null];
+  if(u && typeof u.isOwner==='function'){ try{ if(!(await u.isOwner())){ S.locked=true; S.ready=true; render(); return; } }catch(e){} }
+  if(!d){ local.load(); S.ready=true; render(); try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){} return; }
+  db = d;
+  let got = 0; const mark = () => { if(++got>=4) S.ready=true; if(!$ov.innerHTML) render(); };
+  db.collection('players').onSnapshot(s=>{ const p={}; s.docs.forEach(x=>p[x.id]=x.data()); S.players=p; mark(); }, ()=>{});
+  db.collection('games').onSnapshot(s=>{ S.games=s.docs.map(x=>({...x.data(), id:x.id})); mark(); }, ()=>{});
+  db.doc('settings/r421').onSnapshot(s=>{ if(s.exists) S.rules421={...DEF_RULES,...s.data()}; if(!$ov.innerHTML) render(); }, ()=>{});
+  Object.keys(GAMES).forEach(k => {
+    db.doc('live/'+GAMES[k].doc).onSnapshot(s=>{ const y = sync[k]; if(!y || (!y.busy && !y.timer)) S.live[k] = s.exists ? JSON.parse(JSON.stringify(s.data())) : null; mark(); }, ()=>{});
+  });
+}
+boot();
+})();
+</script>
+
+<script>
+/* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
+window.APP_VERSION = '1';
+if('serviceWorker' in navigator){
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });
+  const offer = w => {
+    const t = document.createElement('div'); t.className = 'toast glass'; t.style.display='flex'; t.style.gap='10px'; t.style.alignItems='center';
+    t.innerHTML = 'Nouvelle version disponible <button class="btn" style="padding:8px 14px;font-size:13px">Mettre à jour</button>';
+    t.querySelector('button').onclick = () => w.postMessage('skip');
+    document.body.appendChild(t);
+  };
+  addEventListener('load', async () => {
+    try{
+      const reg = await navigator.serviceWorker.register('sw.js');
+      if(reg.waiting && navigator.serviceWorker.controller) offer(reg.waiting);
+      reg.addEventListener('updatefound', () => { const w = reg.installing;
+        w.addEventListener('statechange', () => { if(w.state==='installed' && navigator.serviceWorker.controller) offer(w); }); });
+      document.addEventListener('visibilitychange', () => { if(!document.hidden) reg.update().catch(()=>{}); });
+    }catch(e){}
+  });
+}
+</script>
+</body>
+</html>

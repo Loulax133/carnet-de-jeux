@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Carnet de jeux">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=4">
-<link rel="apple-touch-icon-precomposed" sizes="180x180" href="icon-180.png?v=4">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=4">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=7">
+<link rel="apple-touch-icon-precomposed" sizes="180x180" href="icon-180.png?v=7">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=7">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}html{-webkit-text-size-adjust:100%}</style>
 </head>
 <body>
@@ -159,6 +159,16 @@ table.stats{width:100%;border-collapse:collapse;font-variant-numeric:tabular-num
 .mdie{flex:none;width:26px;height:26px;border-radius:7px;padding:4px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);
   background:linear-gradient(#ffffff,#e9e9eb);box-shadow:0 2px 5px rgba(0,0,0,.28),0 0 0 .5px rgba(0,0,0,.12),inset 0 1px 0 #fff,inset 0 -1.5px 0 rgba(0,0,0,.08)}
 .mdie i{width:4.5px;height:4.5px;border-radius:50%;place-self:center;background:#0e0e0f;box-shadow:inset 0 1px 1px rgba(0,0,0,.6)}
+.pdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:1px;flex:none}
+.label .pdot{width:8px;height:8px;margin-right:6px;vertical-align:0}
+.aw-who{display:flex;align-items:center;gap:10px;margin:8px 0 2px;min-width:0}
+.aw-who .big{margin:0;min-width:0}
+.avatar.sm{width:32px;height:32px;font-size:17px}
+.award.hero .avatar.sm{width:44px;height:44px;font-size:24px}
+.crowned{position:relative;display:inline-flex;flex:none}
+.crown-ic{position:absolute;width:24px;height:17px;left:50%;top:-11px;transform:translateX(-50%) rotate(-14deg);transform-origin:50% 100%;filter:drop-shadow(0 1.5px 1.5px rgba(0,0,0,.3));z-index:1}
+.phead .crown-ic{width:40px;height:28px;top:-19px}
+.phead{margin-top:20px}
 .back{appearance:none;border:0;background:none;color:var(--mute);font:500 14px var(--sans);padding:6px 0;cursor:pointer}
 .games{display:flex;flex-direction:column;gap:12px}
 .gamecard{appearance:none;text-align:left;width:100%;color:var(--ink);font:inherit;cursor:pointer;padding:20px;display:flex;gap:16px;align-items:center}
@@ -501,8 +511,8 @@ function view421(){
   const players = L.order.map(id => {
     const out = st.out.includes(id); const t = st.tokens[id];
     return `<div class="item${out?' out':''}">${av(id,pname(id,L.names[id]))}<div class="grow"><div class="name">${nm(id)}</div><div class="meta">${out ? rank(id) : (st.done && id===st.loser ? 'Perd la partie' : '')}</div>
-      <div class="bar"><i style="width:${Math.round(t/POT*100)}%"></i></div></div><div class="tok">${t}<small>jeton${t>1?'s':''}</small></div></div>`;}).join('');
-  const chipsFor = (key, exclude) => playing.filter(id=>id!==exclude).map(id=>`<button class="chip${R[key]===id?' on':''}" data-r="${key}" data-id="${id}">${nm(id)}</button>`).join('');
+      <div class="bar"><i style="width:${Math.round(t/POT*100)}%${barC(id)}"></i></div></div><div class="tok">${t}<small>jeton${t>1?'s':''}</small></div></div>`;}).join('');
+  const chipsFor = (key, exclude) => playing.filter(id=>id!==exclude).map(id=>`<button class="chip${R[key]===id?' on':''}" data-r="${key}" data-id="${id}">${dot(id)}${nm(id)}</button>`).join('');
   const last = st.log.slice(-5).reverse();
   return `<button class="back" data-go="home">← Jeux</button>
   <div class="label">${st.done ? 'Partie terminée' : st.phase==='charge' ? `Charge · ${plural(st.pot,'jeton')} au pot` : 'Décharge · pot vide'}</div>
@@ -558,7 +568,7 @@ function viewSky(){
   const standings = order.map((id,i) => { const t = st.tot[id];
     return `<div class="item">${av(id,pname(id,L.names[id]))}<div class="grow"><div class="name">${nm(id)}</div>
       <div class="meta">${st.done && st.winners.includes(id) ? 'Gagne la partie' : i===0 && st.log.length ? 'En tête' : t>=SKY_END-20 && !st.done ? 'Reste '+Math.max(0,SKY_END-t)+' avant '+SKY_END : ''}</div>
-      <div class="bar"><i style="width:${Math.max(0,Math.round(t/maxT*100))}%"></i></div></div><div class="tok">${t}<small>pts</small></div></div>`; }).join('');
+      <div class="bar"><i style="width:${Math.max(0,Math.round(t/maxT*100))}%${barC(id)}"></i></div></div><div class="tok">${t}<small>pts</small></div></div>`; }).join('');
   const all = L.order.every(id => R.scores[id]!==undefined);
   let preview = '';
   if(all && R.closer){ const c=R.closer, v=R.scores[c];
@@ -573,14 +583,14 @@ function viewSky(){
   <div class="glass" style="padding:8px 16px"><div class="list">${standings}</div></div>
   ${st.done ? '' : `<div class="glass" style="padding:6px 18px 18px;margin-top:14px">
     <div class="field"><span class="label">Points de la manche</span><span class="hint">Additionne les cartes encore devant chaque joueur. Les colonnes de 3 cartes identiques ne comptent pas.</span>
-      <div class="stack" style="gap:8px">${L.order.map(id=>`<button class="pickbtn" data-a="sky-score" data-id="${id}"><span>${nm(id)}</span><span class="c">${R.scores[id]===undefined?'–':R.scores[id]}</span></button>`).join('')}</div></div>
-    <div class="field"><span class="label">Qui a fini la manche ?</span><div class="chips">${L.order.map(id=>`<button class="chip${R.closer===id?' on':''}" data-closer="${id}">${nm(id)}</button>`).join('')}</div>
+      <div class="stack" style="gap:8px">${L.order.map(id=>`<button class="pickbtn" data-a="sky-score" data-id="${id}"><span>${dot(id)}${nm(id)}</span><span class="c">${R.scores[id]===undefined?'–':R.scores[id]}</span></button>`).join('')}</div></div>
+    <div class="field"><span class="label">Qui a fini la manche ?</span><div class="chips">${L.order.map(id=>`<button class="chip${R.closer===id?' on':''}" data-closer="${id}">${dot(id)}${nm(id)}</button>`).join('')}</div>
       <span class="hint">Celui qui a retourné toutes ses cartes en premier. S'il n'a pas le plus petit score seul, ses points positifs sont doublés.</span></div>
     ${preview ? `<p class="hint" style="font-size:13.5px;margin:4px 0 12px">${preview}</p>` : ''}
     <button class="btn block" data-a="sky-round" id="sky-round" ${all&&R.closer?'':'disabled'}>Valider la manche</button>
   </div>`}
   ${st.log.length ? `<h2>Manches</h2><div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats">
-    <thead><tr><th></th>${L.order.map(id=>`<th>${nm(id)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+    <thead><tr><th></th>${L.order.map(id=>`<th>${dot(id)}${nm(id)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
     <p class="hint" style="margin:8px 0">• a fini la manche · ×2 points doublés</p>
     <button class="link" data-a="sky-undo" id="sky-undo">Annuler la dernière manche</button></div>` : ''}
   ${endControls('skyjo', st.done, `Enregistrer la victoire de ${st.winners.map(nm).join(' & ')} dans l'historique ?`)}
@@ -614,7 +624,7 @@ function statsSkyView(top, ids, nameOf){
   <h2>Classement</h2>
   <div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats">
     <thead><tr><th></th><th>Joueur</th><th>V.</th><th>Parties</th><th>Moy.</th><th>Record</th><th>×2</th></tr></thead>
-    <tbody>${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px"><b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round(r.rate*100)}%"></i></div></td><td>${r.wins}</td><td>${r.played}</td><td>${r.avg}</td><td>${r.best}</td><td>${r.doubled}</td></tr>`).join('')}</tbody>
+    <tbody>${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px">${dot(r.id)}<b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round(r.rate*100)}%${barC(r.id)}"></i></div></td><td>${r.wins}</td><td>${r.played}</td><td>${r.avg}</td><td>${r.best}</td><td>${r.doubled}</td></tr>`).join('')}</tbody>
   </table></div>
   <p class="note">Au Skyjo, moins on a de points, mieux c'est. Classement par victoires, puis taux de victoire, puis moyenne la plus basse. La barre montre le taux de victoire.</p>`;
 }
@@ -638,13 +648,13 @@ function stats4(id){
   return st;
 }
 function viewPlayers(){
-  const ps = sortedPlayers();
+  const ps = sortedPlayers(); const king = bestPlayer();
   return `<div class="label">${plural(ps.length,'joueur')}</div><h1>Les <em>joueurs</em></h1>
   <p class="sub">Ajoute autant de monde que tu veux. Les mêmes joueurs servent pour tous les jeux.</p>
   <form id="addp" class="row" style="flex-wrap:nowrap"><input type="text" id="pname" placeholder="Prénom" maxlength="24" autocomplete="off" aria-label="Prénom du joueur"><button class="btn" type="submit" id="addbtn">Ajouter</button></form>
   ${ps.length ? `<div class="glass" style="padding:8px 16px;margin-top:16px"><div class="list">${ps.map(([id,p])=>{const y=statsY(id), q=stats4(id), sk=statsS(id);
-    return `<div class="item tap" role="button" tabindex="0" data-player="${id}">${av(id,p.name)}<div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">Yahtzee ${y.played} · 421 ${q.played} · Skyjo ${sk.played}</div></div><span class="chev" aria-hidden="true">›</span></div>`;}).join('')}</div></div>
-    <p class="note">Touche un joueur pour voir ses stats et modifier son profil.</p>` : ''}
+    return `<div class="item tap" role="button" tabindex="0" data-player="${id}">${crowned(av(id,p.name), id===king)}<div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">Yahtzee ${y.played} · 421 ${q.played} · Skyjo ${sk.played}</div></div><span class="chev" aria-hidden="true">›</span></div>`;}).join('')}</div></div>
+    <p class="note">Touche un joueur pour voir ses stats et modifier son profil. La couronne va au meilleur taux de victoire tous jeux confondus, à partir de 3 parties.</p>` : ''}
   ${!db ? `<h2>Sauvegarde</h2>
   <div class="glass" style="padding:16px 18px"><p style="margin:0 0 4px">Tout est enregistré dans ce téléphone, même hors ligne. Les mises à jour de l'app n'y touchent pas.</p>
     <p class="hint" style="margin:0 0 14px">Exporte de temps en temps pour garder une copie ailleurs (Fichiers, iCloud, mail). Importer ajoute les parties du fichier sans rien effacer. ${S.exportedAt ? 'Dernier export : '+new Date(S.exportedAt).toLocaleDateString('fr-FR',{day:'numeric',month:'long'})+'.' : 'Aucun export pour l\u2019instant.'}</p>
@@ -661,6 +671,26 @@ const COLORS = [
 const inkOn = hex => { const n=parseInt(hex.slice(1),16), r=n>>16, g=n>>8&255, b=n&255; return (0.299*r+0.587*g+0.114*b) > 170 ? '#111111' : '#ffffff'; };
 const colorOf = id => { const p = S.players[id]; const c = p && COLORS.find(x=>x.id===p.color); return c && c.c ? c.c : null; };
 const avStyle = id => { const c = colorOf(id); return c ? `background:${c};color:${inkOn(c)}` : ''; };
+/* Best player: highest win rate across all games (Yahtzee and Skyjo wins, 421 games not lost), at least CROWN_MIN games. Tie-break: more wins. No crown on a tie. */
+const CROWN_MIN = 3;
+function bestPlayer(){
+  const sc = {}; const add = (id,w) => { const x = sc[id] || (sc[id]={w:0,n:0}); x.n++; x.w+=w; };
+  S.games.forEach(g => { const k = kindOf(g);
+    (g.results||[]).forEach(r => add(r.id, k==='421' ? (g.loser!==r.id?1:0) : ((g.winners||[]).includes(r.id)?1:0))); });
+  const rows = Object.entries(sc).filter(([id,x])=>S.players[id] && x.n>=CROWN_MIN).map(([id,x])=>({id, w:x.w, rate:x.w/x.n})).sort((a,b)=>b.rate-a.rate||b.w-a.w);
+  if(!rows.length || !rows[0].w) return null;
+  if(rows[1] && rows[1].rate===rows[0].rate && rows[1].w===rows[0].w) return null;
+  return rows[0].id;
+}
+let crownN = 0;
+const crownSvg = () => { const g = 'gd'+(crownN++);
+  return `<svg class="crown-ic" viewBox="0 0 32 22" aria-hidden="true"><defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE58A"/><stop offset=".55" stop-color="#E8B530"/><stop offset="1" stop-color="#B9841A"/></linearGradient></defs>
+  <path d="M3 8.5 9.5 13 16 3l6.5 10L29 8.5 26.5 19h-21Z" fill="url(#${g})" stroke="#9A6B10" stroke-width=".8" stroke-linejoin="round"/>
+  <rect x="5.3" y="18.2" width="21.4" height="3" rx="1.2" fill="url(#${g})" stroke="#9A6B10" stroke-width=".8"/>
+  <circle cx="16" cy="3" r="1.9" fill="#FFF4C2" stroke="#9A6B10" stroke-width=".6"/><circle cx="3" cy="8.5" r="1.6" fill="#FFF4C2" stroke="#9A6B10" stroke-width=".6"/><circle cx="29" cy="8.5" r="1.6" fill="#FFF4C2" stroke="#9A6B10" stroke-width=".6"/></svg>`; };
+const crowned = (html, on) => on ? `<span class="crowned">${crownSvg()}${html}</span>` : html;
+const dot = id => { const c = colorOf(id); return `<span class="pdot" style="background:${c||'currentColor'}"></span>`; };
+const barC = id => colorOf(id) ? `;background:${colorOf(id)}` : '';
 const av = (id, name, cls='') => `<div class="avatar${cls?' '+cls:''}" style="${avStyle(id)}">${initial(name)}</div>`;
 
 function viewPlayer(){
@@ -696,8 +726,9 @@ function viewPlayer(){
     const rank = sorted.findIndex(x=>x.total===r.total)+1;
     return `${(g.winners||[]).includes(id)?'<b>Gagne</b>':(rank===1?'1er':rank+'e')+' sur '+n} · ${r.total} pts`; };
   const section = (name, played, tiles) => `<h2>${name}</h2>${played ? `<div class="stiles">${tiles}</div>` : `<p class="hint">Pas encore de partie de ${name}.</p>`}`;
+  const isKing = bestPlayer()===id;
   return `<button class="back" data-go="players">← Joueurs</button>
-  <div class="phead">${av(id, p.name, 'big')}<div class="grow"><div class="label">${plural(total,'partie')} au total</div><h1 style="margin:4px 0 0">${esc(p.name)}</h1></div>
+  <div class="phead">${crowned(av(id, p.name, 'big'), isKing)}<div class="grow"><div class="label">${isKing ? 'Meilleur joueur · ' : ''}${plural(total,'partie')} au total</div><h1 style="margin:4px 0 0">${esc(p.name)}</h1></div>
     <button class="btn ghost" data-a="edit" id="edit-btn" style="padding:10px 16px">Modifier</button></div>
   ${section('Yahtzee', y.played, tile('Victoires', y.wins, pct(y.rate)) + tile('Parties', y.played) + tile('Moyenne', y.avg, 'pts par partie') + tile('Record', y.best, 'pts') + tile('Yahtzees', y.yahtzees, 'bonus compris') + tile('Prime de 35', y.bonuses, 'fois'))}
   ${yScores.length>1 ? `<div class="glass" style="padding:14px 16px;margin-top:10px"><div class="label">Derniers scores</div>
@@ -710,7 +741,7 @@ function viewPlayer(){
 /* ================= stats ================= */
 function lastName(id){ for(let i=S.games.length-1;i>=0;i--){ const r=(S.games[i].results||[]).find(r=>r.id===id); if(r) return r.name; } return 'Ancien joueur'; }
 const seg = (key, opts) => `<div class="seg" role="tablist">${opts.map(([v,t])=>`<button class="${S[key]===v?'on':''}" data-seg="${key}" data-val="${v}">${t}</button>`).join('')}</div>`;
-const award = (lab, r, val, sub, hero) => `<div class="award glass${hero?' hero':''}"><div class="label">${lab}</div><div class="big">${esc(r.name)}</div><div class="meta">${val}${sub?' · '+sub:''}</div></div>`;
+const award = (lab, r, val, sub, hero) => `<div class="award glass${hero?' hero':''}"><div class="label">${lab}</div><div class="aw-who"><div class="avatar sm" style="${colorOf(r.id) ? avStyle(r.id) : hero ? 'background:var(--inv-ink);color:var(--inv-bg)' : ''}">${initial(r.name)}</div><div class="big">${esc(r.name)}</div></div><div class="meta">${val}${sub?' · '+sub:''}</div></div>`;
 function viewStats(){
   const k = S.sgame; const gs = S.games.filter(g=>kindOf(g)===k);
   const top = `<div class="label">${plural(gs.length,'partie')} de ${GAMES[k].name}</div><h1>Les <em>stats</em></h1>
@@ -736,7 +767,7 @@ function viewStats(){
     <h2>Classement</h2>
     <div class="glass dense tbl-wrap" style="padding:4px 12px"><table class="stats">
       <thead><tr><th></th><th>Joueur</th><th>V.</th><th>Parties</th><th>Moy.</th><th>Record</th><th>Total</th></tr></thead>
-      <tbody>${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px"><b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round(r.avg/maxAvg*100)}%"></i></div></td><td>${r.wins}</td><td>${r.played}</td><td>${r.avg}</td><td>${r.best}</td><td>${r.points.toLocaleString('fr-FR')}</td></tr>`).join('')}</tbody>
+      <tbody>${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px">${dot(r.id)}<b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round(r.avg/maxAvg*100)}%${barC(r.id)}"></i></div></td><td>${r.wins}</td><td>${r.played}</td><td>${r.avg}</td><td>${r.best}</td><td>${r.points.toLocaleString('fr-FR')}</td></tr>`).join('')}</tbody>
     </table></div>
     <p class="note">Classement par victoires, puis taux de victoire, puis moyenne. La barre montre la moyenne par partie.</p>`;
   }
@@ -753,7 +784,7 @@ function viewStats(){
   <h2>Classement</h2>
   <div class="glass dense tbl-wrap" style="padding:4px 12px"><table class="stats">
     <thead><tr><th></th><th>Joueur</th><th>Déf.</th><th>Parties</th><th>1er sorti</th><th>421</th></tr></thead>
-    <tbody>${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px"><b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round((1-r.lossRate)*100)}%"></i></div></td><td>${r.losses}</td><td>${r.played}</td><td>${r.first}</td><td>${r.n421}</td></tr>`).join('')}</tbody>
+    <tbody>${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px">${dot(r.id)}<b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round((1-r.lossRate)*100)}%${barC(r.id)}"></i></div></td><td>${r.losses}</td><td>${r.played}</td><td>${r.first}</td><td>${r.n421}</td></tr>`).join('')}</tbody>
   </table></div>
   <p class="note">Au 421, on compte les défaites : moins tu perds, mieux tu es classé. La barre montre la part de parties sans défaite.</p>`;
 }
@@ -767,7 +798,7 @@ function viewHistory(){
   if(!gs.length) return top + `<div class="glass empty"><div class="serif">Rien d'enregistré</div><p>Chaque partie terminée arrive ici avec la date et les scores de chacun.</p></div>`;
   const fmt = d => new Date(d).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
   return top + `<div class="stack">${gs.map(g=>{
-    const k = kindOf(g); const nm = r => esc(pname(r.id,r.name));
+    const k = kindOf(g); const nm = r => dot(r.id)+esc(pname(r.id,r.name));
     let title, body;
     if(k==='421'){ const L = (g.results||[]).find(r=>r.id===g.loser)||{}; const F=(g.results||[]).find(r=>r.id===g.firstOut);
       title = `${nm(L)} <em>perd</em>`; body = `<div class="gscores">${F?`<span>1er sorti <b>${nm(F)}</b></span>`:''}<span><b>${g.rounds||0}</b> manches</span></div>`; }
@@ -783,10 +814,10 @@ function viewHistory(){
 }
 
 /* ================= wheel picker ================= */
-function wheel({who, title, meta, opts, start, onOk, onClear}){
+function wheel({who, whoId, title, meta, opts, start, onOk, onClear}){
   let idx = Math.max(0, start);
   $ov.innerHTML = `<div class="scrim" data-close></div><div class="panel glass" role="dialog" aria-label="${esc(title)}">
-    <div class="label">${esc(who)}</div><h3>${esc(title)}</h3><div class="meta">${meta}</div>
+    <div class="label">${whoId?dot(whoId):""}${esc(who)}</div><h3>${esc(title)}</h3><div class="meta">${meta}</div>
     <div class="wheel-box"><div class="wheel-band" aria-hidden="true"></div>
       <div class="wheel" id="wheel" tabindex="0" role="listbox" aria-label="${esc(title)}">${opts.map((o,i)=>`<div class="wi" role="option" data-i="${i}">${o.t}${o.s?`<span class="s">${o.s}</span>`:''}</div>`).join('')}</div></div>
     <div class="foot">${onClear?'<button class="btn ghost" data-clear>Effacer</button>':'<button class="btn ghost" data-close>Fermer</button>'}<button class="btn" data-ok>Valider</button></div></div>`;
@@ -819,7 +850,7 @@ function openCell(pid, cid){
   const start = cur!==undefined && cur!==null ? cur : def;
   const set = v => { const sc = {...(L.scores[pid]||{})}; if(v===null) delete sc[cid]; else sc[cid]=v;
     L.scores = {...L.scores, [pid]: sc}; S.just = pid+cid; saveLiveSoon('yahtzee'); setTimeout(()=>{S.just=null},400); };
-  wheel({who:pname(pid,L.names[pid]), title, meta, opts, start: opts.findIndex(o=>o.v===start), onOk:o=>set(o.v), onClear:()=>set(null)});
+  wheel({who:pname(pid,L.names[pid]), whoId:pid, title, meta, opts, start: opts.findIndex(o=>o.v===start), onOk:o=>set(o.v), onClear:()=>set(null)});
 }
 
 let toastT; function toast(msg){ clearTimeout(toastT); let t=document.querySelector('.toast'); if(!t){t=document.createElement('div');t.className='toast glass';document.body.appendChild(t);} t.textContent=msg; toastT=setTimeout(()=>t.remove(),2400); }
@@ -882,7 +913,7 @@ $app.addEventListener('click', async e => {
     wheel({who:'Meilleure combinaison', title:'Combinaison', meta:'De la plus forte à la plus faible. Le chiffre à droite, c’est le nombre de jetons.', opts:COMBOS.map(c=>combo(c.id,rulesOf(S.live['421']))).map(c=>({v:c.id,t:c.t,s:plural(c.v,'jeton')})), start:i, onOk:o=>{S.r421.c=o.v; render();}}); }
   else if(a==='sky-score'){ const id=el.dataset.id, L=S.live.skyjo; const cur=S.sky.scores[id];
     const opts=[]; for(let v=-24; v<=144; v++) opts.push({v, t:v<0?'−'+(-v):String(v)});
-    wheel({who:pname(id,L.names[id]), title:'Points de la manche', meta:'Somme des cartes restantes, de −2 à 12 chacune. Une colonne de 3 cartes identiques ne compte pas.',
+    wheel({who:pname(id,L.names[id]), whoId:id, title:'Points de la manche', meta:'Somme des cartes restantes, de −2 à 12 chacune. Une colonne de 3 cartes identiques ne compte pas.',
       opts, start: opts.findIndex(o=>o.v===(cur===undefined?0:cur)), onOk:o=>{ S.sky.scores={...S.sky.scores,[id]:o.v}; render(); },
       onClear:()=>{ const sc={...S.sky.scores}; delete sc[id]; S.sky.scores=sc; render(); }}); }
   else if(a==='sky-round'){ const L=S.live.skyjo, R=S.sky; if(!R.closer || !L.order.every(id=>R.scores[id]!==undefined)) return;
@@ -932,7 +963,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '4';
+window.APP_VERSION = '7';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confidentialité · Carnet de jeux</title>
+<style>
+  :root { --bg:#faf8f4; --fg:#1d1b18; --muted:#6b6560; --line:#e4dfd7; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#151412; --fg:#ede9e3; --muted:#9c958d; --line:#2c2a26; } }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui, -apple-system, sans-serif; }
+  main { max-width:680px; margin:0 auto; padding:40px 16px 64px; }
+  h1 { font-size:1.8rem; margin:0 0 4px; }
+  h2 { font-size:1.1rem; margin:32px 0 8px; padding-top:16px; border-top:1px solid var(--line); }
+  p, li { margin:0 0 8px; }
+  .muted { color:var(--muted); }
+  a { color:inherit; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Règles de confidentialité</h1>
+  <p class="muted">Carnet de jeux — dernière mise à jour : 21 octobre 2026</p>
+
+  <p>Carnet de jeux est une application personnelle et gratuite pour compter les points de jeux de société entre amis. Elle est conçue pour garder un maximum de données sur votre téléphone.</p>
+
+  <h2>Ce qui reste sur votre téléphone</h2>
+  <p>Vos profils de joueurs (y compris les invités), l'historique des parties, les feuilles de score détaillées, les réglages et les statistiques sont enregistrés uniquement dans le stockage local de votre appareil.</p>
+
+  <h2>Ce qui passe par nos serveurs (Google Firebase)</h2>
+  <ul>
+    <li><strong>Votre adresse e-mail</strong>, uniquement pour la connexion par lien. Elle n'est visible par aucun autre utilisateur.</li>
+    <li><strong>Votre nom affiché et votre code ami</strong>, pour que vos amis puissent vous ajouter.</li>
+    <li><strong>Vos liens d'amitié</strong>, visibles seulement par les deux personnes concernées.</li>
+    <li><strong>Les parties partagées</strong> avec un ami : elles transitent par sa boîte aux lettres, puis sont supprimées du serveur dès que son application les a récupérées. Elles contiennent les noms des joueurs tels que saisis, les scores et la date.</li>
+  </ul>
+  <p>Les données sont hébergées par Google Firebase, dans l'Union européenne (Paris).</p>
+
+  <h2>Google Drive</h2>
+  <p>Si vous activez la sauvegarde, l'application crée des fichiers de sauvegarde (format JSON, lisibles) dans un dossier « Carnet de jeux » de votre propre Google Drive. Elle n'a accès qu'aux fichiers qu'elle a elle-même créés : elle ne peut ni voir ni modifier le reste de votre Drive. Ces fichiers ne sont jamais envoyés ailleurs.</p>
+
+  <h2>Ce que nous ne faisons pas</h2>
+  <ul>
+    <li>Aucune publicité, aucun traceur, aucune mesure d'audience.</li>
+    <li>Aucune vente ni aucun partage de données avec des tiers.</li>
+    <li>Pas d'annuaire : impossible de rechercher un utilisateur par son e-mail.</li>
+  </ul>
+
+  <h2>Supprimer vos données</h2>
+  <p>Vous pouvez supprimer votre compte depuis l'application, ce qui efface votre profil, vos liens d'amitié et votre boîte aux lettres. Les données locales disparaissent si vous effacez les données du site ou désinstallez l'application. Les sauvegardes Drive se suppriment directement depuis votre Drive. Vous pouvez aussi retirer l'accès de l'application à votre compte Google dans les paramètres de sécurité de Google.</p>
+
+  <h2>Contact</h2>
+  <p>Pour toute question : ouvrez une issue sur <a href="https://github.com/Loulax133/carnet-de-jeux">le dépôt du projet</a>.</p>
+</main>
+</body>
+</html>

@@ -341,7 +341,7 @@ const local = {
   load(){ const d = local.read(DATA_KEY) || local.read(PREV_KEY); if(d) applyData(d); },
   snapshot(){ return {v:DATA_V, players:S.players, games:S.games, lives:S.live, rules421:S.rules421, savedAt:Date.now(), exportedAt:S.exportedAt||0}; },
   save(){ try{ const cur = localStorage.getItem(DATA_KEY); if(cur) localStorage.setItem(PREV_KEY, cur);
-      localStorage.setItem(DATA_KEY, JSON.stringify(local.snapshot())); }
+      localStorage.setItem(DATA_KEY, JSON.stringify(local.snapshot())); try{ pubSoon(); }catch(e){} }
     catch(e){ toast("Sauvegarde impossible sur ce téléphone. Exporte tes données par sécurité."); } }
 };
 async function exportData(){
@@ -698,7 +698,7 @@ function viewPlayers(){
   ${ps.length ? `<div class="glass" style="padding:8px 16px;margin-top:16px"><div class="list">${ps.map(([id,p])=>{const y=statsY(id), q=stats4(id), sk=statsS(id);
     return `<div class="item tap" role="button" tabindex="0" data-player="${id}">${crowned(av(id,p.name), id===king)}<div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">Yahtzee ${y.played} · 421 ${q.played} · Skyjo ${sk.played}</div></div><span class="chev" aria-hidden="true">›</span></div>`;}).join('')}</div></div>
     <p class="note">Touche un joueur pour voir ses stats et modifier son profil. La couronne va au meilleur taux de victoire tous jeux confondus, à partir de 3 parties.</p>` : ''}
-`;
+  ${viewFriendsBlock()}`;
 }
 
 
@@ -718,7 +718,7 @@ function viewSettings(){
 function viewAccountPage(){
   return `<button class="back" data-go="settings">← Réglages</button>
   <div class="label">Réglages</div><h1>Mon <em>compte</em></h1>
-  <p class="sub">Pour retrouver tes amis et partager les parties.</p>${viewAccount()}`;
+  <p class="sub">Pour retrouver tes amis et partager les parties.</p>${viewAccount()}${online() && !S.acct.mode ? viewMe() : ''}`;
 }
 function viewBackup(){
   return `<button class="back" data-go="settings">← Réglages</button>
@@ -963,13 +963,14 @@ function setProfile(p){
   const u = S.acct.user; S.acct.cache = u ? {uid:u.uid, email:u.email, name:p.name, code:p.code} : null; lsSet(ACCT_KEY, S.acct.cache);
 }
 async function onUser(u){
-  if(!u){ S.acct.user = null; S.acct.profile = null; S.acct.cache = null; lsSet(ACCT_KEY, null); S.acct.status='ready'; render(); return; }
+  if(!u){ S.acct.user = null; S.acct.profile = null; S.acct.cache = null; lsSet(ACCT_KEY, null); frReset(); S.acct.status='ready'; render(); return; }
+  { const c = lsGet(FR_KEY); if(c && c.owner && c.owner!==u.uid) frReset(); }
   S.acct.user = {uid:u.uid, email:u.email}; S.acct.status = 'ready';
   if(S.acct.cache && S.acct.cache.uid===u.uid) S.acct.profile = {name:S.acct.cache.name, code:S.acct.cache.code};
   render();
   if(S.acct.creating) return;
   try{ const {m, fs} = FB; const snap = await m.getDoc(m.doc(fs, 'users', u.uid));
-    if(snap.exists()){ const d = snap.data(); setProfile({name:d.name, code:d.code}); }
+    if(snap.exists()){ const d = snap.data(); setProfile({name:d.name, code:d.code}); frLoad(true); pubSoon(); }
     else if(!S.acct.profile) S.acct.needsProfile = true;
   }catch(e){ /* hors ligne : on garde le profil en cache */ }
   render();
@@ -1031,7 +1032,7 @@ function viewAccount(){
   if(u && p && !A.needsProfile){
     if(A.mode==='delete') return `<div class="glass" style="padding:16px 18px">
       <p style="margin:0 0 6px"><b>Supprimer ton compte ?</b></p>
-      <p class="hint" style="margin:0 0 12px">Ton nom, ton code ami et ton accès en ligne seront effacés. Tes parties et tes joueurs restent sur ce téléphone, et tes sauvegardes Drive ne sont pas touchées.</p>
+      <p class="hint" style="margin:0 0 12px">Ton nom, ton code ami, tes amitiés, tes résultats partagés et ton accès en ligne seront effacés. Tes parties et tes joueurs restent sur ce téléphone, et tes sauvegardes Drive ne sont pas touchées.</p>
       <form id="acct-del-form" class="stack" style="gap:10px"><input type="password" id="acct-pw" placeholder="Ton mot de passe pour confirmer" autocomplete="current-password" aria-label="Mot de passe">
       <div class="row"><button class="btn" type="submit" ${A.busy?'disabled':''}>${A.busy?'Suppression…':'Supprimer définitivement'}</button><button class="btn ghost" type="button" data-a="acct-cancel">Annuler</button></div></form>${msg}</div>`;
     return `<div class="glass" style="padding:16px 18px">
@@ -1081,7 +1082,10 @@ async function acctForm(id){
     if(!pw){ A.err = AUTH_ERR['auth/missing-password']; render(); return; }
     return acctRun(async () => { const {m, fs, auth} = await fb(); const user = auth.currentUser;
       await m.reauthenticateWithCredential(user, m.EmailAuthProvider.credential(user.email, pw));
-      const b = m.writeBatch(fs); if(A.profile && A.profile.code) b.delete(m.doc(fs, 'codes', A.profile.code)); b.delete(m.doc(fs, 'users', user.uid)); await b.commit();
+      const b = m.writeBatch(fs);
+      const frs = await m.getDocs(m.query(m.collection(fs, 'friendships'), m.where('members', 'array-contains', user.uid)));
+      frs.docs.forEach(x => b.delete(x.ref)); b.delete(m.doc(fs, 'results', user.uid));
+      if(A.profile && A.profile.code) b.delete(m.doc(fs, 'codes', A.profile.code)); b.delete(m.doc(fs, 'users', user.uid)); await b.commit();
       await m.deleteUser(user); A.mode = null; toast('Compte supprimé. Tes parties restent sur ce téléphone.'); }); }
 }
 
@@ -1192,22 +1196,201 @@ async function driveAction(a, el){
     lsSet(DRIVE_TOK, null); D.on = false; D.list = null; D.err = null; driveSave(); render(); toast('Drive déconnecté. Les sauvegardes restent dans ton Drive.'); }
 }
 
+
+/* ================= amis =================
+   friendships/{uidA_uidB} {members, from, status:'pending'|'ok', names, createdAt} : demande puis acceptation.
+   results/{uid} {list, updatedAt} : pour chaque partie du joueur « moi », le jeu, la date, gagné ou non et ses points
+   (au 421 : sa place). Aucun nom d'adversaire. Lisible seulement par les amis acceptés.
+   « Moi » et les amis sont reliés à des joueurs locaux par le champ uid du joueur (sauvegardé avec les données). */
+const FR_KEY = 'yz-friends', PUB_KEY = 'yz-pub';
+const pairId = (a, b) => a < b ? a+'_'+b : b+'_'+a;
+const myUid = () => (S.acct.user || S.acct.cache || {}).uid || null;
+const online = () => !!(myUid() && S.acct.profile && !S.acct.needsProfile);
+S.fr = {list:[], res:{}, sent:{}, at:0, busy:false, err:null, info:null, code:''};
+{ const c = lsGet(FR_KEY); if(c && c.owner && c.owner===myUid()){ S.fr.list = c.list||[]; S.fr.res = c.res||{}; S.fr.sent = c.sent||{}; } }
+const frSave = () => lsSet(FR_KEY, {owner:myUid(), list:S.fr.list, res:S.fr.res, sent:S.fr.sent});
+function frReset(){ S.fr.list = []; S.fr.res = {}; S.fr.sent = {}; S.fr.at = 0; lsSet(FR_KEY, null); lsSet(PUB_KEY, null); }
+const friendsOk = () => S.fr.list.filter(f=>f.status==='ok').sort((a,b)=>a.name.localeCompare(b.name,'fr'));
+const pidOfUid = uid => { const e = Object.entries(S.players).find(([id,p])=>p.uid===uid); return e ? e[0] : null; };
+const myPid = () => { const u = myUid(); return u ? pidOfUid(u) : null; };
+const FR_ERR = e => /permission|PERMISSION/.test(String(e && (e.code||e.message))) ? "Le serveur a refusé l'opération. Vérifie que les dernières règles Firestore sont publiées."
+  : /unavailable|network|Failed to fetch|offline/i.test(String(e && (e.code||e.message))) ? "Pas de connexion. Réessaie quand tu as du réseau." : "Ça n'a pas marché. Réessaie dans un instant.";
+async function frRun(fn){
+  if(S.fr.busy) return; S.fr.busy = true; S.fr.err = null; S.fr.info = null; render();
+  try{ await fn(); }catch(e){ S.fr.err = FR_ERR(e); }
+  S.fr.busy = false; render();
+}
+async function frLoad(force){
+  if(!online() || !navigator.onLine) return;
+  if(!force && Date.now() - S.fr.at < 20000) return;
+  S.fr.at = Date.now();
+  try{ const {m, fs} = await fb(); const me = myUid();
+    const snap = await m.getDocs(m.query(m.collection(fs, 'friendships'), m.where('members', 'array-contains', me)));
+    const list = snap.docs.map(x => { const d = x.data(); const other = (d.members||[]).find(u=>u!==me);
+      const old = S.fr.list.find(f=>f.uid===other);
+      return {id:x.id, uid:other, name:(d.names && d.names[other]) || (old && old.name) || 'Ami', status: d.status==='ok' ? 'ok' : d.from===me ? 'out' : 'in'}; });
+    await Promise.all(list.filter(f=>f.status==='ok').map(async f => {
+      try{ const u = await m.getDoc(m.doc(fs, 'users', f.uid)); if(u.exists()) f.name = u.data().name; }catch(e){}
+      try{ const r = await m.getDoc(m.doc(fs, 'results', f.uid)); S.fr.res[f.uid] = {list: r.exists() ? (r.data().list||[]) : null, at:Date.now()}; }catch(e){} }));
+    S.fr.list = list; frSave(); render();
+  }catch(e){ /* hors ligne ou règles pas encore publiées : on garde le cache */ }
+}
+async function frFetchRes(uid){
+  if(!online() || !navigator.onLine) return;
+  try{ const {m, fs} = await fb(); const s = await m.getDoc(m.doc(fs, 'results', uid));
+    S.fr.res[uid] = {list: s.exists() ? (s.data().list||[]) : null, at:Date.now()}; frSave(); render();
+  }catch(e){}
+}
+async function frAdd(){
+  const code = val('fr-code').toUpperCase().replace(/[^A-Z0-9]/g,''); S.fr.code = code;
+  if(code.length!==6){ S.fr.err = 'Un code ami fait 6 caractères.'; render(); return; }
+  await frRun(async () => { const {m, fs} = await fb(); const me = myUid();
+    if(code === S.acct.profile.code){ S.fr.err = "C'est ton propre code !"; return; }
+    const c = await m.getDoc(m.doc(fs, 'codes', code));
+    if(!c.exists()){ S.fr.err = "Aucun compte n'a ce code. Vérifie les lettres avec ton ami."; return; }
+    const other = c.data().uid, id = pairId(me, other), ref = m.doc(fs, 'friendships', id);
+    const f = await m.getDoc(ref);
+    if(f.exists()){ const d = f.data();
+      if(d.status==='ok') S.fr.info = 'Vous êtes déjà amis.';
+      else if(d.from===me) S.fr.info = 'Ta demande est déjà partie. Elle attend que ton ami l’accepte.';
+      else { await m.setDoc(ref, {status:'ok', names:{[me]:S.acct.profile.name}}, {merge:true}); S.fr.info = 'Il t’avait déjà envoyé une demande : vous êtes amis.'; }
+    } else {
+      await m.setDoc(ref, {members:[me, other], from:me, status:'pending', names:{[me]:S.acct.profile.name}, createdAt:m.serverTimestamp()});
+      S.fr.sent[id] = code; frSave();
+      S.fr.info = 'Demande envoyée. Ton ami la verra dans Joueurs → Ajouter un ami.';
+    }
+    S.fr.code = ''; S.fr.at = 0; await frLoad(true); });
+}
+async function frAccept(id){ await frRun(async () => { const {m, fs} = await fb();
+  await m.setDoc(m.doc(fs, 'friendships', id), {status:'ok', names:{[myUid()]:S.acct.profile.name}}, {merge:true});
+  toast('Demande acceptée'); await frLoad(true); }); }
+async function frDrop(id, msg){ await frRun(async () => { const {m, fs} = await fb();
+  await m.deleteDoc(m.doc(fs, 'friendships', id)); toast(msg); S.confirm = null; await frLoad(true); }); }
+
+/* ---- publication de mes résultats ---- */
+function myResults(){
+  const pid = myPid(); if(!pid) return [];
+  return S.games.filter(g=>(g.results||[]).some(r=>r.id===pid)).sort((a,b)=>b.date-a.date).slice(0,2000).map(g => {
+    const k = kindOf(g), r = g.results.find(r=>r.id===pid);
+    return k==='421' ? {k, d:g.date, w: g.loser===pid ? 0 : 1, r: r.rank||null} : {k, d:g.date, w: (g.winners||[]).includes(pid) ? 1 : 0, p: r.total};
+  });
+}
+const shareOn = () => !(lsGet(PUB_KEY)||{}).off;
+const hashStr = s => { let h = 0; for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) | 0; return h; };
+let pubT = null;
+function pubSoon(){ clearTimeout(pubT); pubT = setTimeout(()=>pubCheck().catch(()=>{}), 2500); }
+async function pubCheck(){
+  if(!online() || !navigator.onLine) return;
+  const st = lsGet(PUB_KEY) || {}, me = myUid();
+  if(st.off){ if(st.has){ const {m, fs} = await fb(); await m.deleteDoc(m.doc(fs, 'results', me)); lsSet(PUB_KEY, {off:true}); } return; }
+  if(!myPid()) return;
+  const list = myResults(), h = hashStr(JSON.stringify(list));
+  if(st.uid===me && st.h===h) return;
+  const {m, fs} = await fb();
+  await m.setDoc(m.doc(fs, 'results', me), {list, updatedAt:m.serverTimestamp()});
+  lsSet(PUB_KEY, {uid:me, h, has:true});
+}
+
+/* ---- vues ---- */
+function viewMe(){
+  const me = myUid(), mine = myPid();
+  const ps = sortedPlayers().filter(([id,p]) => !p.uid || p.uid===me);
+  return `<div class="glass" style="padding:6px 18px 16px;margin-top:14px">
+    <div class="field"><span class="label">Toi dans le carnet</span>
+      ${ps.length ? `<div class="chips">${ps.map(([id,p])=>`<button class="chip${id===mine?' on':''}" data-me="${id}">${dot(id)}${esc(p.name)}</button>`).join('')}</div>` : '<span class="hint">Ajoute-toi d’abord dans la liste des joueurs.</span>'}
+      <span class="hint">Choisis ton joueur : ce sont ses parties que tes amis verront.</span></div>
+    <div class="field"><span class="label">Montrer mes résultats à mes amis</span>
+      <div class="seg" style="margin:0"><button class="${shareOn()?'on':''}" data-share="1">Oui</button><button class="${shareOn()?'':'on'}" data-share="0">Non</button></div>
+      <span class="hint">Pour chaque partie, tes amis voient le jeu, la date, si tu as gagné et tes points. Jamais avec qui tu as joué.</span></div>
+  </div>`;
+}
+function viewFriendsBlock(){
+  if(db) return '';
+  if(!online()) return `<p class="note">Pour ajouter des amis, crée un compte : roue en haut à droite → Mon compte.</p>`;
+  const ok = friendsOk(), inc = S.fr.list.filter(f=>f.status==='in').length;
+  return `<h2>Amis</h2><div class="glass" style="padding:8px 16px"><div class="list">
+    ${ok.map(f => { const r = S.fr.res[f.uid], l = r && r.list; const w = l ? l.filter(x=>x.w).length : 0;
+      return `<div class="item tap" role="button" tabindex="0" data-friend="${esc(f.uid)}"><div class="avatar">${initial(f.name)}</div><div class="grow"><div class="name">${esc(f.name)}</div><div class="meta">${l ? plural(l.length,'partie')+' · '+plural(w,'victoire') : 'Ami'}</div></div><span class="chev" aria-hidden="true">›</span></div>`; }).join('')}
+    <div class="item tap" role="button" tabindex="0" data-go="friends"><div class="avatar" style="background:var(--chip);color:var(--ink);font-family:var(--sans);font-size:24px">+</div><div class="grow"><div class="name">Ajouter un ami</div><div class="meta">${inc ? plural(inc,'demande')+' à accepter' : 'Avec son code ami'}</div></div>${inc?`<span class="obadge" style="position:static">${inc}</span>`:''}<span class="chev" aria-hidden="true">›</span></div>
+  </div></div>`;
+}
+function viewFriends(){
+  const F = S.fr, inc = F.list.filter(f=>f.status==='in'), out = F.list.filter(f=>f.status==='out');
+  const back = `<button class="back" data-go="players">← Joueurs</button>`;
+  if(!online()) return back + `<div class="label">Amis</div><h1>Ajouter un <em>ami</em></h1><div class="glass empty"><div class="serif">Il te faut un compte</div><p>Le compte sert à retrouver tes amis. Tes parties restent sur ton téléphone.</p><button class="btn" data-go="account">Créer un compte</button></div>`;
+  const msg = (F.err ? `<p class="hint" style="color:var(--ink);margin:10px 0 0">${esc(F.err)}</p>` : '') + (F.info ? `<p class="hint" style="margin:10px 0 0">${esc(F.info)}</p>` : '');
+  const row = (f, actions) => `<div class="item"><div class="avatar">${initial(f.name)}</div><div class="grow"><div class="name">${esc(f.name)}</div></div>${actions}</div>`;
+  return back + `<div class="label">Amis</div><h1>Ajouter un <em>ami</em></h1>
+  <p class="sub">Tape le code de ton ami. Il devra accepter ta demande.</p>
+  ${myPid() ? '' : `<div class="glass row" style="padding:12px 14px 12px 18px;margin-bottom:14px;flex-wrap:nowrap;border-radius:22px"><span class="grow hint" style="margin:0">Dis d'abord qui tu es dans le carnet, sinon tes amis ne verront pas tes résultats.</span><button class="btn ghost" style="padding:10px 14px;font-size:14px" data-go="account">Choisir</button></div>`}
+  <div class="glass" style="padding:16px 18px"><form id="fr-form" class="row" style="flex-wrap:nowrap"><input type="text" id="fr-code" maxlength="8" placeholder="Code ami" value="${esc(F.code)}" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Code ami" style="text-transform:uppercase;letter-spacing:.12em"><button class="btn" type="submit" ${F.busy?'disabled':''}>${F.busy?'…':'Envoyer'}</button></form>
+    <p class="hint" style="margin:10px 0 0">Ton ami trouve son code dans la roue → Mon compte. Le tien : <b style="color:var(--ink);letter-spacing:.06em">${esc(S.acct.profile.code)}</b></p>${msg}</div>
+  ${inc.length ? `<h2>Demandes reçues</h2><div class="glass" style="padding:4px 16px"><div class="list">${inc.map(f=>row(f, `<button class="btn" style="padding:8px 14px;font-size:13px" data-fra="${esc(f.id)}" ${F.busy?'disabled':''}>Accepter</button><button class="link" data-frx="${esc(f.id)}" data-msg="Demande refusée">Refuser</button>`)).join('')}</div></div>` : ''}
+  ${out.length ? `<h2>Demandes envoyées</h2><div class="glass" style="padding:4px 16px"><div class="list">${out.map(f=>row({...f, name: S.fr.sent[f.id] ? 'Code '+S.fr.sent[f.id] : 'Demande envoyée'}, `<span class="meta">En attente</span><button class="link" data-frx="${esc(f.id)}" data-msg="Demande annulée">Annuler</button>`)).join('')}</div></div>` : ''}`;
+}
+function friendStats(list, k){
+  const l = list.filter(x=>x.k===k); if(!l.length) return null;
+  const w = l.filter(x=>x.w).length, pts = l.map(x=>x.p).filter(x=>typeof x==='number');
+  return {n:l.length, w, rate:w/l.length, avg: pts.length ? Math.round(pts.reduce((a,b)=>a+b,0)/pts.length) : null,
+    best: pts.length ? (k==='skyjo' ? Math.min(...pts) : Math.max(...pts)) : null, first: l.filter(x=>x.r===1).length};
+}
+function viewFriend(){
+  const uid = S.fid, f = S.fr.list.find(x=>x.uid===uid && x.status==='ok');
+  const back = `<button class="back" data-go="players">← Joueurs</button>`;
+  if(!f) return back + `<div class="glass empty"><div class="serif">Ami introuvable</div><p>Il a peut-être été retiré.</p></div>`;
+  const r = S.fr.res[uid], list = r && r.list, linked = pidOfUid(uid);
+  const tile = (lab, v, sub) => `<div class="stile"><div class="label">${lab}</div><div class="v">${v}</div>${sub?`<div class="meta">${sub}</div>`:''}</div>`;
+  const pct = x => Math.round(x*100)+' %';
+  const section = k => { const s = list && friendStats(list, k); if(!s) return '';
+    return `<h2>${GAMES[k].name}</h2><div class="stiles">${k==='421'
+      ? tile('Défaites', s.n-s.w, pct(1-s.rate)) + tile('Parties', s.n) + tile('Sorti en 1er', s.first, 'fois')
+      : tile('Victoires', s.w, pct(s.rate)) + tile('Parties', s.n) + tile('Moyenne', s.avg ?? '–', 'pts') + tile('Record', s.best ?? '–', k==='skyjo'?'total le plus bas':'pts')}</div>`; };
+  const outc = x => x.k==='421' ? (x.w ? (x.r ? `Sorti ${x.r===1?'1er':x.r+'e'}` : 'Ne perd pas') : '<b>Perd</b>') : `${x.w?'<b>Gagne</b>':'Perd'} · ${x.p} pts`;
+  const others = sortedPlayers().filter(([id,p])=>!p.uid);
+  return back + `<div class="phead"><div class="avatar big">${initial(f.name)}</div><div class="grow"><div class="label">Ami${list ? ' · '+plural(list.length,'partie') : ''}</div><h1 style="margin:4px 0 0">${esc(f.name)}</h1></div></div>
+  ${linked ? `<div class="glass" style="padding:4px 16px;margin-top:14px"><div class="item tap" role="button" tabindex="0" data-player="${linked}">${av(linked, S.players[linked].name)}<div class="grow"><div class="name">Vos parties ensemble</div><div class="meta">Joueur « ${esc(S.players[linked].name)} » du carnet</div></div><span class="chev" aria-hidden="true">›</span></div></div>`
+    : `<div class="glass" style="padding:6px 18px 14px;margin-top:14px"><div class="field"><span class="label">Relier à un joueur du carnet</span>
+      ${others.length ? `<div class="chips">${others.map(([id,p])=>`<button class="chip" data-frlink="${id}">${dot(id)}${esc(p.name)}</button>`).join('')}</div>` : '<span class="hint">Aucun joueur libre dans ton carnet.</span>'}
+      <span class="hint">Si ${esc(f.name)} est déjà dans tes joueurs, relie-le pour retrouver vos parties ensemble.</span></div></div>`}
+  ${!r ? `<p class="hint" style="margin-top:18px">Chargement de ses résultats…</p>` : !list ? `<div class="glass empty" style="margin-top:14px"><div class="serif">Pas encore de résultats</div><p>${esc(f.name)} n'a pas encore choisi son joueur dans le carnet, ou ne partage pas ses résultats.</p></div>`
+    : `${['yahtzee','421','skyjo'].map(section).join('')}
+    ${list.length ? `<h2>Dernières parties</h2><div class="glass" style="padding:4px 16px"><div class="list">${list.slice(0,10).map(x=>`<div class="item"><div class="grow"><div class="name">${GAMES[x.k] ? GAMES[x.k].name : x.k}</div><div class="meta">${new Date(x.d).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long'})}</div></div><div class="meta" style="text-align:right;color:var(--ink)">${outc(x)}</div></div>`).join('')}</div></div>` : ''}`}
+  <div style="margin-top:18px;text-align:center">${S.confirm==='frrm' ? `<div class="confirm" style="justify-content:center"><span class="meta">Retirer ${esc(f.name)} de tes amis ?</span><button class="btn ghost" data-frx="${esc(f.id)}" data-msg="Ami retiré">Retirer</button><button class="link" data-a="cancel">Non</button></div>`
+    : `<button class="link" data-a="fr-rm">Retirer cet ami</button>`}</div>`;
+}
+async function frClick(el){
+  const d = el.dataset;
+  if(d.friend){ S.fid = d.friend; go('friend'); frFetchRes(d.friend); return true; }
+  if(d.fra){ frAccept(d.fra); return true; }
+  if(d.frx){ frDrop(d.frx, d.msg || 'Fait'); if(S.view==='friend') go('players'); return true; }
+  if(d.frlink){ const uid = S.fid; Object.entries(S.players).forEach(([id,p])=>{ if(p.uid===uid) delete p.uid; });
+    await store.updatePlayer(d.frlink, {uid}); toast('Joueur relié'); return true; }
+  if(d.me){ const me = myUid(); if(!me) return true;
+    for(const [id,p] of Object.entries(S.players)) if(p.uid===me && id!==d.me) await store.updatePlayer(id, {uid:null});
+    await store.updatePlayer(d.me, {uid:me}); toast('C’est noté'); pubSoon(); return true; }
+  if(d.share){ const on = d.share==='1'; const st = lsGet(PUB_KEY) || {};
+    lsSet(PUB_KEY, on ? {} : {off:true, has:true}); render(); pubSoon(); toast(on ? 'Tes amis verront tes résultats' : 'Tes résultats ne sont plus partagés'); return true; }
+  if(d.a==='fr-rm'){ S.confirm = 'frrm'; render(); return true; }
+  return false;
+}
+
 /* ================= render & events ================= */
 function render(){
   if(!S.ready){ $app.innerHTML = `<div class="label">Carnet de jeux</div><h1>Un <em>instant</em>…</h1><p class="sub">Chargement des joueurs et des parties.</p>`; return; }
   if(S.locked){ $app.innerHTML = `<div class="label">Carnet de jeux</div><h1>Accès <em>réservé</em></h1><p class="sub">Ce carnet est personnel. Seul son propriétaire peut voir et noter les parties.</p>`; return; }
   const v = S.view;
-  $app.innerHTML = v==='players'?viewPlayers():v==='settings'?viewSettings():v==='account'?viewAccountPage():v==='backup'?viewBackup():v==='player'?viewPlayer():v==='stats'?viewStats():v==='history'?viewHistory():v==='yahtzee'?viewYahtzee():v==='421'?view421():v==='skyjo'?viewSky():viewHome();
-  const tabv = GAMES[v] ? 'home' : ['player','settings','account','backup'].includes(v) ? 'players' : v;
+  $app.innerHTML = v==='players'?viewPlayers():v==='settings'?viewSettings():v==='friends'?viewFriends():v==='friend'?viewFriend():v==='account'?viewAccountPage():v==='backup'?viewBackup():v==='player'?viewPlayer():v==='stats'?viewStats():v==='history'?viewHistory():v==='yahtzee'?viewYahtzee():v==='421'?view421():v==='skyjo'?viewSky():viewHome();
+  const tabv = GAMES[v] ? 'home' : ['player','settings','account','backup','friends','friend'].includes(v) ? 'players' : v;
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.v===tabv));
   const f = document.getElementById('addp');
   if(f) f.onsubmit = async e => { e.preventDefault(); const i=document.getElementById('pname'); const n=i.value.trim(); if(!n) return;
     if(Object.values(S.players).some(p=>p.name.toLowerCase()===n.toLowerCase())){ toast(n+' est déjà dans la liste.'); return; }
     i.value=''; try{ await store.addPlayer(n); toast(n+' ajouté'); }catch(err){ toast("Impossible d'ajouter "+n+'. Réessaie.'); }
     setTimeout(()=>{const x=document.getElementById('pname'); x&&x.focus();},50); };
+  { const g = document.getElementById('fr-form'); if(g) g.onsubmit = e => { e.preventDefault(); frAdd(); }; }
   ['acct-form','acct-rename-form','acct-fix-form','acct-del-form'].forEach(id => { const g = document.getElementById(id); if(g) g.onsubmit = e => { e.preventDefault(); acctForm(id); }; });
 }
-function go(v){ S.view=v; S.confirm=null; S.edit=null; render(); window.scrollTo(0,0); }
+function go(v){ S.view=v; S.confirm=null; S.edit=null; if(v==='friends'){ S.fr.err=S.fr.info=null; } render(); window.scrollTo(0,0); if(['players','friends','friend'].includes(v)) frLoad(v!=='players'); }
 document.getElementById('tabs').onclick = e => { const t=e.target.closest('.tab'); if(t) go(t.dataset.v); };
 
 async function saveFinished(k){
@@ -1227,7 +1410,8 @@ async function saveFinished(k){
 }
 
 $app.addEventListener('click', async e => {
-  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],[data-drivefile],td.cell'); if(!el) return;
+  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-me],[data-share],td.cell'); if(!el) return;
+  if(el.matches('[data-friend],[data-fra],[data-frx],[data-frlink],[data-me],[data-share],[data-a=fr-rm]') && await frClick(el)) return;
   if(el.matches('td.cell')){ openCell(el.dataset.p, el.dataset.c); return; }
   if(el.dataset.go){ go(el.dataset.go); return; }
   if(el.dataset.yzp){ const i=Number(el.dataset.yzp); if(i!==S.yzp){ S.yzAnim = i>S.yzp?'l':'r'; S.yzp=i; render(); } return; }
@@ -1329,7 +1513,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '11';
+window.APP_VERSION = '12';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

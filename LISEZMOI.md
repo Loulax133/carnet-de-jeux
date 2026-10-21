@@ -22,3 +22,10 @@ Les données de jeu sont stockées dans chaque téléphone, à part : une mise �
 - Le compte est facultatif et se pose par-dessus le stockage local : il ne remplace ni n'efface rien.
 - Clés locales ajoutées (à ne pas renommer) : `yz-acct` (profil en cache), `yz-drive` (réglage Drive), `yz-drive-tok` (jeton Google, 1 h).
 - Drive : accès `drive.file` uniquement, 10 dernières sauvegardes dans « Carnet de jeux », les plus anciennes vont à la corbeille Drive.
+
+## Amis (version 12)
+- Ajout par code ami (6 caractères), puis acceptation par l'autre. Retrait possible des deux côtés.
+- « Toi dans le carnet » (Mon compte) relie ton joueur local à ton compte. Ses résultats sont publiés pour tes amis : jeu, date, gagné ou non, points (place au 421). Aucun nom d'adversaire. Interrupteur pour arrêter le partage.
+- Un ami peut être relié à un joueur local (champ `uid` du joueur) pour retrouver vos parties ensemble.
+- Nouvelles clés locales : `yz-friends` (cache des amis), `yz-pub` (état du partage).
+- `firebase-13.1.0.js` a été reconstruit (ajout des requêtes) : à remplacer aussi.

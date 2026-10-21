@@ -1,0 +1,93 @@
+rules_version = '2';
+// Carnet de jeux — règles Firestore (étape 2 : comptes, codes, amis, résultats partagés).
+// À coller dans Firebase > Firestore Database > Règles, puis « Publier ».
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function pairOf(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
+    // vrai si l'utilisateur connecté et `other` sont amis confirmés
+    function friendOf(other) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/friendships/$(pairOf(request.auth.uid, other)))
+        && get(/databases/$(database)/documents/friendships/$(pairOf(request.auth.uid, other))).data.status == 'ok';
+    }
+
+    // Profil minimal : nom affiché + code ami. Jamais d'e-mail ici.
+    match /users/{uid} {
+      function isMe() { return signedIn() && request.auth.uid == uid; }
+      function validName(d) { return d.name is string && d.name.size() >= 1 && d.name.size() <= 24; }
+
+      allow get: if isMe() || friendOf(uid);
+      allow create: if isMe()
+        && request.resource.data.keys().hasOnly(['name', 'code', 'createdAt'])
+        && validName(request.resource.data)
+        && request.resource.data.code is string && request.resource.data.code.size() == 6
+        && request.resource.data.createdAt == request.time
+        && getAfter(/databases/$(database)/documents/codes/$(request.resource.data.code)).data.uid == uid;
+      allow update: if isMe()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
+        && validName(request.resource.data);
+      allow delete: if isMe();
+      allow list: if false;
+    }
+
+    // Codes amis : on peut vérifier un code précis, jamais lister.
+    match /codes/{code} {
+      allow get: if signedIn();
+      allow create: if signedIn()
+        && code.size() == 6
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      allow list, update: if false;
+    }
+
+    // Amitiés : un document par paire (uidA_uidB). Demande, puis acceptation par l'autre.
+    match /friendships/{pid} {
+      function member() { return signedIn() && request.auth.uid in resource.data.members; }
+
+      // lire une paire qui n'existe pas encore est permis (pour savoir si une demande existe déjà)
+      allow get: if signedIn() && (resource == null || request.auth.uid in resource.data.members);
+      allow list: if member();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['members', 'from', 'status', 'names', 'createdAt'])
+        && request.resource.data.members is list && request.resource.data.members.size() == 2
+        && request.resource.data.members[0] != request.resource.data.members[1]
+        && request.auth.uid in request.resource.data.members
+        && request.resource.data.from == request.auth.uid
+        && pid == pairOf(request.resource.data.members[0], request.resource.data.members[1])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.names is map
+        && request.resource.data.names.keys().hasOnly([request.auth.uid])
+        && request.resource.data.createdAt == request.time;
+      // seul le destinataire accepte ; il peut seulement passer à 'ok' et ajouter son nom
+      allow update: if member()
+        && request.auth.uid != resource.data.from
+        && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'names'])
+        && request.resource.data.status == 'ok'
+        && request.resource.data.names.keys().hasOnly(resource.data.members);
+      // refuser, annuler ou retirer : l'un ou l'autre
+      allow delete: if member();
+    }
+
+    // Résultats partagés : jeu, date, gagné ou non, points (ou place au 421). Pas de noms d'adversaires.
+    match /results/{uid} {
+      function isMe() { return signedIn() && request.auth.uid == uid; }
+      allow get: if isMe() || friendOf(uid);
+      allow create, update: if isMe()
+        && request.resource.data.keys().hasOnly(['list', 'updatedAt'])
+        && request.resource.data.list is list
+        && request.resource.data.list.size() <= 2000
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if isMe();
+      allow list: if false;
+    }
+
+    // Tout le reste : fermé.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

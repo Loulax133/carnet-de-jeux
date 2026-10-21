@@ -61,7 +61,7 @@ h2{font-family:var(--serif);font-weight:400;font-size:26px;margin:28px 0 10px}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{appearance:none;border:1px solid var(--line);background:var(--chip);color:var(--ink);font:500 15px var(--sans);border-radius:999px;padding:10px 16px;cursor:pointer;font-variant-numeric:tabular-nums}
 .chip.on{background:var(--inv-bg);color:var(--inv-ink);border-color:var(--inv-bg)}
-input[type=text]{width:100%;min-width:0;font:400 17px var(--sans);color:var(--ink);background:var(--chip);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+input[type=text],input[type=email],input[type=password]{width:100%;min-width:0;font:400 17px var(--sans);color:var(--ink);background:var(--chip);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
 .list{display:flex;flex-direction:column}
 .item{display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid var(--line)}
 .item:last-child{border-bottom:0}
@@ -357,15 +357,20 @@ async function exportData(){
 }
 function importData(file){
   const fr = new FileReader();
-  fr.onload = () => { let d; try{ d = migrate(JSON.parse(fr.result)); }catch(e){ d = null; }
+  fr.onload = () => { let raw = null; try{ raw = JSON.parse(fr.result); }catch(e){}
+    mergeData(raw); };
+  fr.readAsText(file);
+}
+/* Fusion d'une sauvegarde (fichier ou Drive) : ajoute ce qui manque par id, n'efface et ne remplace jamais rien. */
+function mergeData(raw){
+  { const d = migrate(raw);
     if(!d || (!Object.keys(d.players).length && !d.games.length)){ toast("Ce fichier n'est pas une sauvegarde du Carnet de jeux."); return; }
     let np=0, ng=0;
     Object.entries(d.players).forEach(([id,p])=>{ if(!S.players[id]){ S.players[id]=p; np++; } });
     const have = new Set(S.games.map(g=>g.id));
     d.games.forEach(g=>{ if(g && g.id && !have.has(g.id)){ S.games.push(g); ng++; } });
     Object.keys(d.lives||{}).forEach(k=>{ if(!S.live[k] && d.lives[k]) S.live[k]=d.lives[k]; });
-    local.save(); render(); toast(`${plural(np,'joueur')} et ${plural(ng,'partie')} ajoutés`); };
-  fr.readAsText(file);
+    local.save(); render(); toast(`${plural(np,'joueur')} et ${plural(ng,'partie')} ajoutés`); }
 }
 const store = {
   async addPlayer(name){ const id = uid(); const p = {name, createdAt:Date.now()};
@@ -409,6 +414,7 @@ function viewHome(){
   const cards = [-2,5,12].map(v=>`<span class="card">${v}</span>`).join('');
   return `<div class="label">Carnet de jeux</div><h1>On joue <em>à quoi</em> ?</h1>
   <p class="sub">Choisis un jeu. Les parties en cours t'attendent là où tu les as laissées.</p>
+  ${!db && driveDue() ? `<div class="glass row" style="padding:12px 14px 12px 18px;margin:0 0 14px;justify-content:space-between;flex-wrap:nowrap;border-radius:22px"><span class="grow"><b>Sauvegarde Drive</b><span class="hint">Dernière : ${ago(S.drive.last)}</span></span><button class="btn" style="padding:10px 16px;font-size:14px" data-a="drive-now" ${S.drive.busy?'disabled':''}>${S.drive.busy?'…':'Sauvegarder'}</button></div>` : ''}
   <div class="games">
     <button class="gamecard glass" data-go="yahtzee" id="g-yahtzee">
       <span class="dice">${dieFace(5)}${dieFace(5)}</span>
@@ -691,8 +697,9 @@ function viewPlayers(){
   ${ps.length ? `<div class="glass" style="padding:8px 16px;margin-top:16px"><div class="list">${ps.map(([id,p])=>{const y=statsY(id), q=stats4(id), sk=statsS(id);
     return `<div class="item tap" role="button" tabindex="0" data-player="${id}">${crowned(av(id,p.name), id===king)}<div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">Yahtzee ${y.played} · 421 ${q.played} · Skyjo ${sk.played}</div></div><span class="chev" aria-hidden="true">›</span></div>`;}).join('')}</div></div>
     <p class="note">Touche un joueur pour voir ses stats et modifier son profil. La couronne va au meilleur taux de victoire tous jeux confondus, à partir de 3 parties.</p>` : ''}
-  ${!db ? `<h2>Sauvegarde</h2>
-  <div class="glass" style="padding:16px 18px"><p style="margin:0 0 4px">Tout est enregistré dans ce téléphone, même hors ligne. Les mises à jour de l'app n'y touchent pas.</p>
+  ${!db ? `<h2>Mon compte</h2>${viewAccount()}
+  <h2>Sauvegarde</h2>${viewDrive()}
+  <div class="glass" style="padding:16px 18px;margin-top:10px"><p style="margin:0 0 4px">Tout est enregistré dans ce téléphone, même hors ligne. Les mises à jour de l'app n'y touchent pas.</p>
     <p class="hint" style="margin:0 0 14px">Exporte de temps en temps pour garder une copie ailleurs (Fichiers, iCloud, mail). Importer ajoute les parties du fichier sans rien effacer. ${S.exportedAt ? 'Dernier export : '+new Date(S.exportedAt).toLocaleDateString('fr-FR',{day:'numeric',month:'long'})+'.' : 'Aucun export pour l\u2019instant.'}</p>
     <div class="row"><button class="btn" data-a="export" id="export">Exporter</button><label class="btn ghost" for="import-file" style="cursor:pointer">Importer</label>
     <input type="file" id="import-file" accept="application/json,.json" hidden></div></div>` : ''}`;
@@ -900,6 +907,265 @@ function openCell(pid, cid){
 
 let toastT; function toast(msg){ clearTimeout(toastT); let t=document.querySelector('.toast'); if(!t){t=document.createElement('div');t.className='toast glass';document.body.appendChild(t);} t.textContent=msg; toastT=setTimeout(()=>t.remove(),2400); }
 
+/* ================= compte (Firebase) =================
+   Couche facultative AU-DESSUS du stockage local : le compte ne remplace rien, il n'efface rien.
+   Sur le serveur : users/{uid} {name, code, createdAt} et codes/{code} {uid}. L'e-mail reste dans Firebase Auth.
+   Le SDK (firebase-13.1.0.js) est servi depuis le site et n'est chargé que si on a (ou crée) un compte. */
+const FB_CFG = {apiKey:"AIzaSyAMSt7s0xJ7cMFZb2UeYNUshNT_NkiZD84", authDomain:"carnet-de-jeu-1333.firebaseapp.com",
+  projectId:"carnet-de-jeu-1333", storageBucket:"carnet-de-jeu-1333.firebasestorage.app",
+  messagingSenderId:"668352623353", appId:"1:668352623353:web:aa9f112448476a1b3ba828"};
+const ACCT_KEY = 'yz-acct';
+const lsGet = k => { try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){ return null; } };
+const lsSet = (k, v) => { try{ v===null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+S.acct = {cache: lsGet(ACCT_KEY), user:null, profile:null, status:'idle', mode:null, busy:false, err:null, info:null, needsProfile:false, renaming:false};
+if(S.acct.cache) S.acct.profile = {name:S.acct.cache.name, code:S.acct.cache.code};
+let FB = null, fbP = null;
+function fb(){
+  if(!fbP){ S.acct.status = 'loading';
+    fbP = import('./firebase-13.1.0.js').then(m => {
+      const app = m.initializeApp(FB_CFG);
+      const auth = m.initializeAuth(app, {persistence:[m.indexedDBLocalPersistence, m.browserLocalPersistence]});
+      auth.languageCode = 'fr';
+      FB = {m, auth, fs: m.getFirestore(app)};
+      return new Promise(res => { let first = true; m.onAuthStateChanged(auth, u => { onUser(u); if(first){ first=false; res(FB); } }); });
+    }).catch(e => { fbP = null; S.acct.status = 'idle'; throw e; });
+  }
+  return fbP;
+}
+function setProfile(p){
+  S.acct.profile = p; S.acct.needsProfile = false;
+  const u = S.acct.user; S.acct.cache = u ? {uid:u.uid, email:u.email, name:p.name, code:p.code} : null; lsSet(ACCT_KEY, S.acct.cache);
+}
+async function onUser(u){
+  if(!u){ S.acct.user = null; S.acct.profile = null; S.acct.cache = null; lsSet(ACCT_KEY, null); S.acct.status='ready'; render(); return; }
+  S.acct.user = {uid:u.uid, email:u.email}; S.acct.status = 'ready';
+  if(S.acct.cache && S.acct.cache.uid===u.uid) S.acct.profile = {name:S.acct.cache.name, code:S.acct.cache.code};
+  render();
+  if(S.acct.creating) return;
+  try{ const {m, fs} = FB; const snap = await m.getDoc(m.doc(fs, 'users', u.uid));
+    if(snap.exists()){ const d = snap.data(); setProfile({name:d.name, code:d.code}); }
+    else if(!S.acct.profile) S.acct.needsProfile = true;
+  }catch(e){ /* hors ligne : on garde le profil en cache */ }
+  render();
+}
+const CODE_ABC = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const genCode = () => { const a = new Uint32Array(6); crypto.getRandomValues(a); return [...a].map(x=>CODE_ABC[x % CODE_ABC.length]).join(''); };
+async function createProfile(uid, name){
+  const {m, fs} = FB;
+  for(let i=0; i<6; i++){ const code = genCode();
+    try{ await m.runTransaction(fs, async tx => { const cref = m.doc(fs, 'codes', code);
+        if((await tx.get(cref)).exists()) throw new Error('taken');
+        tx.set(cref, {uid}); tx.set(m.doc(fs, 'users', uid), {name, code, createdAt:m.serverTimestamp()}); });
+      setProfile({name, code}); return;
+    }catch(e){ if(e.message!=='taken') throw e; } }
+  throw new Error('code');
+}
+const AUTH_ERR = {
+  'auth/email-already-in-use':"Un compte existe déjà avec cette adresse. Connecte-toi plutôt.",
+  'auth/invalid-email':"Cette adresse e-mail n'est pas valide.",
+  'auth/weak-password':"Le mot de passe doit faire au moins 8 caractères.",
+  'auth/invalid-credential':"E-mail ou mot de passe incorrect.",
+  'auth/wrong-password':"Mot de passe incorrect.",
+  'auth/user-not-found':"E-mail ou mot de passe incorrect.",
+  'auth/too-many-requests':"Trop d'essais d'affilée. Attends quelques minutes avant de réessayer.",
+  'auth/network-request-failed':"Pas de connexion. Réessaie quand tu as du réseau.",
+  'auth/missing-password':"Indique ton mot de passe."};
+const errMsg = e => AUTH_ERR[e && e.code] || (e && /network|fetch|Failed to fetch|unavailable/i.test(String(e.code||e.message)) ? AUTH_ERR['auth/network-request-failed'] : "Ça n'a pas marché. Réessaie dans un instant.");
+const val = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+async function acctRun(fn){
+  if(S.acct.busy) return; S.acct.busy = true; S.acct.err = null; S.acct.info = null; render();
+  try{ await fn(); }catch(e){ S.acct.err = errMsg(e); }
+  S.acct.busy = false; render();
+}
+async function acctSubmit(){
+  const mode = S.acct.mode, email = val('acct-email'), pw = (document.getElementById('acct-pw')||{}).value || '';
+  const name = val('acct-name');
+  S.acct.draft = {name, email};
+  if(mode==='new'){
+    if(!name){ S.acct.err = 'Choisis le nom que tes amis verront.'; render(); return; }
+    if(pw.length < 8){ S.acct.err = AUTH_ERR['auth/weak-password']; render(); return; }
+  }
+  await acctRun(async () => { const {m, auth} = await fb();
+    if(mode==='new'){ S.acct.creating = true;
+      try{ const cred = await m.createUserWithEmailAndPassword(auth, email, pw); await createProfile(cred.user.uid, name); }
+      finally{ S.acct.creating = false; }
+      toast('Compte créé'); }
+    else { await m.signInWithEmailAndPassword(auth, email, pw); toast('Connecté'); }
+    S.acct.mode = null; S.acct.draft = null; });
+}
+async function acctForgot(){
+  const email = val('acct-email'); S.acct.draft = {...(S.acct.draft||{}), email};
+  if(!email){ S.acct.err = "Indique ton adresse e-mail, puis touche à nouveau « Mot de passe oublié »."; render(); return; }
+  await acctRun(async () => { const {m, auth} = await fb(); await m.sendPasswordResetEmail(auth, email);
+    S.acct.info = "Si un compte existe avec cette adresse, un e-mail vient de partir. Choisis ton nouveau mot de passe depuis le lien, puis reviens te connecter ici."; });
+}
+function viewAccount(){
+  const A = S.acct, p = A.profile, u = A.user || A.cache;
+  const msg = (A.err ? `<p class="hint" style="color:var(--ink);margin:10px 0 0">${esc(A.err)}</p>` : '') + (A.info ? `<p class="hint" style="margin:10px 0 0">${esc(A.info)}</p>` : '');
+  if(u && p && !A.needsProfile){
+    if(A.mode==='delete') return `<div class="glass" style="padding:16px 18px">
+      <p style="margin:0 0 6px"><b>Supprimer ton compte ?</b></p>
+      <p class="hint" style="margin:0 0 12px">Ton nom, ton code ami et ton accès en ligne seront effacés. Tes parties et tes joueurs restent sur ce téléphone, et tes sauvegardes Drive ne sont pas touchées.</p>
+      <form id="acct-del-form" class="stack" style="gap:10px"><input type="password" id="acct-pw" placeholder="Ton mot de passe pour confirmer" autocomplete="current-password" aria-label="Mot de passe">
+      <div class="row"><button class="btn" type="submit" ${A.busy?'disabled':''}>${A.busy?'Suppression…':'Supprimer définitivement'}</button><button class="btn ghost" type="button" data-a="acct-cancel">Annuler</button></div></form>${msg}</div>`;
+    return `<div class="glass" style="padding:16px 18px">
+      <div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div class="grow">
+        ${A.renaming ? `<form id="acct-rename-form" class="row" style="flex-wrap:nowrap"><input type="text" id="acct-name" maxlength="24" value="${esc(p.name)}" aria-label="Nom affiché" autocomplete="off"><button class="btn" type="submit" ${A.busy?'disabled':''}>OK</button></form>`
+          : `<div class="name" style="font-size:18px">${esc(p.name)}</div><div class="meta">${esc(u.email||'')} · visible par toi seul</div>`}</div>
+        <div style="text-align:right;flex:none;margin-left:12px"><div class="label">Code ami</div><div style="font-family:var(--serif);font-size:30px;letter-spacing:.06em;line-height:1.1" id="acct-code">${esc(p.code)}</div></div></div>
+      <p class="hint" style="margin:12px 0 12px">Tes amis pourront t'ajouter avec ce code. Ton e-mail n'est jamais montré à personne.</p>
+      <div class="row"><button class="btn ghost" data-a="acct-copy" style="padding:10px 16px">Copier le code</button>${A.renaming?'':'<button class="btn ghost" data-a="acct-rename" style="padding:10px 16px">Changer de nom</button>'}</div>
+      <div class="row" style="margin-top:6px;gap:16px"><button class="link" data-a="acct-logout">Se déconnecter</button><button class="link" data-a="acct-del">Supprimer mon compte</button></div>${msg}</div>`;
+  }
+  if(u && A.needsProfile) return `<div class="glass" style="padding:16px 18px"><p style="margin:0 0 10px">Il manque ton nom affiché pour finir de créer ton compte.</p>
+    <form id="acct-fix-form" class="row" style="flex-wrap:nowrap"><input type="text" id="acct-name" maxlength="24" placeholder="Nom affiché" autocomplete="nickname" aria-label="Nom affiché"><button class="btn" type="submit" ${A.busy?'disabled':''}>OK</button></form>${msg}</div>`;
+  if(A.mode==='new' || A.mode==='login'){ const isNew = A.mode==='new', d = A.draft || {};
+    return `<div class="glass" style="padding:16px 18px"><p style="margin:0 0 12px"><b>${isNew?'Créer un compte':'Se connecter'}</b></p>
+      <form id="acct-form" class="stack" style="gap:10px">
+        ${isNew ? `<input type="text" id="acct-name" maxlength="24" placeholder="Nom affiché (vu par tes amis)" value="${esc(d.name||'')}" autocomplete="nickname" aria-label="Nom affiché">` : ''}
+        <input type="email" id="acct-email" placeholder="Adresse e-mail" value="${esc(d.email||'')}" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" aria-label="Adresse e-mail">
+        <input type="password" id="acct-pw" placeholder="${isNew?'Mot de passe (8 caractères min.)':'Mot de passe'}" autocomplete="${isNew?'new-password':'current-password'}" aria-label="Mot de passe">
+        <div class="row"><button class="btn" type="submit" ${A.busy?'disabled':''}>${A.busy?'Un instant…':isNew?'Créer mon compte':'Se connecter'}</button><button class="btn ghost" type="button" data-a="acct-cancel">Annuler</button></div>
+      </form>
+      ${isNew ? `<p class="hint" style="margin:10px 0 0">Ton e-mail sert seulement à te connecter et à récupérer ton mot de passe. Personne d'autre ne le voit.</p>`
+        : `<button class="link" data-a="acct-forgot">Mot de passe oublié ?</button>`}${msg}</div>`; }
+  return `<div class="glass" style="padding:16px 18px"><p style="margin:0 0 4px">Un compte sert à retrouver tes amis et à partager les parties avec eux.</p>
+    <p class="hint" style="margin:0 0 14px">C'est facultatif. Sans compte, l'app marche exactement comme avant, et tes parties restent sur ce téléphone dans tous les cas.</p>
+    <div class="row"><button class="btn" data-a="acct-new">Créer un compte</button><button class="btn ghost" data-a="acct-login">Se connecter</button></div>${msg}</div>`;
+}
+async function acctAction(a){
+  const A = S.acct;
+  if(a==='acct-new' || a==='acct-login'){ A.mode = a==='acct-new' ? 'new' : 'login'; A.err = A.info = null; render(); fb().catch(()=>{}); setTimeout(()=>{ const f = document.getElementById(A.mode==='new'?'acct-name':'acct-email'); f && f.focus(); }, 50); }
+  else if(a==='acct-cancel'){ A.mode = null; A.err = A.info = null; A.renaming = false; render(); }
+  else if(a==='acct-forgot'){ acctForgot(); }
+  else if(a==='acct-rename'){ A.renaming = true; A.err = null; render(); }
+  else if(a==='acct-copy'){ const c = A.profile && A.profile.code; if(!c) return;
+    try{ await navigator.clipboard.writeText(c); toast('Code copié'); }catch(e){ toast('Ton code : '+c); } }
+  else if(a==='acct-logout'){ await acctRun(async () => { const {m, auth} = await fb(); await m.signOut(auth); toast('Déconnecté. Tes parties restent sur ce téléphone.'); }); }
+  else if(a==='acct-del'){ A.mode = 'delete'; A.err = null; render(); }
+}
+async function acctForm(id){
+  const A = S.acct;
+  if(id==='acct-form') return acctSubmit();
+  if(id==='acct-rename-form' || id==='acct-fix-form'){ const name = val('acct-name'); if(!name){ A.err = 'Le nom ne peut pas être vide.'; render(); return; }
+    return acctRun(async () => { const {m, fs, auth} = await fb(); const uid = auth.currentUser.uid;
+      if(id==='acct-fix-form') await createProfile(uid, name);
+      else { await m.setDoc(m.doc(fs, 'users', uid), {name}, {merge:true}); setProfile({...A.profile, name}); A.renaming = false; toast('Nom modifié'); } }); }
+  if(id==='acct-del-form'){ const pw = (document.getElementById('acct-pw')||{}).value || '';
+    if(!pw){ A.err = AUTH_ERR['auth/missing-password']; render(); return; }
+    return acctRun(async () => { const {m, fs, auth} = await fb(); const user = auth.currentUser;
+      await m.reauthenticateWithCredential(user, m.EmailAuthProvider.credential(user.email, pw));
+      const b = m.writeBatch(fs); if(A.profile && A.profile.code) b.delete(m.doc(fs, 'codes', A.profile.code)); b.delete(m.doc(fs, 'users', user.uid)); await b.commit();
+      await m.deleteUser(user); A.mode = null; toast('Compte supprimé. Tes parties restent sur ce téléphone.'); }); }
+}
+
+/* ================= sauvegarde Google Drive =================
+   Accès « drive.file » : l'app ne voit que les fichiers qu'elle a créés. JSON lisible, 10 dernières sauvegardes gardées.
+   Une PWA ne peut pas tourner en tâche de fond : on sauvegarde à l'ouverture et après chaque partie quand le jeton Google
+   est encore valide, sinon on affiche un rappel qui demande un toucher (la fenêtre Google exige un geste). */
+const DRIVE_CLIENT = '668352623353-u65fm6l3a2q6a6vqjmo752cctd2tg9tk.apps.googleusercontent.com';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_KEY = 'yz-drive', DRIVE_TOK = 'yz-drive-tok', DRIVE_KEEP = 10, DRIVE_FOLDER = 'Carnet de jeux';
+const DRIVE_AUTO = 12*3600*1000, DRIVE_DUE = 3*86400*1000;
+S.drive = Object.assign({on:false, folderId:null, last:0}, lsGet(DRIVE_KEY) || {}, {busy:false, err:null, list:null});
+const driveSave = () => lsSet(DRIVE_KEY, {on:S.drive.on, folderId:S.drive.folderId, last:S.drive.last});
+let gisP = null, tokClient = null, tokWait = null;
+function loadGis(){
+  if(!gisP) gisP = new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
+    s.onload = () => res(); s.onerror = () => { gisP = null; rej(new Error('gis')); }; document.head.appendChild(s); });
+  return gisP;
+}
+const tokNow = () => { const t = lsGet(DRIVE_TOK); return t && t.exp > Date.now() + 60000 ? t.t : null; };
+function askToken(){
+  /* Doit être appelé directement depuis un toucher, sinon le navigateur bloque la fenêtre Google. */
+  if(!window.google || !google.accounts || !google.accounts.oauth2){ loadGis().catch(()=>{}); return Promise.reject(new Error('gis-wait')); }
+  if(!tokClient) tokClient = google.accounts.oauth2.initTokenClient({client_id:DRIVE_CLIENT, scope:DRIVE_SCOPE,
+    callback: r => { const w = tokWait; tokWait = null; if(!w) return;
+      if(r && r.access_token){ lsSet(DRIVE_TOK, {t:r.access_token, exp:Date.now() + (Number(r.expires_in)||3600)*1000}); w.res(r.access_token); }
+      else w.rej(new Error((r && r.error) || 'denied')); },
+    error_callback: e => { const w = tokWait; tokWait = null; if(w) w.rej(new Error((e && e.type) || 'popup')); }});
+  return new Promise((res, rej) => { tokWait = {res, rej}; tokClient.requestAccessToken({prompt:''}); });
+}
+async function gapi(path, opt={}, upload=false){
+  const t = tokNow(); if(!t) throw new Error('token');
+  const r = await fetch((upload ? 'https://www.googleapis.com/upload/drive/v3/' : 'https://www.googleapis.com/drive/v3/') + path,
+    {...opt, headers:{...(opt.headers||{}), Authorization:'Bearer '+t}});
+  if(r.status===401){ lsSet(DRIVE_TOK, null); throw new Error('token'); }
+  if(!r.ok) throw new Error('drive '+r.status);
+  return r;
+}
+const q = s => encodeURIComponent(s);
+async function driveFolder(){
+  if(S.drive.folderId){ try{ const f = await (await gapi('files/'+S.drive.folderId+'?fields=id,trashed')).json(); if(!f.trashed) return f.id; }catch(e){ if(e.message==='token') throw e; } }
+  const found = await (await gapi(`files?q=${q(`name='${DRIVE_FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`)}&fields=files(id)&spaces=drive`)).json();
+  let id = found.files && found.files[0] && found.files[0].id;
+  if(!id){ const f = await (await gapi('files?fields=id', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:DRIVE_FOLDER, mimeType:'application/vnd.google-apps.folder'})})).json(); id = f.id; }
+  S.drive.folderId = id; driveSave(); return id;
+}
+async function driveList(folder){
+  const r = await (await gapi(`files?q=${q(`'${folder}' in parents and trashed=false and mimeType='application/json'`)}&orderBy=createdTime desc&fields=files(id,name,createdTime,size)&pageSize=50`)).json();
+  return r.files || [];
+}
+async function driveBackupNow(){
+  const folder = await driveFolder();
+  const d = new Date(), pad = n => String(n).padStart(2,'0');
+  const name = `carnet-de-jeux-${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}-${pad(d.getHours())}h${pad(d.getMinutes())}.json`;
+  const body = JSON.stringify({app:'carnet-de-jeux', ...local.snapshot()}, null, 1);
+  const bnd = 'carnet'+Math.random().toString(36).slice(2);
+  const multipart = `--${bnd}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({name, parents:[folder], mimeType:'application/json'})}\r\n--${bnd}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${bnd}--`;
+  await gapi('files?uploadType=multipart&fields=id', {method:'POST', headers:{'Content-Type':'multipart/related; boundary='+bnd}, body:multipart}, true);
+  S.drive.last = Date.now(); driveSave();
+  /* Rotation : les plus anciennes vont à la corbeille Drive (récupérables 30 jours), jamais une suppression définitive. */
+  try{ const files = await driveList(folder);
+    for(const f of files.slice(DRIVE_KEEP)) await gapi('files/'+f.id, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({trashed:true})}); }catch(e){}
+}
+async function driveRun(fn, interactive){
+  if(S.drive.busy) return; S.drive.busy = true; S.drive.err = null; render();
+  try{
+    if(!tokNow()){ if(!interactive) throw new Error('token'); await askToken(); }
+    await fn();
+  }catch(e){ const m = e && e.message;
+    S.drive.err = m==='gis-wait' ? "Google se charge encore. Touche à nouveau le bouton dans une seconde."
+      : m==='gis' ? "Google n'a pas pu se charger. Vérifie ta connexion et réessaie."
+      : m==='token' ? null
+      : /popup|denied|access_denied/.test(m||'') ? "La connexion à Google a été annulée."
+      : /Failed to fetch|NetworkError|Load failed/i.test(m||'') ? "Pas de connexion. Réessaie quand tu as du réseau."
+      : "La sauvegarde Drive n'a pas marché. Réessaie dans un instant."; }
+  S.drive.busy = false; render();
+}
+function driveAuto(){
+  if(!S.drive.on || !navigator.onLine) return;
+  if(tokNow() && Date.now() - S.drive.last > DRIVE_AUTO) driveRun(driveBackupNow, false);
+}
+const driveDue = () => S.drive.on && Date.now() - S.drive.last > DRIVE_DUE;
+const ago = t => { if(!t) return 'jamais'; const d = Math.floor((Date.now()-t)/86400000);
+  return d<1 ? "aujourd'hui" : d===1 ? 'hier' : `il y a ${d} jours`; };
+function viewDrive(){
+  const D = S.drive;
+  const err = D.err ? `<p class="hint" style="color:var(--ink);margin:10px 0 0">${esc(D.err)}</p>` : '';
+  if(!D.on) return `<div class="glass" style="padding:16px 18px"><p style="margin:0 0 4px"><b>Google Drive</b></p>
+    <p class="hint" style="margin:0 0 14px">Une copie de tes parties dans un dossier « ${DRIVE_FOLDER} » de ton Drive, pour les retrouver si tu changes de téléphone. L'app ne voit que les fichiers qu'elle crée, rien d'autre de ton Drive.</p>
+    <button class="btn" data-a="drive-on" ${D.busy?'disabled':''}>${D.busy?'Connexion…':'Connecter Google Drive'}</button>${err}</div>`;
+  const list = D.list ? `<div class="list" style="margin-top:10px">${D.list.length ? D.list.map(f=>`<div class="item"><div class="grow"><div class="name" style="font-weight:500">${new Date(f.createdTime).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long'})} · ${new Date(f.createdTime).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div><div class="meta">${Math.max(1,Math.round((Number(f.size)||0)/1024))} Ko</div></div><button class="btn ghost" style="padding:8px 14px;font-size:13px" data-drivefile="${esc(f.id)}">Restaurer</button></div>`).join('') : '<p class="hint">Aucune sauvegarde dans le dossier pour l’instant.</p>'}</div>
+    <p class="hint" style="margin:6px 0 0">Restaurer ajoute les parties et joueurs de la sauvegarde qui manquent ici, sans rien effacer.</p>` : '';
+  return `<div class="glass" style="padding:16px 18px"><div class="row" style="justify-content:space-between"><b>Google Drive</b><span class="meta">Dernière sauvegarde : ${ago(D.last)}</span></div>
+    <p class="hint" style="margin:6px 0 14px">Sauvegarde automatique à l'ouverture et après chaque partie quand Google est connecté. Les ${DRIVE_KEEP} dernières sont gardées.</p>
+    <div class="row"><button class="btn" data-a="drive-now" ${D.busy?'disabled':''}>${D.busy?'Un instant…':'Sauvegarder maintenant'}</button><button class="btn ghost" data-a="drive-list" ${D.busy?'disabled':''}>${D.list?'Actualiser':'Voir les sauvegardes'}</button></div>
+    ${list}<button class="link" data-a="drive-off" style="margin-top:8px">Déconnecter Google Drive</button>${err}</div>`;
+}
+async function driveAction(a, el){
+  const D = S.drive;
+  /* On appelle la fenêtre Google tout de suite, dans le toucher : pas d'attente avant. */
+  if(a==='drive-on'){ D.on = true; driveSave(); await driveRun(async () => { await driveBackupNow(); toast('Drive connecté, première sauvegarde faite'); }, true);
+    if(!D.last){ D.on = false; driveSave(); render(); } }
+  else if(a==='drive-now'){ await driveRun(async () => { await driveBackupNow(); toast('Sauvegarde Drive faite'); }, true); }
+  else if(a==='drive-list'){ await driveRun(async () => { D.list = await driveList(await driveFolder()); }, true); }
+  else if(a==='drive-file'){ const id = el.dataset.drivefile;
+    await driveRun(async () => { const d = await (await gapi('files/'+id+'?alt=media')).json(); mergeData(d); }, true); }
+  else if(a==='drive-off'){ const t = tokNow(); if(t && window.google && google.accounts) try{ google.accounts.oauth2.revoke(t, ()=>{}); }catch(e){}
+    lsSet(DRIVE_TOK, null); D.on = false; D.list = null; D.err = null; driveSave(); render(); toast('Drive déconnecté. Les sauvegardes restent dans ton Drive.'); }
+}
+
 /* ================= render & events ================= */
 function render(){
   if(!S.ready){ $app.innerHTML = `<div class="label">Carnet de jeux</div><h1>Un <em>instant</em>…</h1><p class="sub">Chargement des joueurs et des parties.</p>`; return; }
@@ -913,6 +1179,7 @@ function render(){
     if(Object.values(S.players).some(p=>p.name.toLowerCase()===n.toLowerCase())){ toast(n+' est déjà dans la liste.'); return; }
     i.value=''; try{ await store.addPlayer(n); toast(n+' ajouté'); }catch(err){ toast("Impossible d'ajouter "+n+'. Réessaie.'); }
     setTimeout(()=>{const x=document.getElementById('pname'); x&&x.focus();},50); };
+  ['acct-form','acct-rename-form','acct-fix-form','acct-del-form'].forEach(id => { const g = document.getElementById(id); if(g) g.onsubmit = e => { e.preventDefault(); acctForm(id); }; });
 }
 function go(v){ S.view=v; S.confirm=null; S.edit=null; render(); window.scrollTo(0,0); }
 document.getElementById('tabs').onclick = e => { const t=e.target.closest('.tab'); if(t) go(t.dataset.v); };
@@ -934,7 +1201,7 @@ async function saveFinished(k){
 }
 
 $app.addEventListener('click', async e => {
-  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],td.cell'); if(!el) return;
+  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],[data-drivefile],td.cell'); if(!el) return;
   if(el.matches('td.cell')){ openCell(el.dataset.p, el.dataset.c); return; }
   if(el.dataset.go){ go(el.dataset.go); return; }
   if(el.dataset.yzp){ const i=Number(el.dataset.yzp); if(i!==S.yzp){ S.yzAnim = i>S.yzp?'l':'r'; S.yzp=i; render(); } return; }
@@ -950,7 +1217,10 @@ $app.addEventListener('click', async e => {
   if(el.dataset.rmYes){ const id=el.dataset.rmYes; S.confirm=null; try{ await store.removePlayer(id); toast('Joueur retiré'); go('players'); }catch(err){ toast('Impossible de retirer ce joueur.'); } return; }
   if(el.dataset.rg){ S.confirm='rg-'+el.dataset.rg; render(); return; }
   if(el.dataset.rgYes){ const id=el.dataset.rgYes; S.confirm=null; try{ await store.removeGame(id); toast('Partie supprimée'); }catch(err){ toast('Impossible de supprimer la partie.'); } return; }
+  if(el.dataset.drivefile){ driveAction('drive-file', el); return; }
   const a = el.dataset.a, k = el.dataset.k;
+  if(a && a.startsWith('acct-')){ acctAction(a); return; }
+  if(a && a.startsWith('drive-')){ driveAction(a, el); return; }
   if(a==='cancel'){ S.confirm=null; render(); }
   else if(a==='start'){ const order=[...S.pick[k]]; const names={}; order.forEach(id=>names[id]=S.players[id].name);
     S.pick[k]=new Set(); S.yzp=0; S.r421={c:'421',w:null,l:null,nen:false}; S.sky={scores:{},closer:null};
@@ -984,7 +1254,8 @@ $app.addEventListener('click', async e => {
   else if(a==='abandon'){ S.confirm='abandon'; render(); }
   else if(a==='abandon-yes'){ S.confirm=null; await store.setLive(k, null); }
   else if(a==='end-yes'){ S.confirm=null;
-    try{ const g = await saveFinished(k); await store.addGame(g); await store.setLive(k, null); toast('Partie enregistrée'); S.sgame=k; go('stats'); }
+    try{ const g = await saveFinished(k); await store.addGame(g); await store.setLive(k, null); toast('Partie enregistrée'); S.sgame=k; go('stats');
+      if(!db && S.drive.on && tokNow()) driveRun(driveBackupNow, false); }
     catch(err){ toast("La partie n'a pas pu être enregistrée. Réessaie."); render(); } }
 });
 let sw0=null;
@@ -1012,7 +1283,11 @@ async function boot(){
   const c = window.claude;
   const [d, u] = c && c.use ? await Promise.all([c.use('db').catch(()=>null), c.use('user').catch(()=>null)]) : [null,null];
   if(u && typeof u.isOwner==='function'){ try{ if(!(await u.isOwner())){ S.locked=true; S.ready=true; render(); return; } }catch(e){} }
-  if(!d){ local.load(); S.ready=true; render(); try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){} return; }
+  if(!d){ local.load(); S.ready=true; render(); try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
+    if(S.acct.cache) fb().catch(()=>{});
+    if(S.drive.on){ loadGis().catch(()=>{}); driveAuto(); }
+    document.addEventListener('visibilitychange', () => { if(!document.hidden) driveAuto(); });
+    return; }
   db = d;
   let got = 0; const mark = () => { if(++got>=4) S.ready=true; if(!$ov.innerHTML) render(); };
   db.collection('players').onSnapshot(s=>{ const p={}; s.docs.forEach(x=>p[x.id]=x.data()); S.players=p; mark(); }, ()=>{});
@@ -1028,7 +1303,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '9';
+window.APP_VERSION = '10';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

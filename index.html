@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Carnet de jeux">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=3">
-<link rel="apple-touch-icon-precomposed" sizes="180x180" href="icon-180.png?v=3">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=3">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=4">
+<link rel="apple-touch-icon-precomposed" sizes="180x180" href="icon-180.png?v=4">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=4">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}html{-webkit-text-size-adjust:100%}</style>
 </head>
 <body>
@@ -155,6 +155,10 @@ table.stats{width:100%;border-collapse:collapse;font-variant-numeric:tabular-num
 .sb{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;min-width:0}
 .sb span{display:block;width:100%;border-radius:6px 6px 3px 3px}
 .sb em{font-style:normal;font-size:10.5px;color:var(--mute);font-variant-numeric:tabular-nums}
+.catrow{display:flex;align-items:center;gap:10px}
+.mdie{flex:none;width:26px;height:26px;border-radius:7px;padding:4px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);
+  background:linear-gradient(#ffffff,#e9e9eb);box-shadow:0 2px 5px rgba(0,0,0,.28),0 0 0 .5px rgba(0,0,0,.12),inset 0 1px 0 #fff,inset 0 -1.5px 0 rgba(0,0,0,.08)}
+.mdie i{width:4.5px;height:4.5px;border-radius:50%;place-self:center;background:#0e0e0f;box-shadow:inset 0 1px 1px rgba(0,0,0,.6)}
 .back{appearance:none;border:0;background:none;color:var(--mute);font:500 14px var(--sans);padding:6px 0;cursor:pointer}
 .games{display:flex;flex-direction:column;gap:12px}
 .gamecard{appearance:none;text-align:left;width:100%;color:var(--ink);font:inherit;cursor:pointer;padding:20px;display:flex;gap:16px;align-items:center}
@@ -356,6 +360,8 @@ async function flushLive(k){
 
 const sortedPlayers = () => Object.entries(S.players).sort((a,b)=>a[1].name.localeCompare(b[1].name,'fr'));
 const pname = (id, fallback) => (S.players[id] && S.players[id].name) || fallback || 'Joueur';
+const dieMini = n => { const P={1:[5],2:[3,7],3:[3,5,7],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]}[n];
+  return `<span class="mdie" aria-hidden="true">${[1,2,3,4,5,6,7,8,9].map(i=>P.includes(i)?'<i></i>':'<span></span>').join('')}</span>`; };
 const dieFace = n => { const P={1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]}[n];
   return `<span class="die">${[1,2,3,4,5,6,7,8,9].map(i=>P.includes(i)?'<i></i>':'<span></span>').join('')}</span>`; };
 
@@ -443,7 +449,7 @@ function viewYahtzee(){
   const done = ids.every(id => filled(L.scores[id]) === ALL.length);
   const turn = Math.min(...ids.map(id=>filled(L.scores[id]))) + 1;
   const head = ids.map(id => `<th>${av(id,pname(id,L.names[id]))}${esc(pname(id,L.names[id]))}</th>`).join('');
-  const row = c => `<tr><td class="cat">${c.label}<span class="hint">${c.hint}</span></td>${ids.map(id=>{
+  const row = c => `<tr><td class="cat">${c.face ? `<span class="catrow">${dieMini(c.face)}<span>${c.label}<span class="hint">${c.hint}</span></span></span>` : `${c.label}<span class="hint">${c.hint}</span>`}</td>${ids.map(id=>{
     const v = (L.scores[id]||{})[c.id]; const has = v!==undefined && v!==null;
     const just = S.just===id+c.id ? ' just':'';
     return `<td class="cell${has?(v===0?' zero':''):' empty-c'}${just}" tabindex="0" role="button" data-p="${id}" data-c="${c.id}" aria-label="${esc(pname(id,L.names[id]))}, ${c.label}">${has?v:'–'}</td>`;}).join('')}</tr>`;
@@ -926,7 +932,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '3';
+window.APP_VERSION = '4';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

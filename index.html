@@ -691,18 +691,44 @@ function stats4(id){
 }
 function viewPlayers(){
   const ps = sortedPlayers(); const king = bestPlayer();
-  return `<div class="label">${plural(ps.length,'joueur')}</div><h1>Les <em>joueurs</em></h1>
+  return `<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div><div class="label">${plural(ps.length,'joueur')}</div><h1>Les <em>joueurs</em></h1></div>
+    ${!db ? `<span class="crowned" style="margin-top:6px"><button class="navb" data-go="settings" id="settings-btn" aria-label="Réglages : compte et sauvegarde">${GEAR}</button>${driveDue()?'<span class="obadge" style="min-width:12px;height:12px;padding:0;right:0;bottom:auto;top:0" aria-hidden="true"></span>':''}</span>` : ''}</div>
   <p class="sub">Ajoute autant de monde que tu veux. Les mêmes joueurs servent pour tous les jeux.</p>
   <form id="addp" class="row" style="flex-wrap:nowrap"><input type="text" id="pname" placeholder="Prénom" maxlength="24" autocomplete="off" aria-label="Prénom du joueur"><button class="btn" type="submit" id="addbtn">Ajouter</button></form>
   ${ps.length ? `<div class="glass" style="padding:8px 16px;margin-top:16px"><div class="list">${ps.map(([id,p])=>{const y=statsY(id), q=stats4(id), sk=statsS(id);
     return `<div class="item tap" role="button" tabindex="0" data-player="${id}">${crowned(av(id,p.name), id===king)}<div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">Yahtzee ${y.played} · 421 ${q.played} · Skyjo ${sk.played}</div></div><span class="chev" aria-hidden="true">›</span></div>`;}).join('')}</div></div>
     <p class="note">Touche un joueur pour voir ses stats et modifier son profil. La couronne va au meilleur taux de victoire tous jeux confondus, à partir de 3 parties.</p>` : ''}
-  ${!db ? `<h2>Mon compte</h2>${viewAccount()}
-  <h2>Sauvegarde</h2>${viewDrive()}
+`;
+}
+
+
+/* ================= réglages : compte et sauvegarde ================= */
+const GEAR = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>`;
+function viewSettings(){
+  const A = S.acct, p = A.profile, u = A.user || A.cache;
+  const acctSub = u && p ? `${esc(p.name)} · code ${esc(p.code)}` : 'Pas de compte';
+  const backSub = S.drive.on ? `Drive · dernière sauvegarde ${ago(S.drive.last)}` : 'Export et import · Drive non connecté';
+  return `<button class="back" data-go="players">← Joueurs</button>
+  <div class="label">Réglages</div><h1>Les <em>réglages</em></h1>
+  <div class="glass" style="padding:8px 16px;margin-top:16px"><div class="list">
+    <div class="item tap" role="button" tabindex="0" data-go="account"><div class="grow"><div class="name">Mon compte</div><div class="meta">${acctSub}</div></div><span class="chev" aria-hidden="true">›</span></div>
+    <div class="item tap" role="button" tabindex="0" data-go="backup"><div class="grow"><div class="name">Sauvegarde${driveDue()?' <span class="pdot" style="background:var(--ink);margin:0 0 0 6px"></span>':''}</div><div class="meta">${backSub}</div></div><span class="chev" aria-hidden="true">›</span></div>
+  </div></div>`;
+}
+function viewAccountPage(){
+  return `<button class="back" data-go="settings">← Réglages</button>
+  <div class="label">Réglages</div><h1>Mon <em>compte</em></h1>
+  <p class="sub">Pour retrouver tes amis et partager les parties.</p>${viewAccount()}`;
+}
+function viewBackup(){
+  return `<button class="back" data-go="settings">← Réglages</button>
+  <div class="label">Réglages</div><h1>La <em>sauvegarde</em></h1>
+  <p class="sub">Tes parties vivent sur ce téléphone. Ici, tu en gardes une copie ailleurs.</p>
+  ${viewDrive()}
   <div class="glass" style="padding:16px 18px;margin-top:10px"><p style="margin:0 0 4px">Tout est enregistré dans ce téléphone, même hors ligne. Les mises à jour de l'app n'y touchent pas.</p>
     <p class="hint" style="margin:0 0 14px">Exporte de temps en temps pour garder une copie ailleurs (Fichiers, iCloud, mail). Importer ajoute les parties du fichier sans rien effacer. ${S.exportedAt ? 'Dernier export : '+new Date(S.exportedAt).toLocaleDateString('fr-FR',{day:'numeric',month:'long'})+'.' : 'Aucun export pour l\u2019instant.'}</p>
     <div class="row"><button class="btn" data-a="export" id="export">Exporter</button><label class="btn ghost" for="import-file" style="cursor:pointer">Importer</label>
-    <input type="file" id="import-file" accept="application/json,.json" hidden></div></div>` : ''}`;
+    <input type="file" id="import-file" accept="application/json,.json" hidden></div></div>`;
 }
 
 /* ================= player profile ================= */
@@ -1171,8 +1197,8 @@ function render(){
   if(!S.ready){ $app.innerHTML = `<div class="label">Carnet de jeux</div><h1>Un <em>instant</em>…</h1><p class="sub">Chargement des joueurs et des parties.</p>`; return; }
   if(S.locked){ $app.innerHTML = `<div class="label">Carnet de jeux</div><h1>Accès <em>réservé</em></h1><p class="sub">Ce carnet est personnel. Seul son propriétaire peut voir et noter les parties.</p>`; return; }
   const v = S.view;
-  $app.innerHTML = v==='players'?viewPlayers():v==='player'?viewPlayer():v==='stats'?viewStats():v==='history'?viewHistory():v==='yahtzee'?viewYahtzee():v==='421'?view421():v==='skyjo'?viewSky():viewHome();
-  const tabv = GAMES[v] ? 'home' : v==='player' ? 'players' : v;
+  $app.innerHTML = v==='players'?viewPlayers():v==='settings'?viewSettings():v==='account'?viewAccountPage():v==='backup'?viewBackup():v==='player'?viewPlayer():v==='stats'?viewStats():v==='history'?viewHistory():v==='yahtzee'?viewYahtzee():v==='421'?view421():v==='skyjo'?viewSky():viewHome();
+  const tabv = GAMES[v] ? 'home' : ['player','settings','account','backup'].includes(v) ? 'players' : v;
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.v===tabv));
   const f = document.getElementById('addp');
   if(f) f.onsubmit = async e => { e.preventDefault(); const i=document.getElementById('pname'); const n=i.value.trim(); if(!n) return;
@@ -1275,7 +1301,7 @@ function loadPhoto(file){
   img.src = url;
 }
 $app.addEventListener('change', e => { if(e.target.id==='photo-file' && e.target.files[0]){ loadPhoto(e.target.files[0]); e.target.value=''; return; } if(e.target.id==='import-file' && e.target.files[0]){ importData(e.target.files[0]); e.target.value=''; } });
-$app.addEventListener('keydown', e => { if((e.key==='Enter'||e.key===' ') && e.target.matches('td.cell,[data-pick],[data-player]')){ e.preventDefault(); e.target.click(); } });
+$app.addEventListener('keydown', e => { if((e.key==='Enter'||e.key===' ') && e.target.matches('td.cell,[data-pick],[data-player],.item[data-go]')){ e.preventDefault(); e.target.click(); } });
 
 /* ================= boot ================= */
 async function boot(){
@@ -1303,7 +1329,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '10';
+window.APP_VERSION = '11';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

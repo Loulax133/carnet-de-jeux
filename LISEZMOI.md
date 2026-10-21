@@ -29,3 +29,10 @@ Les données de jeu sont stockées dans chaque téléphone, à part : une mise �
 - Un ami peut être relié à un joueur local (champ `uid` du joueur) pour retrouver vos parties ensemble.
 - Nouvelles clés locales : `yz-friends` (cache des amis), `yz-pub` (état du partage).
 - `firebase-13.1.0.js` a été reconstruit (ajout des requêtes) : à remplacer aussi.
+
+## Parties partagées (version 13)
+- Une partie enregistrée avec des amis reliés part automatiquement dans leur boîte aux lettres (`inbox/{uid}/items`). Sur la fiche d'un ami, « Envoyer » rattrape les anciennes parties.
+- Chez l'ami, la partie arrive dans son historique local (id `r:<expéditeur>:<id>`, jamais de doublon), puis la boîte est vidée.
+- Correspondance : « Toi dans le carnet » pour lui-même, joueurs reliés pour les autres comptes, un joueur non relié du même nom est relié automatiquement, sinon un joueur est créé. Les invités deviennent « Prénom (invité de X) ».
+- Supprimer une partie envoyée la retire aussi chez les amis. Supprimer une partie reçue ne la fait pas revenir.
+- Clés locales : `yz-outbox` (envois en attente, hors ligne), `yz-recv-del` (parties reçues supprimées).

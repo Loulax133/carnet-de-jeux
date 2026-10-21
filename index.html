@@ -886,7 +886,7 @@ function viewHistory(){
       body = `<div class="gscores">${res.map(r=>`<span>${nm(r)} <b>${r.total}</b></span>`).join('')}</div>`; }
     return `<div class="gcard glass"><div class="row" style="justify-content:space-between"><span class="label">${GAMES[k].name} · ${fmt(g.date)}</span>
       ${S.confirm==='rg-'+g.id ? `<span class="confirm"><button class="btn ghost" style="padding:6px 12px;font-size:13px" data-rg-yes="${g.id}">Supprimer</button><button class="link" data-a="cancel">Non</button></span>`:`<button class="link" data-rg="${g.id}">Supprimer</button>`}</div>
-      <div style="font-family:var(--serif);font-size:26px;line-height:1.1">${title}</div>${body}</div>`;}).join('')}</div>`;
+      <div style="font-family:var(--serif);font-size:26px;line-height:1.1">${title}</div>${body}${g.src ? `<span class="hint">Reçue de ${esc(g.src.name)}</span>` : ''}</div>`;}).join('')}</div>`;
 }
 
 /* ================= wheel picker ================= */
@@ -970,7 +970,7 @@ async function onUser(u){
   render();
   if(S.acct.creating) return;
   try{ const {m, fs} = FB; const snap = await m.getDoc(m.doc(fs, 'users', u.uid));
-    if(snap.exists()){ const d = snap.data(); setProfile({name:d.name, code:d.code}); frLoad(true); pubSoon(); }
+    if(snap.exists()){ const d = snap.data(); setProfile({name:d.name, code:d.code}); frLoad(true).then(()=>{ checkInbox(); flushSoon(); }); pubSoon(); }
     else if(!S.acct.profile) S.acct.needsProfile = true;
   }catch(e){ /* hors ligne : on garde le profil en cache */ }
   render();
@@ -1032,7 +1032,7 @@ function viewAccount(){
   if(u && p && !A.needsProfile){
     if(A.mode==='delete') return `<div class="glass" style="padding:16px 18px">
       <p style="margin:0 0 6px"><b>Supprimer ton compte ?</b></p>
-      <p class="hint" style="margin:0 0 12px">Ton nom, ton code ami, tes amitiés, tes résultats partagés et ton accès en ligne seront effacés. Tes parties et tes joueurs restent sur ce téléphone, et tes sauvegardes Drive ne sont pas touchées.</p>
+      <p class="hint" style="margin:0 0 12px">Ton nom, ton code ami, tes amitiés, tes résultats partagés, ta boîte aux lettres et ton accès en ligne seront effacés. Tes parties et tes joueurs restent sur ce téléphone, et tes sauvegardes Drive ne sont pas touchées.</p>
       <form id="acct-del-form" class="stack" style="gap:10px"><input type="password" id="acct-pw" placeholder="Ton mot de passe pour confirmer" autocomplete="current-password" aria-label="Mot de passe">
       <div class="row"><button class="btn" type="submit" ${A.busy?'disabled':''}>${A.busy?'Suppression…':'Supprimer définitivement'}</button><button class="btn ghost" type="button" data-a="acct-cancel">Annuler</button></div></form>${msg}</div>`;
     return `<div class="glass" style="padding:16px 18px">
@@ -1085,6 +1085,7 @@ async function acctForm(id){
       const b = m.writeBatch(fs);
       const frs = await m.getDocs(m.query(m.collection(fs, 'friendships'), m.where('members', 'array-contains', user.uid)));
       frs.docs.forEach(x => b.delete(x.ref)); b.delete(m.doc(fs, 'results', user.uid));
+      try{ const ib = await m.getDocs(m.collection(fs, 'inbox', user.uid, 'items')); ib.docs.forEach(x => b.delete(x.ref)); }catch(e){}
       if(A.profile && A.profile.code) b.delete(m.doc(fs, 'codes', A.profile.code)); b.delete(m.doc(fs, 'users', user.uid)); await b.commit();
       await m.deleteUser(user); A.mode = null; toast('Compte supprimé. Tes parties restent sur ce téléphone.'); }); }
 }
@@ -1308,7 +1309,7 @@ function viewFriendsBlock(){
   if(db) return '';
   if(!online()) return `<p class="note">Pour ajouter des amis, crée un compte : roue en haut à droite → Mon compte.</p>`;
   const ok = friendsOk(), inc = S.fr.list.filter(f=>f.status==='in').length;
-  return `<h2>Amis</h2><div class="glass" style="padding:8px 16px"><div class="list">
+  return `<h2>Amis</h2>${myPid() ? '' : `<div class="glass row" style="padding:12px 14px 12px 18px;margin-bottom:10px;flex-wrap:nowrap;border-radius:22px"><span class="grow hint" style="margin:0">Choisis qui tu es dans le carnet pour recevoir les parties de tes amis et partager tes résultats.</span><button class="btn ghost" style="padding:10px 14px;font-size:14px" data-go="account">Choisir</button></div>`}<div class="glass" style="padding:8px 16px"><div class="list">
     ${ok.map(f => { const r = S.fr.res[f.uid], l = r && r.list; const w = l ? l.filter(x=>x.w).length : 0;
       return `<div class="item tap" role="button" tabindex="0" data-friend="${esc(f.uid)}"><div class="avatar">${initial(f.name)}</div><div class="grow"><div class="name">${esc(f.name)}</div><div class="meta">${l ? plural(l.length,'partie')+' · '+plural(w,'victoire') : 'Ami'}</div></div><span class="chev" aria-hidden="true">›</span></div>`; }).join('')}
     <div class="item tap" role="button" tabindex="0" data-go="friends"><div class="avatar" style="background:var(--chip);color:var(--ink);font-family:var(--sans);font-size:24px">+</div><div class="grow"><div class="name">Ajouter un ami</div><div class="meta">${inc ? plural(inc,'demande')+' à accepter' : 'Avec son code ami'}</div></div>${inc?`<span class="obadge" style="position:static">${inc}</span>`:''}<span class="chev" aria-hidden="true">›</span></div>
@@ -1348,7 +1349,8 @@ function viewFriend(){
   const outc = x => x.k==='421' ? (x.w ? (x.r ? `Sorti ${x.r===1?'1er':x.r+'e'}` : 'Ne perd pas') : '<b>Perd</b>') : `${x.w?'<b>Gagne</b>':'Perd'} · ${x.p} pts`;
   const others = sortedPlayers().filter(([id,p])=>!p.uid);
   return back + `<div class="phead"><div class="avatar big">${initial(f.name)}</div><div class="grow"><div class="label">Ami${list ? ' · '+plural(list.length,'partie') : ''}</div><h1 style="margin:4px 0 0">${esc(f.name)}</h1></div></div>
-  ${linked ? `<div class="glass" style="padding:4px 16px;margin-top:14px"><div class="item tap" role="button" tabindex="0" data-player="${linked}">${av(linked, S.players[linked].name)}<div class="grow"><div class="name">Vos parties ensemble</div><div class="meta">Joueur « ${esc(S.players[linked].name)} » du carnet</div></div><span class="chev" aria-hidden="true">›</span></div></div>`
+  ${linked ? `<div class="glass" style="padding:4px 16px;margin-top:14px"><div class="item tap" role="button" tabindex="0" data-player="${linked}">${av(linked, S.players[linked].name)}<div class="grow"><div class="name">Vos parties ensemble</div><div class="meta">Joueur « ${esc(S.players[linked].name)} » du carnet</div></div><span class="chev" aria-hidden="true">›</span></div></div>
+    ${(() => { const sw = sharedWith(uid); return sw.all ? `<div class="glass row" style="padding:12px 14px 12px 18px;margin-top:10px;flex-wrap:nowrap;border-radius:22px"><span class="grow"><b>${plural(sw.all,'partie')} ensemble</b><span class="hint">${sw.todo.length ? `${plural(sw.todo.length,'partie')} pas encore dans son historique` : 'Toutes sont dans son historique'}</span></span>${sw.todo.length ? `<button class="btn" style="padding:10px 14px;font-size:14px" data-frsend="${esc(uid)}">Envoyer</button>` : ''}</div>` : ''; })()}`
     : `<div class="glass" style="padding:6px 18px 14px;margin-top:14px"><div class="field"><span class="label">Relier à un joueur du carnet</span>
       ${others.length ? `<div class="chips">${others.map(([id,p])=>`<button class="chip" data-frlink="${id}">${dot(id)}${esc(p.name)}</button>`).join('')}</div>` : '<span class="hint">Aucun joueur libre dans ton carnet.</span>'}
       <span class="hint">Si ${esc(f.name)} est déjà dans tes joueurs, relie-le pour retrouver vos parties ensemble.</span></div></div>`}
@@ -1362,6 +1364,7 @@ async function frClick(el){
   const d = el.dataset;
   if(d.friend){ S.fid = d.friend; go('friend'); frFetchRes(d.friend); return true; }
   if(d.fra){ frAccept(d.fra); return true; }
+  if(d.frsend){ sendPast(d.frsend); return true; }
   if(d.frx){ frDrop(d.frx, d.msg || 'Fait'); if(S.view==='friend') go('players'); return true; }
   if(d.frlink){ const uid = S.fid; Object.entries(S.players).forEach(([id,p])=>{ if(p.uid===uid) delete p.uid; });
     await store.updatePlayer(d.frlink, {uid}); toast('Joueur relié'); return true; }
@@ -1373,6 +1376,103 @@ async function frClick(el){
   if(d.a==='fr-rm'){ S.confirm = 'frrm'; render(); return true; }
   return false;
 }
+
+
+/* ================= parties partagées (boîte aux lettres) =================
+   inbox/{uid}/items/{id} {from, type:'game'|'del', game|gid, sentAt}. Seuls les amis confirmés écrivent, seul le
+   destinataire lit et supprime. Le destinataire range la partie dans SON historique local puis vide sa boîte :
+   au repos, le serveur ne garde rien. On n'envoie que les parties saisies sur ce téléphone (jamais une partie reçue).
+   Chez le destinataire, la partie a l'id 'r:<expéditeur>:<id d'origine>' : un renvoi ne crée jamais de doublon. */
+const OUT_KEY = 'yz-outbox', RDEL_KEY = 'yz-recv-del';
+const friendUids = () => new Set(friendsOk().map(f=>f.uid));
+function gameTargets(g){
+  if(g.src) return [];
+  const me = myUid(), ok = friendUids();
+  return [...new Set((g.results||[]).map(r => (S.players[r.id]||{}).uid).filter(u => u && u!==me && ok.has(u)))];
+}
+function gamePayload(g){
+  const who = {};
+  (g.results||[]).forEach(r => { const p = S.players[r.id]; who[r.id] = {uid:(p && p.uid) || null, name: pname(r.id, r.name)}; });
+  const {sentTo, ...rest} = g;
+  return JSON.parse(JSON.stringify({...rest, who}));
+}
+const outbox = () => lsGet(OUT_KEY) || [];
+function queue(items){ if(!items.length) return; lsSet(OUT_KEY, outbox().concat(items)); flushSoon(); }
+let flushT = null, flushing = false;
+function flushSoon(){ clearTimeout(flushT); flushT = setTimeout(()=>flushOut().catch(()=>{}), 800); }
+async function flushOut(){
+  if(flushing || !online() || !navigator.onLine) return; const q = outbox(); if(!q.length) return;
+  flushing = true;
+  try{ const {m, fs} = await fb(); const me = myUid(); let left = [...q];
+    for(const it of q){
+      try{ const id = Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+        await m.setDoc(m.doc(fs, 'inbox', it.to, 'items', id), it.type==='del'
+          ? {from:me, type:'del', gid:it.gid, sentAt:m.serverTimestamp()}
+          : {from:me, type:'game', game:it.game, sentAt:m.serverTimestamp()});
+        left = left.filter(x=>x!==it);
+        if(it.type==='game'){ const g = S.games.find(x=>x.id===it.gid); if(g){ g.sentTo = [...new Set([...(g.sentTo||[]), it.to])]; } }
+      }catch(e){ if(/permission|PERMISSION/.test(String(e.code||e.message))) left = left.filter(x=>x!==it); /* plus amis : on abandonne */ else break; }
+    }
+    lsSet(OUT_KEY, left); local.save();
+  } finally { flushing = false; }
+}
+function shareGame(g){ if(db || !g || !online()) return; queue(gameTargets(g).map(to => ({to, type:'game', gid:g.id, game:gamePayload(g)}))); }
+function shareDelete(g){ if(db || !g || !online()) return; queue((g.sentTo||[]).map(to => ({to, type:'del', gid:g.id}))); }
+function sharedWith(uid){ const pid = pidOfUid(uid); if(!pid) return {all:0, todo:[]};
+  const mine = S.games.filter(g => !g.src && (g.results||[]).some(r=>r.id===pid));
+  return {all:mine.length, todo: mine.filter(g => !(g.sentTo||[]).includes(uid) && !outbox().some(x=>x.to===uid && x.gid===g.id))}; }
+function sendPast(uid){ const {todo} = sharedWith(uid);
+  queue(todo.map(g => ({to:uid, type:'game', gid:g.id, game:gamePayload(g)})));
+  toast(todo.length ? `${plural(todo.length,'partie')} en route` : 'Tout est déjà envoyé'); render(); }
+
+/* ---- réception ---- */
+function resolvePlayer(w, sender, senderName){
+  const me = myUid();
+  if(w.uid && w.uid===me) return myPid();
+  if(w.uid){ const pid = pidOfUid(w.uid); if(pid) return pid;
+    const f = S.fr.list.find(x=>x.uid===w.uid && x.status==='ok'), name = (f && f.name) || w.name;
+    const same = Object.entries(S.players).find(([id,p]) => !p.uid && !p.guest && p.name.toLowerCase()===name.toLowerCase());
+    if(same){ same[1].uid = w.uid; return same[0]; }
+    const id = uid(); S.players[id] = {name, uid:w.uid, createdAt:Date.now()}; return id; }
+  const label = `${w.name} (invité de ${senderName})`;
+  const g = Object.entries(S.players).find(([id,p]) => p.guest && p.guest.from===sender && p.guest.name===w.name);
+  if(g) return g[0];
+  const id = uid(); S.players[id] = {name:label.slice(0,40), guest:{from:sender, name:w.name}, createdAt:Date.now()}; return id;
+}
+function importReceived(sender, game){
+  const gid = 'r:'+sender+':'+game.id;
+  if(S.games.some(g=>g.id===gid) || (lsGet(RDEL_KEY)||[]).includes(gid)) return false;
+  const f = S.fr.list.find(x=>x.uid===sender), senderName = (f && f.name) || 'un ami';
+  const map = {}; Object.entries(game.who||{}).forEach(([pid,w]) => { map[pid] = resolvePlayer(w, sender, senderName); });
+  const mp = id => map[id] || id;
+  const results = (game.results||[]).map(r => ({...r, id:mp(r.id), name: (S.players[mp(r.id)]||{}).name || r.name}));
+  const {who, ...g} = game;
+  S.games.push({...g, id:gid, results, winners:(g.winners||[]).map(mp), loser: g.loser ? mp(g.loser) : g.loser, firstOut: g.firstOut ? mp(g.firstOut) : g.firstOut, src:{from:sender, name:senderName, id:game.id}});
+  return true;
+}
+let inboxBusy = false;
+async function checkInbox(){
+  if(db || inboxBusy || !online() || !navigator.onLine || !myPid()) return;
+  inboxBusy = true;
+  try{ const {m, fs} = await fb(); const me = myUid();
+    const snap = await m.getDocs(m.collection(fs, 'inbox', me, 'items'));
+    if(!snap.docs.length) return;
+    if(!S.fr.list.length) await frLoad(true);
+    let added = 0, removed = 0; const by = new Set();
+    for(const x of snap.docs){ const d = x.data();
+      if(d.type==='game' && d.game){ if(importReceived(d.from, d.game)){ added++; by.add(d.from); } }
+      else if(d.type==='del' && d.gid){ const gid = 'r:'+d.from+':'+d.gid; const n = S.games.length; S.games = S.games.filter(g=>g.id!==gid); if(S.games.length<n) removed++; }
+    }
+    local.save();
+    for(const x of snap.docs){ try{ await m.deleteDoc(x.ref); }catch(e){} }
+    render();
+    if(added){ const names = [...by].map(u => (S.fr.list.find(f=>f.uid===u)||{}).name || 'un ami');
+      toast(`${plural(added,'partie')} reçue${added>1?'s':''} de ${names.join(' et ')}`); }
+    else if(removed) toast(`${plural(removed,'partie')} retirée${removed>1?'s':''} par ton ami`);
+  }catch(e){ /* hors ligne ou règles : on réessaiera */ }
+  finally{ inboxBusy = false; }
+}
+function rememberDeletedReceived(g){ if(g && g.src){ const l = lsGet(RDEL_KEY)||[]; if(!l.includes(g.id)){ l.push(g.id); lsSet(RDEL_KEY, l.slice(-2000)); } } }
 
 /* ================= render & events ================= */
 function render(){
@@ -1390,7 +1490,7 @@ function render(){
   { const g = document.getElementById('fr-form'); if(g) g.onsubmit = e => { e.preventDefault(); frAdd(); }; }
   ['acct-form','acct-rename-form','acct-fix-form','acct-del-form'].forEach(id => { const g = document.getElementById(id); if(g) g.onsubmit = e => { e.preventDefault(); acctForm(id); }; });
 }
-function go(v){ S.view=v; S.confirm=null; S.edit=null; if(v==='friends'){ S.fr.err=S.fr.info=null; } render(); window.scrollTo(0,0); if(['players','friends','friend'].includes(v)) frLoad(v!=='players'); }
+function go(v){ S.view=v; S.confirm=null; S.edit=null; if(v==='friends'){ S.fr.err=S.fr.info=null; } render(); window.scrollTo(0,0); if(['players','friends','friend'].includes(v)) frLoad(v!=='players'); if(['players','history'].includes(v)) checkInbox(); }
 document.getElementById('tabs').onclick = e => { const t=e.target.closest('.tab'); if(t) go(t.dataset.v); };
 
 async function saveFinished(k){
@@ -1410,8 +1510,8 @@ async function saveFinished(k){
 }
 
 $app.addEventListener('click', async e => {
-  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-me],[data-share],td.cell'); if(!el) return;
-  if(el.matches('[data-friend],[data-fra],[data-frx],[data-frlink],[data-me],[data-share],[data-a=fr-rm]') && await frClick(el)) return;
+  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-me],[data-share],[data-frsend],td.cell'); if(!el) return;
+  if(el.matches('[data-friend],[data-fra],[data-frx],[data-frlink],[data-me],[data-share],[data-frsend],[data-a=fr-rm]') && await frClick(el)) return;
   if(el.matches('td.cell')){ openCell(el.dataset.p, el.dataset.c); return; }
   if(el.dataset.go){ go(el.dataset.go); return; }
   if(el.dataset.yzp){ const i=Number(el.dataset.yzp); if(i!==S.yzp){ S.yzAnim = i>S.yzp?'l':'r'; S.yzp=i; render(); } return; }
@@ -1426,7 +1526,7 @@ $app.addEventListener('click', async e => {
   if(el.dataset.rm){ S.confirm='rm-'+el.dataset.rm; render(); return; }
   if(el.dataset.rmYes){ const id=el.dataset.rmYes; S.confirm=null; try{ await store.removePlayer(id); toast('Joueur retiré'); go('players'); }catch(err){ toast('Impossible de retirer ce joueur.'); } return; }
   if(el.dataset.rg){ S.confirm='rg-'+el.dataset.rg; render(); return; }
-  if(el.dataset.rgYes){ const id=el.dataset.rgYes; S.confirm=null; try{ await store.removeGame(id); toast('Partie supprimée'); }catch(err){ toast('Impossible de supprimer la partie.'); } return; }
+  if(el.dataset.rgYes){ const id=el.dataset.rgYes; S.confirm=null; if(!db){ const g0=S.games.find(g=>g.id===id); shareDelete(g0); rememberDeletedReceived(g0); } try{ await store.removeGame(id); toast('Partie supprimée'); }catch(err){ toast('Impossible de supprimer la partie.'); } return; }
   if(el.dataset.drivefile){ driveAction('drive-file', el); return; }
   const a = el.dataset.a, k = el.dataset.k;
   if(a && a.startsWith('acct-')){ acctAction(a); return; }
@@ -1465,6 +1565,7 @@ $app.addEventListener('click', async e => {
   else if(a==='abandon-yes'){ S.confirm=null; await store.setLive(k, null); }
   else if(a==='end-yes'){ S.confirm=null;
     try{ const g = await saveFinished(k); await store.addGame(g); await store.setLive(k, null); toast('Partie enregistrée'); S.sgame=k; go('stats');
+      if(!db) shareGame(S.games[S.games.length-1]);
       if(!db && S.drive.on && tokNow()) driveRun(driveBackupNow, false); }
     catch(err){ toast("La partie n'a pas pu être enregistrée. Réessaie."); render(); } }
 });
@@ -1496,7 +1597,8 @@ async function boot(){
   if(!d){ local.load(); S.ready=true; render(); try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
     if(S.acct.cache) fb().catch(()=>{});
     if(S.drive.on){ loadGis().catch(()=>{}); driveAuto(); }
-    document.addEventListener('visibilitychange', () => { if(!document.hidden) driveAuto(); });
+    document.addEventListener('visibilitychange', () => { if(!document.hidden){ driveAuto(); checkInbox(); flushSoon(); } });
+    addEventListener('online', () => { checkInbox(); flushSoon(); pubSoon(); });
     return; }
   db = d;
   let got = 0; const mark = () => { if(++got>=4) S.ready=true; if(!$ov.innerHTML) render(); };
@@ -1513,7 +1615,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '12';
+window.APP_VERSION = '13';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

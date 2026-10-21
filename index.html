@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Carnet de jeux">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=7">
-<link rel="apple-touch-icon-precomposed" sizes="180x180" href="icon-180.png?v=7">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=7">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=9">
+<link rel="apple-touch-icon-precomposed" sizes="180x180" href="icon-180.png?v=9">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=9">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}html{-webkit-text-size-adjust:100%}</style>
 </head>
 <body>
@@ -169,6 +169,31 @@ table.stats{width:100%;border-collapse:collapse;font-variant-numeric:tabular-num
 .crown-ic{position:absolute;width:24px;height:17px;left:50%;top:-11px;transform:translateX(-50%) rotate(-14deg);transform-origin:50% 100%;filter:drop-shadow(0 1.5px 1.5px rgba(0,0,0,.3));z-index:1}
 .phead .crown-ic{width:40px;height:28px;top:-19px}
 .phead{margin-top:20px}
+.pnav{display:flex;align-items:center;gap:6px;padding:10px;margin:14px 0 10px;border-radius:26px}
+.navb{appearance:none;border:0;flex:none;width:44px;height:44px;border-radius:50%;background:var(--chip);color:var(--ink);font:400 28px/1 var(--sans);cursor:pointer;display:grid;place-items:center;padding-bottom:3px}
+.navb:disabled{opacity:.3}
+.navb:focus-visible,.pchip:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.pcur{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:0 4px}
+.pcur .name{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ptot{font-family:var(--serif);font-size:36px;line-height:1;text-align:right;font-variant-numeric:tabular-nums}
+.ptot small{display:block;font-family:var(--sans);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.pstrip{display:flex;gap:6px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
+.pstrip::-webkit-scrollbar{display:none}
+.pchip{appearance:none;flex:none;border:1px solid var(--line);background:var(--chip);color:var(--ink);font:500 13px var(--sans);border-radius:999px;padding:8px 12px;cursor:pointer;font-variant-numeric:tabular-nums}
+.pchip b{font-weight:700;margin-left:4px}
+.pchip.on{background:var(--inv-bg);color:var(--inv-ink);border-color:var(--inv-bg)}
+.sheet.solo td.cat{position:static;min-width:0;width:100%}
+.sheet.solo td.big{min-width:84px;font-size:22px;font-weight:500;padding-right:18px;text-align:right}
+.sheet.solo tr.sum td,.sheet.solo tr.sum td.cat{background:var(--chip)}
+.sheet.solo tr.sum td.big{font-size:18px;font-weight:700}
+.sheet.solo tr.total td:last-child{text-align:right;padding-right:18px;font-size:34px}
+.sheet.solo td.cell.empty-c::after{width:22px}
+.sheet.solo th,.sheet.solo td{height:54px}
+.sheet.solo tr.section td{height:34px}
+.slide-l{animation:slidel .28s ease}.slide-r{animation:slider .28s ease}
+@keyframes slidel{from{transform:translateX(24px);opacity:.3}to{transform:none;opacity:1}}
+@keyframes slider{from{transform:translateX(-24px);opacity:.3}to{transform:none;opacity:1}}
+.obadge{position:absolute;right:-4px;bottom:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--inv-bg);color:var(--inv-ink);font:700 11px/20px var(--sans);text-align:center;box-shadow:0 0 0 2px var(--bg)}
 .back{appearance:none;border:0;background:none;color:var(--mute);font:500 14px var(--sans);padding:6px 0;cursor:pointer}
 .games{display:flex;flex-direction:column;gap:12px}
 .gamecard{appearance:none;text-align:left;width:100%;color:var(--ink);font:inherit;cursor:pointer;padding:20px;display:flex;gap:16px;align-items:center}
@@ -419,7 +444,7 @@ function viewSetup(k){
     <p class="sub">Sélectionne les joueurs dans l'ordre du tour.${k==='421'?' Il faut au moins deux joueurs.':k==='skyjo'?' De 2 à 8 joueurs.':''}</p>
     <div class="glass" style="padding:8px 16px"><div class="list">${ps.map(([id,p])=>{
       const order = [...sel].indexOf(id);
-      return `<div class="item" role="button" tabindex="0" data-pick="${id}" data-k="${k}" style="cursor:pointer"><div class="avatar" style="${order<0?'background:var(--chip);color:var(--ink)':avStyle(id)}">${order<0?initial(p.name):order+1}</div><div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">${plural(cnt(id),'partie')} de ${G.name}</div></div><span class="meta">${order<0?'':'Sélectionné'}</span></div>`;}).join('')}</div></div>
+      return `<div class="item" role="button" tabindex="0" data-pick="${id}" data-k="${k}" style="cursor:pointer"><span class="crowned">${photoOf(id) ? av(id,p.name) : `<div class="avatar" style="${order<0?'background:var(--chip);color:var(--ink)':avStyle(id)}">${initial(p.name)}</div>`}${order<0?'':`<span class="obadge">${order+1}</span>`}</span><div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">${plural(cnt(id),'partie')} de ${G.name}</div></div><span class="meta">${order<0?'':'Sélectionné'}</span></div>`;}).join('')}</div></div>
     <div style="margin-top:18px"><button class="btn block" data-a="start" data-k="${k}" id="start-${k}" ${ok?'':'disabled'}>Lancer la partie${sel.size?' à '+sel.size:''}</button></div>
     <p class="note">Il manque quelqu'un ? <button class="link" data-go="players">Ajoute-le</button></p>
     ${k==='421' ? tableRules() + rules421(true, S.rules421) : k==='skyjo' ? rulesSky(true) : rulesYahtzee(true)}`;
@@ -450,40 +475,51 @@ const tableRules = () => { const RU = S.rules421;
   </div>`; };
 
 /* ================= Yahtzee view ================= */
+function yzTurnIndex(L){ const f = L.order.map(id=>filled(L.scores[id])); const m = Math.min(...f); return Math.max(0, f.indexOf(m)); }
 function viewYahtzee(){
   const L = S.live.yahtzee;
   if(!L) return viewSetup('yahtzee');
-  const ids = L.order;
-  const tots = ids.map(id => totals(L.scores[id]));
-  const best = Math.max(...tots.map(t=>t.total));
-  const done = ids.every(id => filled(L.scores[id]) === ALL.length);
-  const turn = Math.min(...ids.map(id=>filled(L.scores[id]))) + 1;
-  const head = ids.map(id => `<th>${av(id,pname(id,L.names[id]))}${esc(pname(id,L.names[id]))}</th>`).join('');
-  const row = c => `<tr><td class="cat">${c.face ? `<span class="catrow">${dieMini(c.face)}<span>${c.label}<span class="hint">${c.hint}</span></span></span>` : `${c.label}<span class="hint">${c.hint}</span>`}</td>${ids.map(id=>{
-    const v = (L.scores[id]||{})[c.id]; const has = v!==undefined && v!==null;
-    const just = S.just===id+c.id ? ' just':'';
-    return `<td class="cell${has?(v===0?' zero':''):' empty-c'}${just}" tabindex="0" role="button" data-p="${id}" data-c="${c.id}" aria-label="${esc(pname(id,L.names[id]))}, ${c.label}">${has?v:'–'}</td>`;}).join('')}</tr>`;
-  const sumRow = (label, key, hint, hintFn) => `<tr class="sum"><td class="cat">${label}${hint?`<span class="hint">${hint}</span>`:''}</td>${tots.map(t=>`<td>${t[key]}${hintFn?hintFn(t):''}</td>`).join('')}</tr>`;
+  const ids = L.order, n = ids.length;
+  if(S.yzp==null || S.yzp>=n) S.yzp = yzTurnIndex(L);
+  const id = ids[S.yzp], name = pname(id, L.names[id]), sc = L.scores[id]||{}, t = totals(sc);
+  const tots = ids.map(x => totals(L.scores[x]).total);
+  const best = Math.max(...tots);
+  const done = ids.every(x => filled(L.scores[x]) === ALL.length);
+  const turn = Math.min(...ids.map(x=>filled(L.scores[x]))) + 1;
+  const mine = filled(sc);
+  const cell = (cid, label, v, txt) => { const has = v!==undefined && v!==null;
+    return `<td class="cell big${has?(v===0?' zero':''):' empty-c'}${S.just===id+cid?' just':''}" tabindex="0" role="button" data-p="${id}" data-c="${cid}" aria-label="${esc(name)}, ${label}">${has?txt:'–'}</td>`; };
+  const row = c => `<tr><td class="cat">${c.face ? `<span class="catrow">${dieMini(c.face)}<span>${c.label}<span class="hint">${c.hint}</span></span></span>` : `${c.label}<span class="hint">${c.hint}</span>`}</td>${cell(c.id, c.label, sc[c.id], sc[c.id])}</tr>`;
+  const sum = (label, val, hint) => `<tr class="sum"><td class="cat">${label}${hint?`<span class="hint">${hint}</span>`:''}</td><td class="big">${val}</td></tr>`;
+  const nb = sc.yb||0;
+  const anim = S.yzAnim ? ` slide-${S.yzAnim}` : ''; S.yzAnim = null;
   return `<button class="back" data-go="home">← Jeux</button>
   <div class="label">${done ? 'Partie terminée' : 'Tour '+Math.min(turn,13)+' sur 13'}</div>
   <h1>Le <em>Yahtzee</em></h1>
-  <p class="sub">Touche une case pour noter le score.</p>
-  <div class="sheet-wrap glass dense"><table class="sheet">
-    <thead><tr><th class="cat"></th>${head}</tr></thead>
+  <div class="pnav glass">
+    <button class="navb" data-a="yz-prev" aria-label="Joueur précédent" ${n<2?'disabled':''}>‹</button>
+    <div class="pcur">${av(id, name)}<div class="grow"><div class="name">${esc(name)}</div><div class="meta">${mine}/13 cases${tots[S.yzp]===best && best>0 && n>1 ? ' · en tête' : ''}</div></div><div class="ptot">${t.total}<small>pts</small></div></div>
+    <button class="navb" data-a="yz-next" aria-label="Joueur suivant" ${n<2?'disabled':''}>›</button>
+  </div>
+  ${n>1 ? `<div class="pstrip">${ids.map((x,i)=>`<button class="pchip${i===S.yzp?' on':''}" data-yzp="${i}">${dot(x)}${esc(pname(x,L.names[x]))} <b>${tots[i]}</b></button>`).join('')}</div>` : ''}
+  <div class="sheet-wrap glass dense${anim}" id="yzsheet"><table class="sheet solo">
     <tbody>
-      <tr class="section"><td class="cat label">Section haute</td>${ids.map(()=>'<td></td>').join('')}</tr>
+      <tr class="section"><td class="cat label">Section haute</td><td></td></tr>
       ${UPPER.map(row).join('')}
-      ${sumRow('Sous-total','up','', t => t.up<BONUS_AT ? `<span class="hint">reste ${BONUS_AT-t.up}</span>`:'')}
-      ${sumRow('Prime','bonus','35 si 63 ou plus')}
-      <tr class="section"><td class="cat label">Section basse</td>${ids.map(()=>'<td></td>').join('')}</tr>
+      ${sum('Sous-total', t.up, t.up<BONUS_AT ? 'reste '+(BONUS_AT-t.up)+' pour la prime' : 'prime gagnée')}
+      ${sum('Prime', t.bonus, '35 si 63 ou plus')}
+      <tr class="section"><td class="cat label">Section basse</td><td></td></tr>
       ${LOWER.map(row).join('')}
-      <tr><td class="cat">Yahtzee bonus<span class="hint">+100 par Yahtzee en plus</span></td>${ids.map(id=>{const n=(L.scores[id]||{}).yb||0;return `<td class="cell${n?'':' empty-c'}" tabindex="0" role="button" data-p="${id}" data-c="yb" aria-label="Yahtzee bonus">${n?'+'+n*100:'–'}</td>`}).join('')}</tr>
-      ${sumRow('Section basse','low')}
-      <tr class="total"><td class="cat">Total</td>${tots.map(t=>`<td>${t.total}${t.total===best&&best>0?'<span class="crown">en tête</span>':''}</td>`).join('')}</tr>
+      <tr><td class="cat">Yahtzee bonus<span class="hint">+100 par Yahtzee en plus</span></td>${cell('yb','Yahtzee bonus', nb||null, '+'+nb*100)}</tr>
+      ${sum('Section basse', t.low)}
+      <tr class="total"><td class="cat">Total</td><td>${t.total}</td></tr>
     </tbody></table></div>
+  <p class="note">Touche une case pour noter le score. Après chaque nouveau score, on passe au joueur suivant. Glisse ou utilise les flèches pour corriger.</p>
   ${endControls('yahtzee', done, done?'Enregistrer cette partie dans l\'historique ?':'Toutes les cases ne sont pas remplies. Enregistrer quand même avec les scores actuels ?')}
   ${rulesYahtzee(false)}`;
 }
+function yzMove(d){ const L=S.live.yahtzee; if(!L) return; const n=L.order.length; if(n<2) return;
+  S.yzp = ((S.yzp||0) + d + n) % n; S.yzAnim = d>0 ? 'l' : 'r'; render(); }
 function endControls(k, done, question){
   return `<div class="stack" style="margin-top:18px">
     ${S.confirm==='end' ? `<div class="glass" style="padding:16px"><p style="margin:0 0 12px">${question}</p><div class="confirm"><button class="btn" data-a="end-yes" data-k="${k}">Enregistrer</button><button class="btn ghost" data-a="cancel">Continuer à jouer</button></div></div>`
@@ -670,7 +706,9 @@ const COLORS = [
   {id:'gris', n:'Gris', c:'#8C8C92'}];
 const inkOn = hex => { const n=parseInt(hex.slice(1),16), r=n>>16, g=n>>8&255, b=n&255; return (0.299*r+0.587*g+0.114*b) > 170 ? '#111111' : '#ffffff'; };
 const colorOf = id => { const p = S.players[id]; const c = p && COLORS.find(x=>x.id===p.color); return c && c.c ? c.c : null; };
-const avStyle = id => { const c = colorOf(id); return c ? `background:${c};color:${inkOn(c)}` : ''; };
+const photoOf = id => (S.players[id] && S.players[id].photo) || null;
+const photoStyle = (ph, c) => `background:var(--chip) center/cover no-repeat url('${ph}');color:transparent;box-shadow:0 0 0 2px var(--bg),0 0 0 3.5px ${c||'var(--line)'}`;
+const avStyle = id => { const c = colorOf(id), ph = photoOf(id); if(ph) return photoStyle(ph, c); return c ? `background:${c};color:${inkOn(c)}` : ''; };
 /* Best player: highest win rate across all games (Yahtzee and Skyjo wins, 421 games not lost), at least CROWN_MIN games. Tie-break: more wins. No crown on a tie. */
 const CROWN_MIN = 3;
 function bestPlayer(){
@@ -700,12 +738,17 @@ function viewPlayer(){
   const E = S.edit;
   if(E && E.id===id){
     return `<button class="back" data-a="edit-cancel">← Annuler</button>
-    <div class="label">Modifier le profil</div><h1>${esc(E.name||p.name)}</h1>
+    <div class="label">Modifier le profil</div>
+    <div class="phead"><div class="avatar big" style="${E.photo ? photoStyle(E.photo, (COLORS.find(c=>c.id===E.color)||{}).c) : (()=>{const c=(COLORS.find(c=>c.id===E.color)||{}).c; return c?`background:${c};color:${inkOn(c)}`:'';})()}">${initial(E.name||p.name)}</div><h1 style="margin:0">${esc(E.name||p.name)}</h1></div>
     <div class="glass" style="padding:6px 18px 18px;margin-top:16px">
+      <div class="field"><span class="label">Photo</span>
+        <div class="row"><label class="btn ghost" for="photo-file" style="cursor:pointer">${E.photo?'Changer la photo':'Ajouter une photo'}</label>${E.photo?'<button class="link" data-a="photo-rm">Retirer la photo</button>':''}
+        <input type="file" id="photo-file" accept="image/*" hidden></div>
+        <span class="hint">Prends une photo ou choisis-en une dans ta galerie. Elle est recadrée en carré au centre. La couleur reste en liseré autour.</span></div>
       <div class="field"><label class="label" for="edit-name">Prénom</label><input type="text" id="edit-name" maxlength="24" value="${esc(E.name)}" autocomplete="off"></div>
       <div class="field"><span class="label">Couleur</span>
         <div class="swatches">${COLORS.map(c=>`<button class="sw${E.color===c.id?' on':''}" data-color="${c.id}" aria-label="${c.n}" title="${c.n}" style="background:${c.c||'var(--inv-bg)'};color:${c.c?inkOn(c.c):'var(--inv-ink)'}">${E.color===c.id?initial(E.name||p.name):''}</button>`).join('')}</div>
-        <span class="hint">Elle s'affiche sur son avatar dans toutes les parties.</span></div>
+        <span class="hint">Elle s'affiche sur son avatar, ses pastilles et ses barres dans toutes les parties.</span></div>
       <div class="row" style="margin-top:6px"><button class="btn" data-a="edit-save" id="edit-save">Enregistrer</button><button class="btn ghost" data-a="edit-cancel">Annuler</button></div>
     </div>
     <div class="glass" style="padding:14px 18px;margin-top:14px">
@@ -741,7 +784,7 @@ function viewPlayer(){
 /* ================= stats ================= */
 function lastName(id){ for(let i=S.games.length-1;i>=0;i--){ const r=(S.games[i].results||[]).find(r=>r.id===id); if(r) return r.name; } return 'Ancien joueur'; }
 const seg = (key, opts) => `<div class="seg" role="tablist">${opts.map(([v,t])=>`<button class="${S[key]===v?'on':''}" data-seg="${key}" data-val="${v}">${t}</button>`).join('')}</div>`;
-const award = (lab, r, val, sub, hero) => `<div class="award glass${hero?' hero':''}"><div class="label">${lab}</div><div class="aw-who"><div class="avatar sm" style="${colorOf(r.id) ? avStyle(r.id) : hero ? 'background:var(--inv-ink);color:var(--inv-bg)' : ''}">${initial(r.name)}</div><div class="big">${esc(r.name)}</div></div><div class="meta">${val}${sub?' · '+sub:''}</div></div>`;
+const award = (lab, r, val, sub, hero) => `<div class="award glass${hero?' hero':''}"><div class="label">${lab}</div><div class="aw-who"><div class="avatar sm" style="${colorOf(r.id)||photoOf(r.id) ? avStyle(r.id) : hero ? 'background:var(--inv-ink);color:var(--inv-bg)' : ''}">${initial(r.name)}</div><div class="big">${esc(r.name)}</div></div><div class="meta">${val}${sub?' · '+sub:''}</div></div>`;
 function viewStats(){
   const k = S.sgame; const gs = S.games.filter(g=>kindOf(g)===k);
   const top = `<div class="label">${plural(gs.length,'partie')} de ${GAMES[k].name}</div><h1>Les <em>stats</em></h1>
@@ -848,8 +891,10 @@ function openCell(pid, cid){
   else if(c.fixed){ opts=[{v:0,t:'0'},{v:c.fixed,t:String(c.fixed)}]; def=c.fixed; meta=c.hint.split(' · ')[0]+'. Sinon, la case est barrée à 0.'; }
   else { opts=[{v:0,t:'0'}].concat(Array.from({length:26},(_,i)=>({v:i+5,t:String(i+5)}))); meta = c.id==='ch' ? 'Aucune condition : additionne les cinq dés.' : c.hint.split(' · ')[0]+', puis additionne les cinq dés, pas seulement ceux qui sont pareils.'; }
   const start = cur!==undefined && cur!==null ? cur : def;
+  const wasEmpty = cur===undefined || cur===null;
   const set = v => { const sc = {...(L.scores[pid]||{})}; if(v===null) delete sc[cid]; else sc[cid]=v;
-    L.scores = {...L.scores, [pid]: sc}; S.just = pid+cid; saveLiveSoon('yahtzee'); setTimeout(()=>{S.just=null},400); };
+    L.scores = {...L.scores, [pid]: sc}; S.just = pid+cid; saveLiveSoon('yahtzee'); setTimeout(()=>{S.just=null},400);
+    if(v!==null && wasEmpty && cid!=='yb' && L.order.length>1){ setTimeout(()=>{ S.just=null; yzMove(1); }, 420); } };
   wheel({who:pname(pid,L.names[pid]), whoId:pid, title, meta, opts, start: opts.findIndex(o=>o.v===start), onOk:o=>set(o.v), onClear:()=>set(null)});
 }
 
@@ -889,9 +934,10 @@ async function saveFinished(k){
 }
 
 $app.addEventListener('click', async e => {
-  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],td.cell'); if(!el) return;
+  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],td.cell'); if(!el) return;
   if(el.matches('td.cell')){ openCell(el.dataset.p, el.dataset.c); return; }
   if(el.dataset.go){ go(el.dataset.go); return; }
+  if(el.dataset.yzp){ const i=Number(el.dataset.yzp); if(i!==S.yzp){ S.yzAnim = i>S.yzp?'l':'r'; S.yzp=i; render(); } return; }
   if(el.dataset.player){ S.pid=el.dataset.player; go('player'); return; }
   if(el.dataset.color){ const i=document.getElementById('edit-name'); if(i) S.edit.name=i.value; S.edit.color=el.dataset.color; render(); return; }
   if(el.dataset.seg){ S[el.dataset.seg]=el.dataset.val; render(); return; }
@@ -907,7 +953,7 @@ $app.addEventListener('click', async e => {
   const a = el.dataset.a, k = el.dataset.k;
   if(a==='cancel'){ S.confirm=null; render(); }
   else if(a==='start'){ const order=[...S.pick[k]]; const names={}; order.forEach(id=>names[id]=S.players[id].name);
-    S.pick[k]=new Set(); S.r421={c:'421',w:null,l:null,nen:false}; S.sky={scores:{},closer:null};
+    S.pick[k]=new Set(); S.yzp=0; S.r421={c:'421',w:null,l:null,nen:false}; S.sky={scores:{},closer:null};
     await store.setLive(k, k==='yahtzee' ? {order, names, scores:{}, startedAt:Date.now()} : k==='skyjo' ? {order, names, rounds:[], startedAt:Date.now()} : {order, names, rounds:[], rules:{...S.rules421}, startedAt:Date.now()}); }
   else if(a==='combo'){ const i = COMBOS.findIndex(c=>c.id===S.r421.c);
     wheel({who:'Meilleure combinaison', title:'Combinaison', meta:'De la plus forte à la plus faible. Le chiffre à droite, c’est le nombre de jetons.', opts:COMBOS.map(c=>combo(c.id,rulesOf(S.live['421']))).map(c=>({v:c.id,t:c.t,s:plural(c.v,'jeton')})), start:i, onOk:o=>{S.r421.c=o.v; render();}}); }
@@ -919,13 +965,16 @@ $app.addEventListener('click', async e => {
   else if(a==='sky-round'){ const L=S.live.skyjo, R=S.sky; if(!R.closer || !L.order.every(id=>R.scores[id]!==undefined)) return;
     L.rounds=[...(L.rounds||[]), {scores:{...R.scores}, closer:R.closer}]; S.sky={scores:{},closer:null}; saveLiveSoon('skyjo'); window.scrollTo({top:0,behavior:'smooth'}); }
   else if(a==='sky-undo'){ const L=S.live.skyjo; L.rounds=(L.rounds||[]).slice(0,-1); saveLiveSoon('skyjo'); }
+  else if(a==='yz-prev'){ yzMove(-1); }
+  else if(a==='yz-next'){ yzMove(1); }
+  else if(a==='photo-rm'){ const i=document.getElementById('edit-name'); if(i) S.edit.name=i.value; S.edit.photo=null; render(); }
   else if(a==='export'){ exportData(); }
-  else if(a==='edit'){ const p=S.players[S.pid]; S.edit={id:S.pid, name:p.name, color:p.color||'noir'}; S.confirm=null; render(); }
+  else if(a==='edit'){ const p=S.players[S.pid]; S.edit={id:S.pid, name:p.name, color:p.color||'noir', photo:p.photo||null}; S.confirm=null; render(); }
   else if(a==='edit-cancel'){ S.edit=null; S.confirm=null; render(); }
   else if(a==='edit-save'){ const E=S.edit, i=document.getElementById('edit-name'); const n=(i?i.value:E.name).trim();
     if(!n){ toast('Le prénom ne peut pas être vide.'); return; }
     if(Object.entries(S.players).some(([pid,p])=>pid!==E.id && p.name.toLowerCase()===n.toLowerCase())){ toast(n+' existe déjà.'); return; }
-    try{ await store.updatePlayer(E.id, {name:n, color:E.color}); S.edit=null; toast('Profil enregistré'); render(); }catch(err){ toast("Le profil n'a pas pu être enregistré."); } }
+    try{ await store.updatePlayer(E.id, {name:n, color:E.color, photo:E.photo||null}); S.edit=null; toast('Profil enregistré'); render(); }catch(err){ toast("Le profil n'a pas pu être enregistré."); } }
   else if(a==='nen'){ S.r421.nen=!S.r421.nen; render(); }
   else if(a==='round'){ const R=S.r421, L=S.live['421']; if(!R.w||!R.l) return;
     L.rounds = [...(L.rounds||[]), {c:R.c, w:R.w, l:R.l, nen:R.nen}];
@@ -938,7 +987,23 @@ $app.addEventListener('click', async e => {
     try{ const g = await saveFinished(k); await store.addGame(g); await store.setLive(k, null); toast('Partie enregistrée'); S.sgame=k; go('stats'); }
     catch(err){ toast("La partie n'a pas pu être enregistrée. Réessaie."); render(); } }
 });
-$app.addEventListener('change', e => { if(e.target.id==='import-file' && e.target.files[0]){ importData(e.target.files[0]); e.target.value=''; } });
+let sw0=null;
+$app.addEventListener('touchstart', e => { if(e.target.closest('#yzsheet') && e.touches.length===1) sw0={x:e.touches[0].clientX,y:e.touches[0].clientY,t:Date.now()}; else sw0=null; }, {passive:true});
+$app.addEventListener('touchend', e => { if(!sw0) return; const t=e.changedTouches[0], dx=t.clientX-sw0.x, dy=t.clientY-sw0.y;
+  if(Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.5 && Date.now()-sw0.t<600) yzMove(dx<0?1:-1); sw0=null; }, {passive:true});
+function loadPhoto(file){
+  const url = URL.createObjectURL(file); const img = new Image();
+  img.onload = () => { const N = 256, sz = Math.min(img.naturalWidth, img.naturalHeight);
+    const cv = document.createElement('canvas'); cv.width = cv.height = N; const cx = cv.getContext('2d');
+    cx.imageSmoothingQuality = 'high';
+    cx.drawImage(img, (img.naturalWidth-sz)/2, (img.naturalHeight-sz)/2, sz, sz, 0, 0, N, N);
+    URL.revokeObjectURL(url);
+    const i = document.getElementById('edit-name'); if(i && S.edit) S.edit.name = i.value;
+    if(S.edit){ S.edit.photo = cv.toDataURL('image/jpeg', 0.82); render(); } };
+  img.onerror = () => { URL.revokeObjectURL(url); toast("Cette image n'a pas pu être lue. Essaie avec une autre photo."); };
+  img.src = url;
+}
+$app.addEventListener('change', e => { if(e.target.id==='photo-file' && e.target.files[0]){ loadPhoto(e.target.files[0]); e.target.value=''; return; } if(e.target.id==='import-file' && e.target.files[0]){ importData(e.target.files[0]); e.target.value=''; } });
 $app.addEventListener('keydown', e => { if((e.key==='Enter'||e.key===' ') && e.target.matches('td.cell,[data-pick],[data-player]')){ e.preventDefault(); e.target.click(); } });
 
 /* ================= boot ================= */
@@ -963,7 +1028,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '7';
+window.APP_VERSION = '9';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

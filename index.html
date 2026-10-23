@@ -121,6 +121,11 @@ table.sheet{border-collapse:separate;border-spacing:0;width:100%;font-variant-nu
 .lead td.leader{position:relative}
 .crown{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-family:var(--sans);display:block;color:var(--mute)}
 /* bottom sheet */
+.crop{position:relative;margin:4px auto 0;overflow:hidden;border-radius:22px;background:var(--chip);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.crop:active{cursor:grabbing}
+.crop img{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;pointer-events:none;-webkit-user-drag:none}
+.crop-ring{position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 400px rgba(0,0,0,.45),inset 0 0 0 1.5px rgba(255,255,255,.85);pointer-events:none}
+.crop-zoom{display:block;width:100%;margin:16px 0 0;accent-color:var(--ink)}
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:30}
 .panel{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));width:min(600px,calc(100% - 24px));z-index:31;padding:22px;border-radius:30px}
 .panel h3{font-family:var(--serif);font-weight:400;font-size:28px;margin:0}
@@ -940,9 +945,9 @@ function viewPlayer(){
     <div class="phead"><div class="avatar big" style="${E.photo ? photoStyle(E.photo, (COLORS.find(c=>c.id===E.color)||{}).c) : (()=>{const c=(COLORS.find(c=>c.id===E.color)||{}).c; return c?`background:${c};color:${inkOn(c)}`:'';})()}">${initial(E.name||p.name)}</div><h1 style="margin:0">${esc(E.name||p.name)}</h1></div>
     <div class="glass" style="padding:6px 18px 18px;margin-top:16px">
       <div class="field"><span class="label">Photo</span>
-        <div class="row"><label class="btn ghost" for="photo-file" style="cursor:pointer">${E.photo?'Changer la photo':'Ajouter une photo'}</label>${E.photo?'<button class="link" data-a="photo-rm">Retirer la photo</button>':''}
+        <div class="row"><label class="btn ghost" for="photo-file" style="cursor:pointer">${E.photo?'Changer la photo':'Ajouter une photo'}</label>${E.photo && cropSrc && cropSrc.id===E.id?'<button class="link" data-a="photo-crop">Recadrer</button>':''}${E.photo?'<button class="link" data-a="photo-rm">Retirer la photo</button>':''}
         <input type="file" id="photo-file" accept="image/*" hidden></div>
-        <span class="hint">Prends une photo ou choisis-en une dans ta galerie. Elle est recadrée en carré au centre. La couleur reste en liseré autour.</span></div>
+        <span class="hint">Prends une photo ou choisis-en une dans ta galerie. Tu choisis le cadrage juste après. La couleur reste en liseré autour.</span></div>
       <div class="field"><label class="label" for="edit-name">Prénom</label><input type="text" id="edit-name" maxlength="24" value="${esc(E.name)}" autocomplete="off"></div>
       <div class="field"><span class="label">Couleur</span>
         <div class="swatches">${COLORS.map(c=>`<button class="sw${E.color===c.id?' on':''}" data-color="${c.id}" aria-label="${c.n}" title="${c.n}" style="background:${c.c||'var(--inv-bg)'};color:${c.c?inkOn(c.c):'var(--inv-ink)'}">${E.color===c.id?initial(E.name||p.name):''}</button>`).join('')}</div>
@@ -2103,14 +2108,15 @@ $app.addEventListener('click', async e => {
   else if(a==='res-again'){ replay(); }
   else if(a==='res-back'){ const f = S.result && S.result.from; S.result=null; go(f==='history'?'history':'home'); if(f==='watch') checkInbox(); }
   else if(a==='res-fix'){ reopenGame(); }
+  else if(a==='photo-crop'){ const i=document.getElementById('edit-name'); if(i) S.edit.name=i.value; cropPanel(); }
   else if(a==='photo-rm'){ const i=document.getElementById('edit-name'); if(i) S.edit.name=i.value; S.edit.photo=null; render(); }
   else if(a==='export'){ exportData(); }
   else if(a==='edit'){ const p=S.players[S.pid]; S.edit={id:S.pid, name:p.name, color:p.color||'noir', photo:p.photo||null}; S.confirm=null; render(); }
-  else if(a==='edit-cancel'){ S.edit=null; S.confirm=null; render(); }
+  else if(a==='edit-cancel'){ cropSrc=null; S.edit=null; S.confirm=null; render(); }
   else if(a==='edit-save'){ const E=S.edit, i=document.getElementById('edit-name'); const n=(i?i.value:E.name).trim();
     if(!n){ toast('Le prénom ne peut pas être vide.'); return; }
     if(Object.entries(S.players).some(([pid,p])=>pid!==E.id && p.name.toLowerCase()===n.toLowerCase())){ toast(n+' existe déjà.'); return; }
-    try{ await store.updatePlayer(E.id, {name:n, color:E.color, photo:E.photo||null}); S.edit=null; toast('Profil enregistré'); render(); }catch(err){ toast("Le profil n'a pas pu être enregistré."); } }
+    try{ await store.updatePlayer(E.id, {name:n, color:E.color, photo:E.photo||null}); S.edit=null; cropSrc=null; toast('Profil enregistré'); render(); }catch(err){ toast("Le profil n'a pas pu être enregistré."); } }
   else if(a==='nen'){ S.r421.nen=!S.r421.nen; render(); }
   else if(a==='round'){ const R=S.r421, L=S.live['421']; if(!R.w||!R.l) return;
     L.rounds = [...(L.rounds||[]), {c:R.c, w:R.w, l:R.l, nen:R.nen}];
@@ -2126,17 +2132,61 @@ let sw0=null;
 $app.addEventListener('touchstart', e => { if(e.target.closest('#yzsheet') && e.touches.length===1) sw0={x:e.touches[0].clientX,y:e.touches[0].clientY,t:Date.now()}; else sw0=null; }, {passive:true});
 $app.addEventListener('touchend', e => { if(!sw0) return; const t=e.changedTouches[0], dx=t.clientX-sw0.x, dy=t.clientY-sw0.y;
   if(Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.5 && Date.now()-sw0.t<600) yzMove(dx<0?1:-1); sw0=null; }, {passive:true});
+/* photo : cadrage (v23). L'original réduit reste en mémoire pendant la modification pour pouvoir recadrer. */
+let cropSrc = null;
 function loadPhoto(file){
   const url = URL.createObjectURL(file); const img = new Image();
-  img.onload = () => { const N = 256, sz = Math.min(img.naturalWidth, img.naturalHeight);
-    const cv = document.createElement('canvas'); cv.width = cv.height = N; const cx = cv.getContext('2d');
-    cx.imageSmoothingQuality = 'high';
-    cx.drawImage(img, (img.naturalWidth-sz)/2, (img.naturalHeight-sz)/2, sz, sz, 0, 0, N, N);
+  img.onload = () => { const M = 1400, k = Math.min(1, M/Math.max(img.naturalWidth, img.naturalHeight));
+    const cv = document.createElement('canvas'); cv.width = Math.round(img.naturalWidth*k); cv.height = Math.round(img.naturalHeight*k);
+    const cx = cv.getContext('2d'); cx.imageSmoothingQuality = 'high'; cx.drawImage(img, 0, 0, cv.width, cv.height);
     URL.revokeObjectURL(url);
     const i = document.getElementById('edit-name'); if(i && S.edit) S.edit.name = i.value;
-    if(S.edit){ S.edit.photo = cv.toDataURL('image/jpeg', 0.82); render(); } };
+    if(!S.edit) return;
+    cropSrc = {id:S.edit.id, cv, url:cv.toDataURL('image/jpeg', 0.9), view:null};
+    cropPanel(); };
   img.onerror = () => { URL.revokeObjectURL(url); toast("Cette image n'a pas pu être lue. Essaie avec une autre photo."); };
   img.src = url;
+}
+function cropPanel(){
+  const src = cropSrc; if(!src || !S.edit || src.id!==S.edit.id) return;
+  const W = src.cv.width, H = src.cv.height, F = Math.min(280, window.innerWidth - 96);
+  const s0 = F / Math.min(W, H), sMax = s0 * 5;
+  let v = src.view ? {...src.view} : {s:s0, x:(F - W*s0)/2, y:(F - H*s0)/2};
+  $ov.innerHTML = `<div class="scrim" data-close></div><div class="panel glass" role="dialog" aria-label="Cadrer la photo">
+    <h3>Cadrer la photo</h3><div class="meta">Glisse pour déplacer, pince ou utilise le curseur pour zoomer.</div>
+    <div class="crop" id="crop" style="width:${F}px;height:${F}px"><img id="crop-img" src="${src.url}" alt="" draggable="false" style="width:${W}px;height:${H}px"><div class="crop-ring" aria-hidden="true"></div></div>
+    <input type="range" id="crop-zoom" class="crop-zoom" min="0" max="1000" value="0" aria-label="Zoom">
+    <div class="foot"><button class="btn ghost" data-close>Annuler</button><button class="btn" data-ok>Valider</button></div></div>`;
+  const box = document.getElementById('crop'), im = document.getElementById('crop-img'), zr = document.getElementById('crop-zoom');
+  const clamp = () => { v.s = Math.max(s0, Math.min(sMax, v.s));
+    v.x = Math.min(0, Math.max(F - W*v.s, v.x)); v.y = Math.min(0, Math.max(F - H*v.s, v.y)); };
+  const paint = () => { clamp(); im.style.transform = `translate(${v.x}px,${v.y}px) scale(${v.s})`;
+    zr.value = Math.round(Math.log(v.s/s0) / Math.log(sMax/s0) * 1000); };
+  const zoomAt = (ns, px, py) => { ns = Math.max(s0, Math.min(sMax, ns)); const r = ns / v.s;
+    v.x = px - (px - v.x)*r; v.y = py - (py - v.y)*r; v.s = ns; paint(); };
+  paint();
+  const pts = new Map(); let last = null;
+  const pos = e => { const r = box.getBoundingClientRect(); return {x:e.clientX - r.left, y:e.clientY - r.top}; };
+  const snap = () => { const a = [...pts.values()];
+    if(a.length>=2){ const [p,q] = a; last = {x:(p.x+q.x)/2, y:(p.y+q.y)/2, d:Math.hypot(p.x-q.x, p.y-q.y)}; }
+    else if(a.length===1) last = {x:a[0].x, y:a[0].y, d:0}; else last = null; };
+  box.addEventListener('pointerdown', e => { e.preventDefault(); box.setPointerCapture(e.pointerId); pts.set(e.pointerId, pos(e)); snap(); });
+  box.addEventListener('pointermove', e => { if(!pts.has(e.pointerId) || !last) return; pts.set(e.pointerId, pos(e));
+    const a = [...pts.values()];
+    if(a.length>=2){ const [p,q] = a, mx = (p.x+q.x)/2, my = (p.y+q.y)/2, d = Math.hypot(p.x-q.x, p.y-q.y);
+      v.x += mx - last.x; v.y += my - last.y; if(last.d>0) zoomAt(v.s * d/last.d, mx, my); else paint(); last = {x:mx, y:my, d}; }
+    else { v.x += a[0].x - last.x; v.y += a[0].y - last.y; paint(); last = {x:a[0].x, y:a[0].y, d:0}; } });
+  const up = e => { pts.delete(e.pointerId); snap(); };
+  box.addEventListener('pointerup', up); box.addEventListener('pointercancel', up);
+  box.addEventListener('wheel', e => { e.preventDefault(); const p = pos(e); zoomAt(v.s * Math.exp(-e.deltaY/400), p.x, p.y); }, {passive:false});
+  zr.addEventListener('input', () => zoomAt(s0 * Math.pow(sMax/s0, zr.value/1000), F/2, F/2));
+  $ov.onclick = e => {
+    if(e.target.closest('[data-close]')){ closePanel(); return; }
+    if(e.target.closest('[data-ok]')){ const N = 256, cv = document.createElement('canvas'); cv.width = cv.height = N;
+      const cx = cv.getContext('2d'); cx.imageSmoothingQuality = 'high';
+      cx.drawImage(src.cv, -v.x/v.s, -v.y/v.s, F/v.s, F/v.s, 0, 0, N, N);
+      src.view = {...v}; closePanel();
+      if(S.edit && S.edit.id===src.id){ S.edit.photo = cv.toDataURL('image/jpeg', 0.82); render(); } } };
 }
 $app.addEventListener('change', e => { if(e.target.id==='photo-file' && e.target.files[0]){ loadPhoto(e.target.files[0]); e.target.value=''; return; } if(e.target.id==='import-file' && e.target.files[0]){ importData(e.target.files[0]); e.target.value=''; } });
 $app.addEventListener('keydown', e => { if((e.key==='Enter'||e.key===' ') && e.target.matches('td.cell,[data-pick],[data-player],.item[data-go]')){ e.preventDefault(); e.target.click(); } });
@@ -2169,7 +2219,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '22';
+window.APP_VERSION = '23';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

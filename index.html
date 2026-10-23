@@ -213,6 +213,15 @@ details.rules b{color:var(--ink);font-weight:600}
 .tok{font-family:var(--serif);font-size:34px;line-height:1;font-variant-numeric:tabular-nums;text-align:right}
 .tok small{display:block;font-family:var(--sans);font-size:11px;color:var(--mute);letter-spacing:.08em;text-transform:uppercase}
 .item.out{opacity:.45}
+.sheet tr.rt{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.sheet tr.rt td.cat,.sheet tr.rt td.cell{transition:background .18s}
+.sheet tr.rt:active td.cat,.sheet tr.rt:active td.cell,.sheet tr.rt.tapped td.cat,.sheet tr.rt.tapped td.cell{background:var(--chip)}
+.undo-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px;margin:0 0 10px;border-radius:18px;font-size:13.5px}
+.undo-bar .link{white-space:nowrap}
+.res-list .item{gap:12px}
+.res-list .rk{font-family:var(--serif);font-size:24px;width:30px;text-align:center;flex:none}
+.res-list .item.win .name{font-weight:700}
+.gcard[data-game]{cursor:pointer}
 .field{display:flex;flex-direction:column;gap:8px;padding:14px 0;border-bottom:1px solid var(--line)}
 .field:last-of-type{border-bottom:0}
 .pickbtn{appearance:none;border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:18px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font:inherit;width:100%}
@@ -380,7 +389,7 @@ const store = {
   async setLive(k, live){ S.live[k] = live; render();
     if(db){ const ref = db.doc('live/'+GAMES[k].doc); if(live) await ref.set(live); else await ref.delete(); } else local.save(); },
   async addGame(g){ const id = uid();
-    if(db){ await db.doc('games/'+id).set(g); } else { S.games.push({...g,id}); local.save(); render(); } },
+    if(db){ await db.doc('games/'+id).set(g); } else { S.games.push({...g,id}); local.save(); render(); } return id; },
   async removeGame(id){ if(db){ await db.doc('games/'+id).delete(); } else { S.games = S.games.filter(g=>g.id!==id); local.save(); render(); } }
 };
 /* coalesced live writes, one per game */
@@ -495,7 +504,7 @@ function viewYahtzee(){
   const mine = filled(sc);
   const cell = (cid, label, v, txt) => { const has = v!==undefined && v!==null;
     return `<td class="cell big${has?(v===0?' zero':''):' empty-c'}${S.just===id+cid?' just':''}" tabindex="0" role="button" data-p="${id}" data-c="${cid}" aria-label="${esc(name)}, ${label}">${has?txt:'–'}</td>`; };
-  const row = c => `<tr><td class="cat">${c.face ? `<span class="catrow">${dieMini(c.face)}<span>${c.label}<span class="hint">${c.hint}</span></span></span>` : `${c.label}<span class="hint">${c.hint}</span>`}</td>${cell(c.id, c.label, sc[c.id], sc[c.id])}</tr>`;
+  const row = c => `<tr class="rt" data-p="${id}" data-c="${c.id}"><td class="cat">${c.face ? `<span class="catrow">${dieMini(c.face)}<span>${c.label}<span class="hint">${c.hint}</span></span></span>` : `${c.label}<span class="hint">${c.hint}</span>`}</td>${cell(c.id, c.label, sc[c.id], sc[c.id])}</tr>`;
   const sum = (label, val, hint) => `<tr class="sum"><td class="cat">${label}${hint?`<span class="hint">${hint}</span>`:''}</td><td class="big">${val}</td></tr>`;
   const nb = sc.yb||0;
   const anim = S.yzAnim ? ` slide-${S.yzAnim}` : ''; S.yzAnim = null;
@@ -508,6 +517,7 @@ function viewYahtzee(){
     <button class="navb" data-a="yz-next" aria-label="Joueur suivant" ${n<2?'disabled':''}>›</button>
   </div>
   ${n>1 ? `<div class="pstrip">${ids.map((x,i)=>`<button class="pchip${i===S.yzp?' on':''}" data-yzp="${i}">${dot(x)}${esc(pname(x,L.names[x]))} <b>${tots[i]}</b></button>`).join('')}</div>` : ''}
+  ${S.yzUndo && L.order.includes(S.yzUndo.pid) ? `<div class="undo-bar glass"><span class="meta">${dot(S.yzUndo.pid)}${esc(pname(S.yzUndo.pid,L.names[S.yzUndo.pid]))} · ${S.yzUndo.label} : <b>${S.yzUndo.txt}</b></span><button class="link" data-a="yz-undo" id="yz-undo">Annuler</button></div>` : ''}
   <div class="sheet-wrap glass dense${anim}" id="yzsheet"><table class="sheet solo">
     <tbody>
       <tr class="section"><td class="cat label">Section haute</td><td></td></tr>
@@ -516,16 +526,19 @@ function viewYahtzee(){
       ${sum('Prime', t.bonus, '35 si 63 ou plus')}
       <tr class="section"><td class="cat label">Section basse</td><td></td></tr>
       ${LOWER.map(row).join('')}
-      <tr><td class="cat">Yahtzee bonus<span class="hint">+100 par Yahtzee en plus</span></td>${cell('yb','Yahtzee bonus', nb||null, '+'+nb*100)}</tr>
+      <tr class="rt" data-p="${id}" data-c="yb"><td class="cat">Yahtzee bonus<span class="hint">+100 par Yahtzee en plus</span></td>${cell('yb','Yahtzee bonus', nb||null, '+'+nb*100)}</tr>
       ${sum('Section basse', t.low)}
       <tr class="total"><td class="cat">Total</td><td>${t.total}</td></tr>
     </tbody></table></div>
-  <p class="note">Touche une case pour noter le score. Après chaque nouveau score, on passe au joueur suivant. Glisse ou utilise les flèches pour corriger.</p>
+  <p class="note">Touche une ligne pour noter le score. Après chaque nouveau score, on passe au joueur suivant. Glisse ou utilise les flèches pour corriger.</p>
   ${endControls('yahtzee', done, done?'Enregistrer cette partie dans l\'historique ?':'Toutes les cases ne sont pas remplies. Enregistrer quand même avec les scores actuels ?')}
   ${rulesYahtzee(false)}`;
 }
-function yzMove(d){ const L=S.live.yahtzee; if(!L) return; const n=L.order.length; if(n<2) return;
-  S.yzp = ((S.yzp||0) + d + n) % n; S.yzAnim = d>0 ? 'l' : 'r'; render(); }
+function yzMove(d, top){ const L=S.live.yahtzee; if(!L) return; const n=L.order.length; if(n<2) return;
+  S.yzp = ((S.yzp||0) + d + n) % n; S.yzAnim = d>0 ? 'l' : 'r'; render(); if(top) yzTop(); }
+/* Remonte en haut de la grille (le bandeau du joueur), sans remonter tout en haut de la page. */
+function yzTop(){ const el = document.querySelector('.pnav'); if(!el) return;
+  const y = el.getBoundingClientRect().top + window.scrollY - 12; if(Math.abs(window.scrollY - y) > 4) window.scrollTo({top:Math.max(0,y), behavior:'smooth'}); }
 function endControls(k, done, question){
   return `<div class="stack" style="margin-top:18px">
     ${S.confirm==='end' ? `<div class="glass" style="padding:16px"><p style="margin:0 0 12px">${question}</p><div class="confirm"><button class="btn" data-a="end-yes" data-k="${k}">Enregistrer</button><button class="btn ghost" data-a="cancel">Continuer à jouer</button></div></div>`
@@ -884,7 +897,7 @@ function viewHistory(){
     else { const res=[...(g.results||[])].sort((a,b)=>b.total-a.total);
       title = `${res.filter(r=>(g.winners||[]).includes(r.id)).map(nm).join(' & ')} <em>gagne</em>`;
       body = `<div class="gscores">${res.map(r=>`<span>${nm(r)} <b>${r.total}</b></span>`).join('')}</div>`; }
-    return `<div class="gcard glass"><div class="row" style="justify-content:space-between"><span class="label">${GAMES[k].name} · ${fmt(g.date)}</span>
+    return `<div class="gcard glass" data-game="${g.id}"><div class="row" style="justify-content:space-between"><span class="label">${GAMES[k].name} · ${fmt(g.date)}</span>
       ${S.confirm==='rg-'+g.id ? `<span class="confirm"><button class="btn ghost" style="padding:6px 12px;font-size:13px" data-rg-yes="${g.id}">Supprimer</button><button class="link" data-a="cancel">Non</button></span>`:`<button class="link" data-rg="${g.id}">Supprimer</button>`}</div>
       <div style="font-family:var(--serif);font-size:26px;line-height:1.1">${title}</div>${body}${g.src ? `<span class="hint">Reçue de ${esc(g.src.name)}</span>` : ''}</div>`;}).join('')}</div>`;
 }
@@ -926,8 +939,11 @@ function openCell(pid, cid){
   const start = cur!==undefined && cur!==null ? cur : def;
   const wasEmpty = cur===undefined || cur===null;
   const set = v => { const sc = {...(L.scores[pid]||{})}; if(v===null) delete sc[cid]; else sc[cid]=v;
+    if(v!==cur) S.yzUndo = {pid, cid, prev:cur, idx:L.order.indexOf(pid), label:title, txt: v===null ? 'effacé' : cid==='yb' ? (v?'+'+v*100:'0') : String(v)};
     L.scores = {...L.scores, [pid]: sc}; S.just = pid+cid; saveLiveSoon('yahtzee'); setTimeout(()=>{S.just=null},400);
-    if(v!==null && wasEmpty && cid!=='yb' && L.order.length>1){ setTimeout(()=>{ S.just=null; yzMove(1); }, 420); } };
+    const over = L.order.every(x => filled(L.scores[x]) === ALL.length);
+    if(v!==null && wasEmpty && cid!=='yb' && over){ setTimeout(()=>{ S.just=null; if(S.live.yahtzee===L) finishGame('yahtzee'); }, 450); return; }
+    if(v!==null && wasEmpty && cid!=='yb' && L.order.length>1){ setTimeout(()=>{ S.just=null; yzMove(1, true); }, 420); } };
   wheel({who:pname(pid,L.names[pid]), whoId:pid, title, meta, opts, start: opts.findIndex(o=>o.v===start), onOk:o=>set(o.v), onClear:()=>set(null)});
 }
 
@@ -1474,13 +1490,87 @@ async function checkInbox(){
 }
 function rememberDeletedReceived(g){ if(g && g.src){ const l = lsGet(RDEL_KEY)||[]; if(!l.includes(g.id)){ l.push(g.id); lsSet(RDEL_KEY, l.slice(-2000)); } } }
 
+/* ================= fin de partie ================= */
+/* Enregistre la partie, l'efface du direct et ouvre l'écran des résultats.
+   On garde une copie de la partie en cours pour pouvoir corriger la dernière saisie juste après. */
+let finishing = false;
+async function finishGame(k){
+  if(finishing || !S.live[k]) return; finishing = true; S.confirm = null;
+  try{ const live0 = JSON.parse(JSON.stringify(S.live[k]));
+    const g = await saveFinished(k); const id = await store.addGame(g); await store.setLive(k, null);
+    S.yzUndo = null; S.result = {g:{...g, id}, from:'end', live:live0}; S.sgame = k; go('result');
+    if(!db){ const saved = S.games.find(x=>x.id===id); shareGame(saved); }
+    if(!db && S.drive.on && tokNow()) driveRun(driveBackupNow, false); }
+  catch(err){ toast("La partie n'a pas pu être enregistrée. Réessaie."); render(); }
+  finishing = false;
+}
+/* "Corriger la dernière saisie" : retire la partie de l'historique et rouvre le jeu juste avant la dernière manche. */
+async function reopenGame(){
+  const R = S.result; if(!R || !R.live) return; const g = R.g, k = kindOf(g);
+  if(S.live[k]){ toast('Une autre partie de '+GAMES[k].name+' est déjà en cours.'); return; }
+  const L = JSON.parse(JSON.stringify(R.live));
+  try{
+    if(!db){ const g0 = S.games.find(x=>x.id===g.id); shareDelete(g0); }
+    await store.removeGame(g.id);
+    if(k==='421' && (L.rounds||[]).length){ const r = L.rounds.pop(); S.r421 = {c:r.c, w:r.w, l:r.l, nen:!!r.nen}; }
+    if(k==='skyjo' && (L.rounds||[]).length){ const r = L.rounds.pop(); S.sky = {scores:{...r.scores}, closer:r.closer}; }
+    S.result = null; await store.setLive(k, L); go(k); toast('Partie rouverte : corrige puis valide.');
+  }catch(err){ toast("La partie n'a pas pu être rouverte. Réessaie."); }
+}
+/* "Rejouer avec les mêmes" : nouvelle partie, mêmes joueurs, même ordre. */
+async function replay(){
+  const R = S.result; if(!R) return; const g = R.g, k = kindOf(g);
+  if(S.live[k]){ toast('Une partie de '+GAMES[k].name+' est déjà en cours.'); S.result=null; go(k); return; }
+  const order = (g.results||[]).map(r=>r.id).filter(id=>S.players[id]);
+  if(order.length < GAMES[k].min){ toast('Il manque des joueurs pour relancer cette partie.'); return; }
+  const names = {}; order.forEach(id=>names[id]=S.players[id].name);
+  S.yzp=0; S.yzUndo=null; S.r421={c:'421',w:null,l:null,nen:false}; S.sky={scores:{},closer:null}; S.result=null;
+  await store.setLive(k, k==='yahtzee' ? {order, names, scores:{}, startedAt:Date.now()} : k==='skyjo' ? {order, names, rounds:[], startedAt:Date.now()} : {order, names, rounds:[], rules:{...S.rules421}, startedAt:Date.now()});
+  go(k);
+}
+function viewResult(){
+  const R = S.result; if(!R || !R.g) return viewHome();
+  const g = R.g, k = kindOf(g), res = [...(g.results||[])];
+  const nm = r => esc(pname(r.id, r.name));
+  let rows, head;
+  if(k==='421'){
+    res.sort((a,b)=>(a.rank||99)-(b.rank||99));
+    const loser = res.find(r=>r.id===g.loser);
+    head = loser ? `${nm(loser)} <em>perd</em>` : 'Partie <em>terminée</em>';
+    rows = res.map(r => { const lost = r.id===g.loser;
+      return {r, rk: lost ? '✕' : r.rank, meta: lost ? 'Dernier avec des jetons' : (r.rank===1?'1er sorti':r.rank+'e sorti'), big: r.n421 ? `${r.n421}<small>× 421</small>` : '', win: r.rank===1}; });
+  } else {
+    const asc = k==='skyjo'; res.sort((a,b)=> asc ? a.total-b.total : b.total-a.total);
+    const win = res.filter(r=>(g.winners||[]).includes(r.id));
+    head = `${win.map(nm).join(' & ')} <em>${win.length>1?'ex æquo':'gagne'}</em>`;
+    rows = res.map(r => { const rk = 1 + res.filter(x => asc ? x.total<r.total : x.total>r.total).length;
+      const meta = k==='yahtzee' ? [r.bonus?'prime gagnée':'', r.yz?'Yahtzee':'' , r.yb?plural(r.yb,'bonus'):''].filter(Boolean).join(' · ')
+        : [r.closed?'a fini '+plural(r.closed,'manche'):'', r.doubled?plural(r.doubled,'doublement'):''].filter(Boolean).join(' · ');
+      return {r, rk, meta, big:`${r.total}<small>pts</small>`, win:(g.winners||[]).includes(r.id)}; });
+  }
+  const when = new Date(g.date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  const extra = k==='yahtzee' ? '' : `${g.rounds||0} manches`;
+  const canFix = R.from==='end' && R.live && !S.live[k];
+  return `<button class="back" data-a="res-back">← ${R.from==='history'?'Parties':'Jeux'}</button>
+  <div class="label">${GAMES[k].name} · ${when}${extra?' · '+extra:''}</div>
+  <h1>${head}</h1>
+  <p class="sub">${R.from==='end' ? 'Partie enregistrée dans l\'historique.' : 'Classement final.'}</p>
+  <div class="glass" style="padding:8px 16px"><div class="list res-list">${rows.map(x=>`<div class="item${x.win?' win':''}"><span class="rk">${x.rk}</span>${av(x.r.id, pname(x.r.id,x.r.name))}<div class="grow"><div class="name">${nm(x.r)}</div>${x.meta?`<div class="meta">${x.meta}</div>`:''}</div>${x.big?`<div class="tok">${x.big}</div>`:''}</div>`).join('')}</div></div>
+  ${g.src ? `<p class="hint">Reçue de ${esc(g.src.name)}</p>` : ''}
+  <div class="stack" style="margin-top:18px">
+    <button class="btn block" data-a="res-again" id="res-again">Rejouer avec les mêmes</button>
+    <button class="btn ghost block" data-a="res-back" id="res-back">Retour</button>
+    ${canFix ? `<button class="link" style="align-self:center" data-a="res-fix" id="res-fix">Corriger la dernière saisie</button>` : ''}
+  </div>`;
+}
+
 /* ================= render & events ================= */
 function render(){
   if(!S.ready){ $app.innerHTML = `<div class="label">Carnet de jeux</div><h1>Un <em>instant</em>…</h1><p class="sub">Chargement des joueurs et des parties.</p>`; return; }
   if(S.locked){ $app.innerHTML = `<div class="label">Carnet de jeux</div><h1>Accès <em>réservé</em></h1><p class="sub">Ce carnet est personnel. Seul son propriétaire peut voir et noter les parties.</p>`; return; }
   const v = S.view;
-  $app.innerHTML = v==='players'?viewPlayers():v==='settings'?viewSettings():v==='friends'?viewFriends():v==='friend'?viewFriend():v==='account'?viewAccountPage():v==='backup'?viewBackup():v==='player'?viewPlayer():v==='stats'?viewStats():v==='history'?viewHistory():v==='yahtzee'?viewYahtzee():v==='421'?view421():v==='skyjo'?viewSky():viewHome();
-  const tabv = GAMES[v] ? 'home' : ['player','settings','account','backup','friends','friend'].includes(v) ? 'players' : v;
+  $app.innerHTML = v==='players'?viewPlayers():v==='settings'?viewSettings():v==='friends'?viewFriends():v==='friend'?viewFriend():v==='account'?viewAccountPage():v==='backup'?viewBackup():v==='player'?viewPlayer():v==='stats'?viewStats():v==='history'?viewHistory():v==='yahtzee'?viewYahtzee():v==='421'?view421():v==='skyjo'?viewSky():v==='result'?viewResult():viewHome();
+  const tabv = v==='result' ? (S.result && S.result.from==='history' ? 'history' : 'home') : GAMES[v] ? 'home' : ['player','settings','account','backup','friends','friend'].includes(v) ? 'players' : v;
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.v===tabv));
   const f = document.getElementById('addp');
   if(f) f.onsubmit = async e => { e.preventDefault(); const i=document.getElementById('pname'); const n=i.value.trim(); if(!n) return;
@@ -1510,9 +1600,10 @@ async function saveFinished(k){
 }
 
 $app.addEventListener('click', async e => {
-  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-me],[data-share],[data-frsend],td.cell'); if(!el) return;
+  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-me],[data-share],[data-frsend],[data-game],td.cell,tr.rt'); if(!el) return;
   if(el.matches('[data-friend],[data-fra],[data-frx],[data-frlink],[data-me],[data-share],[data-frsend],[data-a=fr-rm]') && await frClick(el)) return;
-  if(el.matches('td.cell')){ openCell(el.dataset.p, el.dataset.c); return; }
+  if(el.matches('td.cell,tr.rt')){ const tr = el.closest('tr'); if(tr){ tr.classList.add('tapped'); setTimeout(()=>tr.classList.remove('tapped'), 220); } openCell(el.dataset.p, el.dataset.c); return; }
+  if(el.dataset.game){ const g = S.games.find(x=>x.id===el.dataset.game); if(g){ S.result = {g, from:'history'}; go('result'); } return; }
   if(el.dataset.go){ go(el.dataset.go); return; }
   if(el.dataset.yzp){ const i=Number(el.dataset.yzp); if(i!==S.yzp){ S.yzAnim = i>S.yzp?'l':'r'; S.yzp=i; render(); } return; }
   if(el.dataset.player){ S.pid=el.dataset.player; go('player'); return; }
@@ -1532,7 +1623,7 @@ $app.addEventListener('click', async e => {
   if(a && a.startsWith('acct-')){ acctAction(a); return; }
   if(a && a.startsWith('drive-')){ driveAction(a, el); return; }
   if(a==='cancel'){ S.confirm=null; render(); }
-  else if(a==='start'){ const order=[...S.pick[k]]; const names={}; order.forEach(id=>names[id]=S.players[id].name);
+  else if(a==='start'){ S.yzUndo=null; const order=[...S.pick[k]]; const names={}; order.forEach(id=>names[id]=S.players[id].name);
     S.pick[k]=new Set(); S.yzp=0; S.r421={c:'421',w:null,l:null,nen:false}; S.sky={scores:{},closer:null};
     await store.setLive(k, k==='yahtzee' ? {order, names, scores:{}, startedAt:Date.now()} : k==='skyjo' ? {order, names, rounds:[], startedAt:Date.now()} : {order, names, rounds:[], rules:{...S.rules421}, startedAt:Date.now()}); }
   else if(a==='combo'){ const i = COMBOS.findIndex(c=>c.id===S.r421.c);
@@ -1543,10 +1634,18 @@ $app.addEventListener('click', async e => {
       opts, start: opts.findIndex(o=>o.v===(cur===undefined?0:cur)), onOk:o=>{ S.sky.scores={...S.sky.scores,[id]:o.v}; render(); },
       onClear:()=>{ const sc={...S.sky.scores}; delete sc[id]; S.sky.scores=sc; render(); }}); }
   else if(a==='sky-round'){ const L=S.live.skyjo, R=S.sky; if(!R.closer || !L.order.every(id=>R.scores[id]!==undefined)) return;
-    L.rounds=[...(L.rounds||[]), {scores:{...R.scores}, closer:R.closer}]; S.sky={scores:{},closer:null}; saveLiveSoon('skyjo'); window.scrollTo({top:0,behavior:'smooth'}); }
+    L.rounds=[...(L.rounds||[]), {scores:{...R.scores}, closer:R.closer}]; S.sky={scores:{},closer:null}; saveLiveSoon('skyjo');
+    if(runSky(L).done){ finishGame('skyjo'); return; } window.scrollTo({top:0,behavior:'smooth'}); }
   else if(a==='sky-undo'){ const L=S.live.skyjo; L.rounds=(L.rounds||[]).slice(0,-1); saveLiveSoon('skyjo'); }
   else if(a==='yz-prev'){ yzMove(-1); }
   else if(a==='yz-next'){ yzMove(1); }
+  else if(a==='yz-undo'){ const U=S.yzUndo, L=S.live.yahtzee; if(!U||!L) return; const sc={...(L.scores[U.pid]||{})};
+    if(U.prev===undefined||U.prev===null) delete sc[U.cid]; else sc[U.cid]=U.prev;
+    L.scores={...L.scores,[U.pid]:sc}; S.yzUndo=null; if(U.idx>=0 && U.idx!==S.yzp){ S.yzAnim = U.idx>S.yzp?'l':'r'; S.yzp=U.idx; }
+    S.just=U.pid+U.cid; saveLiveSoon('yahtzee'); setTimeout(()=>{S.just=null},400); toast('Saisie annulée'); }
+  else if(a==='res-again'){ replay(); }
+  else if(a==='res-back'){ const f = S.result && S.result.from; S.result=null; go(f==='history'?'history':'home'); }
+  else if(a==='res-fix'){ reopenGame(); }
   else if(a==='photo-rm'){ const i=document.getElementById('edit-name'); if(i) S.edit.name=i.value; S.edit.photo=null; render(); }
   else if(a==='export'){ exportData(); }
   else if(a==='edit'){ const p=S.players[S.pid]; S.edit={id:S.pid, name:p.name, color:p.color||'noir', photo:p.photo||null}; S.confirm=null; render(); }
@@ -1558,16 +1657,13 @@ $app.addEventListener('click', async e => {
   else if(a==='nen'){ S.r421.nen=!S.r421.nen; render(); }
   else if(a==='round'){ const R=S.r421, L=S.live['421']; if(!R.w||!R.l) return;
     L.rounds = [...(L.rounds||[]), {c:R.c, w:R.w, l:R.l, nen:R.nen}];
-    S.r421 = {c:'421', w:null, l:null, nen:false}; saveLiveSoon('421'); }
+    S.r421 = {c:'421', w:null, l:null, nen:false}; saveLiveSoon('421');
+    if(run421(L).done) finishGame('421'); }
   else if(a==='undo'){ const L=S.live['421']; L.rounds = (L.rounds||[]).slice(0,-1); saveLiveSoon('421'); }
   else if(a==='end'){ S.confirm='end'; render(); }
   else if(a==='abandon'){ S.confirm='abandon'; render(); }
   else if(a==='abandon-yes'){ S.confirm=null; await store.setLive(k, null); }
-  else if(a==='end-yes'){ S.confirm=null;
-    try{ const g = await saveFinished(k); await store.addGame(g); await store.setLive(k, null); toast('Partie enregistrée'); S.sgame=k; go('stats');
-      if(!db) shareGame(S.games[S.games.length-1]);
-      if(!db && S.drive.on && tokNow()) driveRun(driveBackupNow, false); }
-    catch(err){ toast("La partie n'a pas pu être enregistrée. Réessaie."); render(); } }
+  else if(a==='end-yes'){ S.confirm=null; finishGame(k); }
 });
 let sw0=null;
 $app.addEventListener('touchstart', e => { if(e.target.closest('#yzsheet') && e.touches.length===1) sw0={x:e.touches[0].clientX,y:e.touches[0].clientY,t:Date.now()}; else sw0=null; }, {passive:true});
@@ -1615,7 +1711,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '13';
+window.APP_VERSION = '14';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

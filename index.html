@@ -225,6 +225,17 @@ details.rules b{color:var(--ink);font-weight:600}
 .res-list .rk{font-family:var(--serif);font-size:24px;width:30px;text-align:center;flex:none}
 .res-list .item.win .name{font-weight:700}
 .gcard[data-game]{cursor:pointer}
+.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#e5484d;margin-right:7px;vertical-align:1px;animation:blink 1.6s ease-in-out infinite}
+@keyframes blink{50%{opacity:.25}}
+.wcard{appearance:none;border:0;font:inherit;color:inherit;width:100%;display:flex;align-items:center;gap:12px;padding:14px 14px 14px 18px;margin:0 0 14px;border-radius:22px;text-align:left;cursor:pointer}
+.wcard b{display:block;font-size:16px;margin:2px 0}
+.wsheet thead th{min-width:64px}
+.wsheet td.v{min-width:64px;font-size:17px}
+.wsheet td.v.empty{color:var(--mute)}
+.wsheet td.v.zero{color:var(--mute);text-decoration:line-through}
+.wsheet .me{background:color-mix(in srgb,var(--chip) 70%,transparent)}
+.wsheet thead th .hint{font-weight:500;text-transform:none;letter-spacing:0}
+.pchip.static{cursor:default}
 .field{display:flex;flex-direction:column;gap:8px;padding:14px 0;border-bottom:1px solid var(--line)}
 .field:last-of-type{border-bottom:0}
 .pickbtn{appearance:none;border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:18px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font:inherit;width:100%}
@@ -390,7 +401,7 @@ const store = {
   async updatePlayer(id, patch){ if(db){ await db.doc('players/'+id).update(patch); } else { S.players[id]={...S.players[id],...patch}; local.save(); render(); } },
   async removePlayer(id){ if(db){ await db.doc('players/'+id).delete(); } else { delete S.players[id]; local.save(); render(); } },
   async setLive(k, live){ S.live[k] = live; render();
-    if(db){ const ref = db.doc('live/'+GAMES[k].doc); if(live) await ref.set(live); else await ref.delete(); } else local.save(); },
+    if(db){ const ref = db.doc('live/'+GAMES[k].doc); if(live) await ref.set(live); else await ref.delete(); } else { local.save(); watchSoon(k); } },
   async addGame(g){ const id = uid();
     if(db){ await db.doc('games/'+id).set(g); } else { S.games.push({...g,id}); local.save(); render(); } return id; },
   async removeGame(id){ if(db){ await db.doc('games/'+id).delete(); } else { S.games = S.games.filter(g=>g.id!==id); local.save(); render(); } }
@@ -398,7 +409,7 @@ const store = {
 /* coalesced live writes, one per game */
 const sync = {};
 function saveLiveSoon(k){
-  render(); if(!db){ local.save(); return; }
+  render(); if(!db){ local.save(); watchSoon(k); return; }
   const s = sync[k] || (sync[k] = {timer:null,busy:false,pending:false});
   clearTimeout(s.timer); s.timer = setTimeout(()=>flushLive(k), 450);
 }
@@ -426,6 +437,7 @@ function viewHome(){
   const cards = [-2,5,12].map(v=>`<span class="card">${v}</span>`).join('');
   return `<div class="label">Carnet de jeux</div><h1>On joue <em>à quoi</em> ?</h1>
   <p class="sub">Choisis un jeu. Les parties en cours t'attendent là où tu les as laissées.</p>
+  ${S.watchList.map(d=>`<button class="wcard glass" data-watch="${d.id}"><span class="grow"><span class="label"><span class="live-dot"></span>En direct</span><b>${GAMES[d.k].name} de ${esc(d.ownerName)}</b><span class="hint">${watchWith(d)}</span></span><span class="pill">Suivre</span></button>`).join('')}
   ${!db && driveDue() ? `<div class="glass row" style="padding:12px 14px 12px 18px;margin:0 0 14px;justify-content:space-between;flex-wrap:nowrap;border-radius:22px"><span class="grow"><b>Sauvegarde Drive</b><span class="hint">Dernière : ${ago(S.drive.last)}</span></span><button class="btn" style="padding:10px 16px;font-size:14px" data-a="drive-now" ${S.drive.busy?'disabled':''}>${S.drive.busy?'…':'Sauvegarder'}</button></div>` : ''}
   <div class="games">
     <button class="gamecard glass" data-go="yahtzee" id="g-yahtzee">
@@ -998,7 +1010,7 @@ async function onUser(u){
   render();
   if(S.acct.creating) return;
   try{ const {m, fs} = FB; const snap = await m.getDoc(m.doc(fs, 'users', u.uid));
-    if(snap.exists()){ const d = snap.data(); setProfile({name:d.name, code:d.code}); frLoad(true).then(()=>{ checkInbox(); flushSoon(); }); pubSoon(); }
+    if(snap.exists()){ const d = snap.data(); setProfile({name:d.name, code:d.code}); frLoad(true).then(()=>{ checkInbox(); flushSoon(); watchSync(); watchCheck(true); }); pubSoon(); }
     else if(!S.acct.profile) S.acct.needsProfile = true;
   }catch(e){ /* hors ligne : on garde le profil en cache */ }
   render();
@@ -1114,6 +1126,7 @@ async function acctForm(id){
       const frs = await m.getDocs(m.query(m.collection(fs, 'friendships'), m.where('members', 'array-contains', user.uid)));
       frs.docs.forEach(x => b.delete(x.ref)); b.delete(m.doc(fs, 'results', user.uid));
       try{ const ib = await m.getDocs(m.collection(fs, 'inbox', user.uid, 'items')); ib.docs.forEach(x => b.delete(x.ref)); }catch(e){}
+      Object.keys(GAMES).forEach(k => b.delete(m.doc(fs, 'watch', user.uid+'_'+k)));
       if(A.profile && A.profile.code) b.delete(m.doc(fs, 'codes', A.profile.code)); b.delete(m.doc(fs, 'users', user.uid)); await b.commit();
       await m.deleteUser(user); A.mode = null; toast('Compte supprimé. Tes parties restent sur ce téléphone.'); }); }
 }
@@ -1358,6 +1371,9 @@ function viewMe(){
     <div class="field"><span class="label">Montrer mes résultats à mes amis</span>
       <div class="seg" style="margin:0"><button class="${shareOn()?'on':''}" data-share="1">Oui</button><button class="${shareOn()?'':'on'}" data-share="0">Non</button></div>
       <span class="hint">Pour chaque partie, tes amis voient le jeu, la date, si tu as gagné et tes points. Jamais avec qui tu as joué.</span></div>
+    <div class="field"><span class="label">Partie en cours visible par les joueurs</span>
+      <div class="seg" style="margin:0"><button class="${watchOn()?'on':''}" data-wshare="1">Oui</button><button class="${watchOn()?'':'on'}" data-wshare="0">Non</button></div>
+      <span class="hint">Les joueurs de la partie qui sont tes amis peuvent suivre les scores en direct sur leur téléphone, sans rien modifier. Personne d'autre.</span></div>
   </div>`;
 }
 function viewFriendsBlock(){
@@ -1430,6 +1446,8 @@ async function frClick(el){
     await store.updatePlayer(d.me, {uid:me}); syncFriendPlayers(); frSave(); toast('C’est noté'); pubSoon(); return true; }
   if(d.share){ const on = d.share==='1'; const st = lsGet(PUB_KEY) || {};
     lsSet(PUB_KEY, on ? {} : {off:true, has:true}); render(); pubSoon(); toast(on ? 'Tes amis verront tes résultats' : 'Tes résultats ne sont plus partagés'); return true; }
+  if(d.wshare){ const on = d.wshare==='1'; lsSet(WATCH_KEY, {...(lsGet(WATCH_KEY)||{}), off:!on}); render(); watchSync();
+    toast(on ? 'Les joueurs pourront suivre tes parties' : 'Tes parties en cours ne sont plus visibles'); return true; }
   if(d.a==='fr-rm'){ S.confirm = 'frrm'; render(); return true; }
   return false;
 }
@@ -1540,6 +1558,156 @@ async function checkInbox(){
 }
 function rememberDeletedReceived(g){ if(g && g.src){ const l = lsGet(RDEL_KEY)||[]; if(!l.includes(g.id)){ l.push(g.id); lsSet(RDEL_KEY, l.slice(-2000)); } } }
 
+/* ================= partie en direct (spectateurs) =================
+   watch/{uid}_{jeu} {owner, ownerName, k, viewers:[uid], uids:{pid:uid}, status:'live'|'done', state:JSON, result?:JSON, updatedAt}.
+   Seuls les joueurs de la partie reliés à un ami confirmé sont dans viewers : un ami qui ne joue pas ne voit rien.
+   Le téléphone qui saisit publie après chaque changement. Les spectateurs relisent toutes les 4 s (SDK lite, pas de temps réel).
+   Fin : status 'done' + résultat, effacé 10 min plus tard. Abandon ou interrupteur coupé : effacé tout de suite.
+   'yz-watch' (local) : {off, docs:{jeu:{at, done}}} = ce que ce téléphone a publié. */
+const WATCH_KEY = 'yz-watch', WATCH_POLL = 4000, WATCH_KEEP = 10*60000, WATCH_MAX_AGE = 3*3600000;
+const watchOn = () => !(lsGet(WATCH_KEY)||{}).off;
+const watchMine = () => (lsGet(WATCH_KEY)||{}).docs || {};
+const watchSetMine = docs => lsSet(WATCH_KEY, {...(lsGet(WATCH_KEY)||{}), docs});
+S.watchList = []; S.watchSeen = new Set(); S.watch = null;
+const wTimers = {}; let wPollT = null, wCheckAt = 0;
+const tsMs = t => t && t.toMillis ? t.toMillis() : 0;
+const colHex = cid => { const c = COLORS.find(x=>x.id===cid); return c && c.c ? c.c : null; };
+const wav = (cid, name) => { const c = colHex(cid); return `<div class="avatar" style="${c?`background:${c};color:${inkOn(c)}`:''}">${initial(name)}</div>`; };
+const wdot = cid => `<span class="pdot" style="background:${colHex(cid)||'currentColor'}"></span>`;
+const andList = a => a.length>1 ? a.slice(0,-1).join(', ')+' et '+a[a.length-1] : (a[0]||'');
+function watchSoon(k){ if(db) return; clearTimeout(wTimers[k]); wTimers[k] = setTimeout(()=>watchPush(k).catch(()=>{}), 700); }
+function watchSync(){ if(db) return; Object.keys(GAMES).forEach(k => { if(S.live[k] || watchMine()[k]) watchPush(k).catch(()=>{}); }); }
+function watchMeta(L){ const me = myUid(), ok = friendUids(), uids = {}, cols = {};
+  L.order.forEach(p => { const pl = S.players[p]||{}; if(pl.uid) uids[p] = pl.uid; if(pl.color) cols[p] = pl.color; });
+  return {uids, cols, viewers: [...new Set(Object.values(uids).filter(u => u!==me && ok.has(u)))]}; }
+const watchDoc = (k, L, meta, extra) => ({owner:myUid(), ownerName:(S.acct.profile||{}).name||'Un ami', k, viewers:meta.viewers, uids:meta.uids,
+  state:JSON.stringify({...L, cols:meta.cols}), ...extra});
+async function watchPush(k){
+  if(db || !online() || !navigator.onLine) return;
+  const me = myUid(), L = S.live[k], id = me+'_'+k;
+  const meta = L ? watchMeta(L) : {viewers:[]};
+  if(!L || !meta.viewers.length || !watchOn()){
+    const d = watchMine()[k]; if(!d) return;
+    if(!L && d.done && Date.now()-d.at < WATCH_KEEP && watchOn()) return; // le résultat reste visible quelques minutes
+    const {m, fs} = await fb(); await m.deleteDoc(m.doc(fs, 'watch', id));
+    const n = watchMine(); delete n[k]; watchSetMine(n); return; }
+  const {m, fs} = await fb();
+  await m.setDoc(m.doc(fs, 'watch', id), watchDoc(k, L, meta, {status:'live', updatedAt:m.serverTimestamp()}));
+  watchSetMine({...watchMine(), [k]:{at:Date.now()}});
+}
+async function watchDone(k, L, g){
+  if(db || !online() || !L) return;
+  const meta = watchMeta(L); if(!meta.viewers.length || !watchOn()) return;
+  watchSetMine({...watchMine(), [k]:{at:Date.now(), done:true}}); clearTimeout(wTimers[k]);
+  try{ const {m, fs} = await fb();
+    await m.setDoc(m.doc(fs, 'watch', myUid()+'_'+k), watchDoc(k, L, meta, {status:'done', result:JSON.stringify({...g, cols:meta.cols}), updatedAt:m.serverTimestamp()}));
+  }catch(e){}
+}
+const watchWith = d => { const me = myUid(); return 'Avec ' + andList(d.st.order.filter(p => (d.uids||{})[p]!==me).map(p => esc(d.st.names[p]||'Joueur'))); };
+async function watchCheck(force){
+  if(db || !online() || !navigator.onLine || document.hidden) return;
+  if(!force && Date.now()-wCheckAt < 10000) return; wCheckAt = Date.now();
+  try{ const {m, fs} = await fb(); const me = myUid(), now = Date.now();
+    const snap = await m.getDocs(m.query(m.collection(fs, 'watch'), m.where('viewers', 'array-contains', me)));
+    const before = JSON.stringify(S.watchList.map(d=>d.id+d.st.startedAt));
+    S.watchList = snap.docs.map(x => ({id:x.id, ...x.data()}))
+      .filter(d => d.status==='live' && d.owner!==me && now - tsMs(d.updatedAt) < WATCH_MAX_AGE)
+      .map(d => { let st = null; try{ st = JSON.parse(d.state); }catch(e){} return {...d, st}; }).filter(d => d.st && d.st.order);
+    if(S.view==='home' && JSON.stringify(S.watchList.map(d=>d.id+d.st.startedAt))!==before) render();
+    const fresh = S.watchList.find(d => !S.watchSeen.has(d.id+':'+d.st.startedAt));
+    if(fresh && !$ov.innerHTML && S.view!=='watch') watchInvite(fresh);
+  }catch(e){ /* hors ligne ou règles pas encore publiées */ }
+}
+function watchInvite(d){
+  S.watchList.forEach(x => S.watchSeen.add(x.id+':'+x.st.startedAt));
+  $ov.innerHTML = `<div class="scrim" data-close></div><div class="panel glass" role="dialog" aria-label="Partie en cours">
+    <div class="label"><span class="live-dot"></span>En direct</div><h3>${esc(d.ownerName)} joue au ${GAMES[d.k].name} avec toi</h3>
+    <div class="meta">${watchWith(d)}. Tu peux suivre les scores sur ton téléphone, sans rien modifier.</div>
+    <div class="foot"><button class="btn ghost" data-close>Plus tard</button><button class="btn" data-wgo>Suivre la partie</button></div></div>`;
+  $ov.onclick = e => { if(e.target.closest('[data-wgo]')){ closePanel(); watchOpen(d.id); } else if(e.target.closest('[data-close]')) closePanel(); };
+}
+function watchOpen(id){
+  const d = S.watchList.find(x=>x.id===id); S.watchSeen.add(id+':'+(d?d.st.startedAt:''));
+  S.watch = {id, d:d||null, gone:false, err:false}; go('watch'); watchPoll().then(watchLoop);
+}
+function watchLoop(){ clearTimeout(wPollT); if(S.view!=='watch' || !S.watch) return;
+  wPollT = setTimeout(async () => { if(!document.hidden) await watchPoll(); watchLoop(); }, WATCH_POLL); }
+async function watchPoll(){
+  const W = S.watch; if(!W) return;
+  try{ const {m, fs} = await fb(); const s = await m.getDoc(m.doc(fs, 'watch', W.id));
+    if(S.watch!==W || S.view!=='watch') return;
+    if(!s.exists()){ W.gone = true; W.err = false; render(); return; }
+    const d = s.data();
+    if(d.status==='done' && d.result){ let g = null; try{ g = JSON.parse(d.result); }catch(e){}
+      if(g){ S.watch = null; clearTimeout(wPollT); S.watchList = S.watchList.filter(x=>x.id!==W.id);
+        S.result = {g, from:'watch', owner:d.ownerName}; go('result'); return; } }
+    let st = null; try{ st = JSON.parse(d.state); }catch(e){}
+    if(!st || !st.order){ W.gone = true; render(); return; }
+    W.d = {...d, st}; W.gone = false; W.err = false; render();
+  }catch(e){ if(S.watch===W){ W.err = true; render(); } }
+}
+function viewWatch(){
+  const W = S.watch; if(!W) return viewHome();
+  const back = `<button class="back" data-a="w-back">← Jeux</button>`;
+  if(W.gone) return back + `<div class="label">En direct</div><h1>Partie <em>arrêtée</em></h1><p class="sub">Cette partie n'est plus en ligne : elle a été abandonnée, ou elle est finie depuis un moment. Si tu y as joué, elle arrivera dans ton historique.</p>`;
+  if(!W.d) return back + `<div class="label">En direct</div><h1>Un <em>instant</em>…</h1><p class="sub">${W.err ? 'Pas de connexion. On réessaie…' : 'Chargement de la partie.'}</p>`;
+  const d = W.d, L = d.st, me = myUid(), cols = L.cols||{};
+  const P = {mine: p => (d.uids||{})[p]===me, nm: p => esc(L.names[p]||'Joueur'), av: p => wav(cols[p], L.names[p]), dot: p => wdot(cols[p])};
+  const age = Date.now() - tsMs(d.updatedAt);
+  return `${back}<div class="label"><span class="live-dot"></span>En direct · partie de ${esc(d.ownerName)}</div>
+  <h1>Le <em>${GAMES[d.k].name}</em></h1>
+  <p class="sub">${W.err ? 'Connexion perdue, on réessaie…' : age > 120000 ? `Dernier score noté il y a ${Math.round(age/60000)} min.` : 'Les scores se mettent à jour tout seuls.'}</p>
+  ${d.k==='yahtzee' ? watchYz(L, P) : d.k==='skyjo' ? watchSky(L, P) : watch421(L, P)}
+  <p class="note">Tu regardes la partie : seul ${esc(d.ownerName)} peut noter les scores.</p>`;
+}
+function watchYz(L, P){
+  const ids = L.order, T = ids.map(p => totals(L.scores[p]||{})), f = ids.map(p => filled(L.scores[p]));
+  const turn = ids.length>1 && Math.min(...f) < ALL.length ? f.indexOf(Math.min(...f)) : -1;
+  const me = p => P.mine(p) ? ' me' : '';
+  const v = (p, cid) => { const x = (L.scores[p]||{})[cid]; const has = x!==undefined && x!==null;
+    return `<td class="v${me(p)}${has ? (x===0 && cid!=='yb' ? ' zero' : '') : ' empty'}">${has ? (cid==='yb' ? (x?'+'+x*100:'0') : x) : '–'}</td>`; };
+  const row = c => `<tr><td class="cat">${c.label}</td>${ids.map(p=>v(p, c.id)).join('')}</tr>`;
+  const sum = (label, key, cls='sum') => `<tr class="${cls}"><td class="cat">${label}</td>${ids.map((p,i)=>`<td class="${me(p).trim()}">${T[i][key]}</td>`).join('')}</tr>`;
+  const sorted = ids.map((p,i)=>({p, t:T[i].total})).sort((a,b)=>b.t-a.t);
+  return `${ids.length>1 ? `<div class="pstrip">${sorted.map(x=>`<span class="pchip static">${P.dot(x.p)}${P.nm(x.p)} <b>${x.t}</b></span>`).join('')}</div>` : ''}
+  <div class="sheet-wrap glass dense"><table class="sheet wsheet">
+    <thead><tr><th class="cat"></th>${ids.map((p,i)=>`<th class="${me(p).trim()}">${P.av(p)}${P.nm(p)}${i===turn?`<div class="hint">${P.mine(p)?'ton tour':'son tour'}</div>`:''}</th>`).join('')}</tr></thead>
+    <tbody>
+      <tr class="section"><td class="cat label">Section haute</td>${ids.map(()=>'<td></td>').join('')}</tr>
+      ${UPPER.map(row).join('')}
+      ${sum('Sous-total','up')}${sum('Prime','bonus')}
+      <tr class="section"><td class="cat label">Section basse</td>${ids.map(()=>'<td></td>').join('')}</tr>
+      ${LOWER.map(row).join('')}
+      <tr><td class="cat">Yahtzee bonus</td>${ids.map(p=>v(p,'yb')).join('')}</tr>
+      ${sum('Section basse','low')}${sum('Total','total','total')}
+    </tbody></table></div>`;
+}
+function watch421(L, P){
+  const st = run421(L), RU = rulesOf(L);
+  const rank = id => { const i = st.out.indexOf(id); return i<0 ? '' : (i===0?'1er':(i+1)+'e')+' sorti'; };
+  const players = L.order.map(id => { const out = st.out.includes(id), t = st.tokens[id];
+    return `<div class="item${out?' out':''}">${P.av(id)}<div class="grow"><div class="name">${P.nm(id)}${P.mine(id)?' <span class="hint">· toi</span>':''}</div><div class="meta">${out ? rank(id) : ''}</div>
+      <div class="bar"><i style="width:${Math.round(t/POT*100)}%"></i></div></div><div class="tok">${t}<small>jeton${t>1?'s':''}</small></div></div>`; }).join('');
+  const last = st.log.slice(-5).reverse();
+  return `<p class="sub" style="margin-top:-6px">${st.phase==='charge' ? `Charge · ${plural(st.pot,'jeton')} au pot` : 'Décharge · pot vide'}</p>
+  <div class="glass" style="padding:8px 16px"><div class="list">${players}</div></div>
+  ${st.log.length ? `<h2>Manches</h2><div class="glass" style="padding:14px 18px"><div class="log">${last.map((r,i)=>`<div><b>${st.log.length-i}.</b> ${combo(r.c,RU).t}${r.nen?' + nénette':''} · ${r.phase==='charge' ? `${P.nm(r.l)} prend ${r.a}` : `${P.nm(r.w)} donne ${r.a} à ${P.nm(r.l)}`}</div>`).join('')}</div></div>` : ''}`;
+}
+function watchSky(L, P){
+  const st = runSky(L), order = [...L.order].sort((a,b)=>st.tot[a]-st.tot[b]);
+  const maxT = Math.max(SKY_END, ...L.order.map(id=>st.tot[id]));
+  const standings = order.map((id,i) => { const t = st.tot[id];
+    return `<div class="item">${P.av(id)}<div class="grow"><div class="name">${P.nm(id)}${P.mine(id)?' <span class="hint">· toi</span>':''}</div>
+      <div class="meta">${i===0 && st.log.length ? 'En tête' : t>=SKY_END-20 ? 'Reste '+Math.max(0,SKY_END-t)+' avant '+SKY_END : ''}</div>
+      <div class="bar"><i style="width:${Math.max(0,Math.round(t/maxT*100))}%"></i></div></div><div class="tok">${t}<small>pts</small></div></div>`; }).join('');
+  const rows = st.log.map((r,i)=>`<tr><td style="text-align:left" class="meta">M${i+1}</td>${L.order.map(id=>`<td>${r.fin[id]}${r.closer===id?(r.dbl?' <span class="meta">×2</span>':' <span class="meta">•</span>'):''}</td>`).join('')}</tr>`).reverse().join('');
+  return `<p class="sub" style="margin-top:-6px">Manche ${st.log.length+1} · le plus petit total gagne.</p>
+  <div class="glass" style="padding:8px 16px"><div class="list">${standings}</div></div>
+  ${st.log.length ? `<h2>Manches</h2><div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats">
+    <thead><tr><th></th>${L.order.map(id=>`<th>${P.dot(id)}${P.nm(id)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+    <p class="hint" style="margin:8px 0">• a fini la manche · ×2 points doublés</p></div>` : ''}`;
+}
+
 /* ================= fin de partie ================= */
 /* Enregistre la partie, l'efface du direct et ouvre l'écran des résultats.
    On garde une copie de la partie en cours pour pouvoir corriger la dernière saisie juste après. */
@@ -1547,7 +1715,7 @@ let finishing = false;
 async function finishGame(k){
   if(finishing || !S.live[k]) return; finishing = true; S.confirm = null;
   try{ const live0 = JSON.parse(JSON.stringify(S.live[k]));
-    const g = await saveFinished(k); const id = await store.addGame(g); await store.setLive(k, null);
+    const g = await saveFinished(k); const id = await store.addGame(g); watchDone(k, live0, {...g, id}); await store.setLive(k, null);
     S.yzUndo = null; S.result = {g:{...g, id}, from:'end', live:live0}; S.sgame = k; go('result');
     if(!db){ const saved = S.games.find(x=>x.id===id); shareGame(saved); }
     if(!db && S.drive.on && tokNow()) driveRun(driveBackupNow, false); }
@@ -1623,7 +1791,7 @@ function viewResult(){
   } else {
     const asc = k==='skyjo'; res.sort((a,b)=> asc ? a.total-b.total : b.total-a.total);
     const win = res.filter(r=>(g.winners||[]).includes(r.id));
-    head = `${win.map(nm).join(' & ')} <em>${win.length>1?'ex æquo':'gagne'}</em>`;
+    head = `${andList(win.map(nm))} <em>${win.length>1?'ex æquo':'gagne'}</em>`;
     rows = res.map(r => { const rk = 1 + res.filter(x => asc ? x.total<r.total : x.total>r.total).length;
       const meta = k==='yahtzee' ? [r.bonus?'prime gagnée':'', r.yz?'Yahtzee':'' , r.yb?plural(r.yb,'bonus'):''].filter(Boolean).join(' · ')
         : [r.closed?'a fini '+plural(r.closed,'manche'):'', r.doubled?plural(r.doubled,'doublement'):''].filter(Boolean).join(' · ');
@@ -1632,15 +1800,16 @@ function viewResult(){
   const when = new Date(g.date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
   const extra = k==='yahtzee' ? '' : `${g.rounds||0} manches`;
   const canFix = R.from==='end' && R.live && !S.live[k];
+  const spect = R.from==='watch';
   return `<button class="back" data-a="res-back">← ${R.from==='history'?'Parties':'Jeux'}</button>
   <div class="label">${GAMES[k].name} · ${when}${extra?' · '+extra:''}</div>
   <h1>${head}</h1>
-  <p class="sub">${R.from==='end' ? 'Partie enregistrée dans l\'historique.' : 'Classement final.'}</p>
-  <div class="glass" style="padding:8px 16px"><div class="list res-list">${rows.map(x=>`<div class="item${x.win?' win':''}"><span class="rk">${x.rk}</span>${av(x.r.id, pname(x.r.id,x.r.name))}<div class="grow"><div class="name">${nm(x.r)}</div>${x.meta?`<div class="meta">${x.meta}</div>`:''}</div>${x.big?`<div class="tok">${x.big}</div>`:''}</div>`).join('')}</div></div>
+  <p class="sub">${R.from==='end' ? 'Partie enregistrée dans l\'historique.' : spect ? `Partie de ${esc(R.owner||'ton ami')} terminée.${myPid() ? ' Elle va arriver dans ton historique.' : ''}` : 'Classement final.'}</p>
+  <div class="glass" style="padding:8px 16px"><div class="list res-list">${rows.map(x=>`<div class="item${x.win?' win':''}"><span class="rk">${x.rk}</span>${spect ? wav((g.cols||{})[x.r.id], x.r.name) : av(x.r.id, pname(x.r.id,x.r.name))}<div class="grow"><div class="name">${nm(x.r)}</div>${x.meta?`<div class="meta">${x.meta}</div>`:''}</div>${x.big?`<div class="tok">${x.big}</div>`:''}</div>`).join('')}</div></div>
   ${g.src ? `<p class="hint">Reçue de ${esc(g.src.name)}</p>` : ''}
   ${viewSheet(g)}
   <div class="stack" style="margin-top:18px">
-    <button class="btn block" data-a="res-again" id="res-again">Rejouer avec les mêmes</button>
+    ${spect ? '' : `<button class="btn block" data-a="res-again" id="res-again">Rejouer avec les mêmes</button>`}
     <button class="btn ghost block" data-a="res-back" id="res-back">Retour</button>
     ${canFix ? `<button class="link" style="align-self:center" data-a="res-fix" id="res-fix">Corriger la dernière saisie</button>` : ''}
   </div>`;
@@ -1651,8 +1820,8 @@ function render(){
   if(!S.ready){ $app.innerHTML = `<div class="label">Carnet de jeux</div><h1>Un <em>instant</em>…</h1><p class="sub">Chargement des joueurs et des parties.</p>`; return; }
   if(S.locked){ $app.innerHTML = `<div class="label">Carnet de jeux</div><h1>Accès <em>réservé</em></h1><p class="sub">Ce carnet est personnel. Seul son propriétaire peut voir et noter les parties.</p>`; return; }
   const v = S.view;
-  $app.innerHTML = v==='players'?viewPlayers():v==='settings'?viewSettings():v==='friends'?viewFriends():v==='friend'?viewFriend():v==='account'?viewAccountPage():v==='backup'?viewBackup():v==='player'?viewPlayer():v==='stats'?viewStats():v==='history'?viewHistory():v==='yahtzee'?viewYahtzee():v==='421'?view421():v==='skyjo'?viewSky():v==='result'?viewResult():viewHome();
-  const tabv = v==='result' ? (S.result && S.result.from==='history' ? 'history' : 'home') : GAMES[v] ? 'home' : ['player','settings','account','backup','friends','friend'].includes(v) ? 'players' : v;
+  $app.innerHTML = v==='players'?viewPlayers():v==='settings'?viewSettings():v==='friends'?viewFriends():v==='friend'?viewFriend():v==='account'?viewAccountPage():v==='backup'?viewBackup():v==='player'?viewPlayer():v==='stats'?viewStats():v==='history'?viewHistory():v==='yahtzee'?viewYahtzee():v==='421'?view421():v==='skyjo'?viewSky():v==='result'?viewResult():v==='watch'?viewWatch():viewHome();
+  const tabv = v==='watch' ? 'home' : v==='result' ? (S.result && S.result.from==='history' ? 'history' : 'home') : GAMES[v] ? 'home' : ['player','settings','account','backup','friends','friend'].includes(v) ? 'players' : v;
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.v===tabv));
   const f = document.getElementById('addp');
   if(f) f.onsubmit = async e => { e.preventDefault(); const i=document.getElementById('pname'); const n=i.value.trim(); if(!n) return;
@@ -1662,7 +1831,7 @@ function render(){
   { const g = document.getElementById('fr-form'); if(g) g.onsubmit = e => { e.preventDefault(); frAdd(); }; }
   ['acct-form','acct-rename-form','acct-fix-form','acct-del-form'].forEach(id => { const g = document.getElementById(id); if(g) g.onsubmit = e => { e.preventDefault(); acctForm(id); }; });
 }
-function go(v){ S.view=v; S.confirm=null; S.edit=null; if(v==='friends'){ S.fr.err=S.fr.info=null; } render(); window.scrollTo(0,0); if(['players','friends','friend'].includes(v)) frLoad(v!=='players'); if(['players','history'].includes(v)) checkInbox(); }
+function go(v){ S.view=v; S.confirm=null; S.edit=null; if(v==='friends'){ S.fr.err=S.fr.info=null; } render(); window.scrollTo(0,0); if(['players','friends','friend'].includes(v)) frLoad(v!=='players'); if(['players','history'].includes(v)) checkInbox(); if(v==='home') watchCheck(); }
 document.getElementById('tabs').onclick = e => { const t=e.target.closest('.tab'); if(t) go(t.dataset.v); };
 
 async function saveFinished(k){
@@ -1683,9 +1852,10 @@ async function saveFinished(k){
 }
 
 $app.addEventListener('click', async e => {
-  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-me],[data-share],[data-frsend],[data-game],td.cell,tr.rt'); if(!el) return;
-  if(el.matches('[data-friend],[data-fra],[data-frx],[data-frlink],[data-me],[data-share],[data-frsend],[data-a=fr-rm]') && await frClick(el)) return;
+  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-me],[data-share],[data-frsend],[data-wshare],[data-watch],[data-game],td.cell,tr.rt'); if(!el) return;
+  if(el.matches('[data-friend],[data-fra],[data-frx],[data-frlink],[data-me],[data-share],[data-wshare],[data-frsend],[data-a=fr-rm]') && await frClick(el)) return;
   if(el.matches('td.cell,tr.rt')){ const tr = el.closest('tr'); if(tr){ tr.classList.add('tapped'); setTimeout(()=>tr.classList.remove('tapped'), 220); } openCell(el.dataset.p, el.dataset.c); return; }
+  if(el.dataset.watch){ watchOpen(el.dataset.watch); return; }
   if(el.dataset.game){ const g = S.games.find(x=>x.id===el.dataset.game); if(g){ S.result = {g, from:'history'}; go('result'); } return; }
   if(el.dataset.go){ go(el.dataset.go); return; }
   if(el.dataset.yzp){ const i=Number(el.dataset.yzp); if(i!==S.yzp){ S.yzAnim = i>S.yzp?'l':'r'; S.yzp=i; render(); } return; }
@@ -1726,8 +1896,9 @@ $app.addEventListener('click', async e => {
     if(U.prev===undefined||U.prev===null) delete sc[U.cid]; else sc[U.cid]=U.prev;
     L.scores={...L.scores,[U.pid]:sc}; S.yzUndo=null; if(U.idx>=0 && U.idx!==S.yzp){ S.yzAnim = U.idx>S.yzp?'l':'r'; S.yzp=U.idx; }
     S.just=U.pid+U.cid; saveLiveSoon('yahtzee'); setTimeout(()=>{S.just=null},400); toast('Saisie annulée'); }
+  else if(a==='w-back'){ S.watch=null; clearTimeout(wPollT); go('home'); }
   else if(a==='res-again'){ replay(); }
-  else if(a==='res-back'){ const f = S.result && S.result.from; S.result=null; go(f==='history'?'history':'home'); }
+  else if(a==='res-back'){ const f = S.result && S.result.from; S.result=null; go(f==='history'?'history':'home'); if(f==='watch') checkInbox(); }
   else if(a==='res-fix'){ reopenGame(); }
   else if(a==='photo-rm'){ const i=document.getElementById('edit-name'); if(i) S.edit.name=i.value; S.edit.photo=null; render(); }
   else if(a==='export'){ exportData(); }
@@ -1776,8 +1947,9 @@ async function boot(){
   if(!d){ local.load(); S.ready=true; render(); try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
     if(S.acct.cache) fb().catch(()=>{});
     if(S.drive.on){ loadGis().catch(()=>{}); driveAuto(); }
-    document.addEventListener('visibilitychange', () => { if(!document.hidden){ driveAuto(); checkInbox(); flushSoon(); } });
-    addEventListener('online', () => { checkInbox(); flushSoon(); pubSoon(); });
+    document.addEventListener('visibilitychange', () => { if(!document.hidden){ driveAuto(); checkInbox(); flushSoon(); watchSync(); if(S.view==='watch') watchPoll(); else watchCheck(true); } });
+    addEventListener('online', () => { checkInbox(); flushSoon(); pubSoon(); watchSync(); watchCheck(true); });
+    setInterval(() => { if(!document.hidden && S.view!=='watch') watchCheck(true); }, 30000);
     return; }
   db = d;
   let got = 0; const mark = () => { if(++got>=4) S.ready=true; if(!$ov.innerHTML) render(); };
@@ -1794,7 +1966,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '16';
+window.APP_VERSION = '17';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

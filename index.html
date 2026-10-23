@@ -120,6 +120,14 @@ nav.tabs{position:fixed;z-index:20;left:50%;transform:translateX(-50%);bottom:ca
 .award.hero .label,.award.hero .meta{color:color-mix(in srgb,var(--inv-ink) 65%,transparent)}
 .award.hero .big{font-size:44px}
 .tbl-wrap{overflow-x:auto}
+.chips.sm{gap:6px;margin:-6px 0 18px}
+.chips.sm .chip{padding:7px 12px;font-size:13px}
+.lg-step{display:flex;align-items:center;gap:12px;padding:9px 0;font-size:14px;line-height:1.35}
+.lg-step.done{color:var(--mute)}
+.lg-dot{width:24px;height:24px;flex:none;border-radius:50%;display:grid;place-items:center;font:700 12px var(--sans);border:1.5px solid var(--ink);color:var(--ink)}
+.lg-step.done .lg-dot{background:var(--inv-bg);border-color:var(--inv-bg);color:var(--inv-ink)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.duel-rk{font-family:var(--serif);font-size:20px;width:18px;flex:none;color:var(--mute)}
 .chip:disabled{opacity:.45;cursor:default}
 .sheet-h th,.sheet-h td{padding:9px 8px}
 .sheet-h.wide td:first-child,.sheet-h.wide th:first-child{position:sticky;left:0;background:var(--cat-bg);z-index:1}
@@ -668,9 +676,9 @@ function viewSky(){
   ${endControls('skyjo', st.done, `Enregistrer la victoire de ${st.winners.map(nm).join(' & ')} dans l'historique ?`)}
   ${rulesSky(false)}`;
 }
-function statsS(id){
+function statsS(id, pool){
   const st = {played:0,wins:0,sum:0,best:null,closed:0,doubled:0,bestRound:null};
-  S.games.filter(g=>kindOf(g)==='skyjo').forEach(g => { const r=(g.results||[]).find(r=>r.id===id); if(!r) return;
+  (pool||S.games).filter(g=>kindOf(g)==='skyjo').forEach(g => { const r=(g.results||[]).find(r=>r.id===id); if(!r) return;
     st.played++; st.sum += r.total; st.best = st.best===null ? r.total : Math.min(st.best, r.total);
     st.closed += r.closed||0; st.doubled += r.doubled||0;
     if(r.bestRound!==null && r.bestRound!==undefined) st.bestRound = st.bestRound===null ? r.bestRound : Math.min(st.bestRound, r.bestRound);
@@ -678,8 +686,8 @@ function statsS(id){
   st.avg = st.played ? Math.round(st.sum/st.played) : 0; st.rate = st.played ? st.wins/st.played : 0;
   return st;
 }
-function statsSkyView(top, ids, nameOf){
-  const rows = [...ids].map(id => ({id, name:nameOf(id), ...statsS(id)}));
+function statsSkyView(top, ids, nameOf, pool, extra){
+  const rows = [...ids].map(id => ({id, name:nameOf(id), ...statsS(id, pool)}));
   rows.sort((a,b)=> b.wins-a.wins || b.rate-a.rate || a.avg-b.avg);
   const lo = f => [...rows].filter(r=>r[f]!==null).sort((a,b)=>a[f]-b[f])[0];
   const hi = f => [...rows].sort((a,b)=>b[f]-a[f])[0];
@@ -687,9 +695,9 @@ function statsSkyView(top, ids, nameOf){
   return top + `<div class="podium">
     ${award('Le meilleur', w, plural(w.wins,'victoire'), Math.round(w.rate*100)+' % de victoires', true)}
     ${award('Meilleure moyenne', avg, avg.avg+' pts', 'en fin de partie')}
-    ${award('Record', rec, rec.best+' pts', 'total le plus bas')}
+    ${rec ? award('Record', rec, rec.best+' pts', 'total le plus bas') : ''}
     ${award('Le plus assidu', most, plural(most.played,'partie'), '')}
-    ${award('Plus belle manche', br, br.bestRound+' pts', 'en une manche')}
+    ${br ? award('Plus belle manche', br, br.bestRound+' pts', 'en une manche') : ''}
     ${award('Finit le plus vite', cl, cl.closed+' manches', 'terminées en premier')}
     ${db2.doubled ? `<div style="grid-column:1/-1">${award('Trop gourmand', db2, db2.doubled+' fois doublé', 'a fini sans avoir le plus petit score')}</div>`:''}
   </div>
@@ -702,9 +710,9 @@ function statsSkyView(top, ids, nameOf){
 }
 
 /* ================= players ================= */
-function statsY(id){
+function statsY(id, pool){
   const st = {played:0,wins:0,points:0,best:0,yahtzees:0,bonuses:0};
-  S.games.filter(g=>kindOf(g)==='yahtzee').forEach(g => { const r = (g.results||[]).find(r=>r.id===id); if(!r) return;
+  (pool||S.games).filter(g=>kindOf(g)==='yahtzee').forEach(g => { const r = (g.results||[]).find(r=>r.id===id); if(!r) return;
     st.played++; st.points += r.total; st.best = Math.max(st.best, r.total);
     st.yahtzees += (r.yz===50?1:0) + (r.yb||0); st.bonuses += r.bonus?1:0;
     if((g.winners||[]).includes(id)) st.wins++; });
@@ -712,9 +720,9 @@ function statsY(id){
   st.rate = st.played ? st.wins/st.played : 0;
   return st;
 }
-function stats4(id){
+function stats4(id, pool){
   const st = {played:0,losses:0,first:0,n421:0};
-  S.games.filter(g=>kindOf(g)==='421').forEach(g => { const r = (g.results||[]).find(r=>r.id===id); if(!r) return;
+  (pool||S.games).filter(g=>kindOf(g)==='421').forEach(g => { const r = (g.results||[]).find(r=>r.id===id); if(!r) return;
     st.played++; if(g.loser===id) st.losses++; if(g.firstOut===id) st.first++; st.n421 += r.n421||0; });
   st.lossRate = st.played ? st.losses/st.played : 0;
   return st;
@@ -723,7 +731,7 @@ const tagOf = p => !p.uid || db ? '' : p.uid===myUid() ? '<b style="color:var(--
 function viewPlayers(){
   const ps = sortedPlayers(); const king = bestPlayer();
   return `<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div><div class="label">${plural(ps.length,'joueur')}</div><h1>Les <em>joueurs</em></h1></div>
-    ${!db ? `<span class="crowned" style="margin-top:6px"><button class="navb" data-go="settings" id="settings-btn" aria-label="Réglages : compte et sauvegarde">${GEAR}</button>${driveDue()?'<span class="obadge" style="min-width:12px;height:12px;padding:0;right:0;bottom:auto;top:0" aria-hidden="true"></span>':''}</span>` : ''}</div>
+    ${!db ? `<span class="crowned" style="margin-top:6px"><button class="navb" data-go="settings" id="settings-btn" aria-label="Réglages : compte et sauvegarde">${GEAR}</button>${driveDue()||linkTodo()?'<span class="obadge" style="min-width:12px;height:12px;padding:0;right:0;bottom:auto;top:0" aria-hidden="true"></span>':''}</span>` : ''}</div>
   <p class="sub">Ajoute autant de monde que tu veux. Les mêmes joueurs servent pour tous les jeux.</p>
   <form id="addp" class="row" style="flex-wrap:nowrap"><input type="text" id="pname" placeholder="Prénom" maxlength="24" autocomplete="off" aria-label="Prénom du joueur"><button class="btn" type="submit" id="addbtn">Ajouter</button></form>
   ${ps.length ? `<div class="glass" style="padding:8px 16px;margin-top:16px"><div class="list">${ps.map(([id,p])=>{const y=statsY(id), q=stats4(id), sk=statsS(id);
@@ -742,14 +750,29 @@ function viewSettings(){
   return `<button class="back" data-go="players">← Joueurs</button>
   <div class="label">Réglages</div><h1>Les <em>réglages</em></h1>
   <div class="glass" style="padding:8px 16px;margin-top:16px"><div class="list">
-    <div class="item tap" role="button" tabindex="0" data-go="account"><div class="grow"><div class="name">Mon compte</div><div class="meta">${acctSub}</div></div><span class="chev" aria-hidden="true">›</span></div>
+    <div class="item tap" role="button" tabindex="0" data-go="account"><div class="grow"><div class="name">Mon compte${linkTodo()?' <span class="pdot" style="background:var(--ink);margin:0 0 0 6px"></span>':''}</div><div class="meta">${acctSub}</div></div><span class="chev" aria-hidden="true">›</span></div>
     <div class="item tap" role="button" tabindex="0" data-go="backup"><div class="grow"><div class="name">Sauvegarde${driveDue()?' <span class="pdot" style="background:var(--ink);margin:0 0 0 6px"></span>':''}</div><div class="meta">${backSub}</div></div><span class="chev" aria-hidden="true">›</span></div>
   </div></div>`;
 }
 function viewAccountPage(){
   return `<button class="back" data-go="settings">← Réglages</button>
   <div class="label">Réglages</div><h1>Mon <em>compte</em></h1>
-  <p class="sub">Pour retrouver tes amis et partager les parties.</p>${viewAccount()}${online() && !S.acct.mode ? viewMe() : ''}`;
+  <p class="sub">Pour retrouver tes amis et partager les parties.</p>${viewAccount()}${online() && !S.acct.mode ? viewLinkGuide() + viewMe() : ''}`;
+}
+/* Aide à la liaison (v19) : les 3 conditions pour que les parties partent et arrivent. */
+const unlinkedFriends = () => friendsOk().filter(f => !pidOfUid(f.uid));
+const linkTodo = () => !db && online() && (!myPid() || unlinkedFriends().length>0);
+function viewLinkGuide(){
+  const me = !!myPid(), frs = friendsOk(), un = unlinkedFriends();
+  const step = (done, n, text, action) => `<div class="lg-step${done?' done':''}"><span class="lg-dot" aria-hidden="true">${done?'✓':n}</span><span class="grow">${text}${done?'<span class="sr"> (fait)</span>':''}</span>${done?'':action||''}</div>`;
+  const btn = (attr, t) => `<button class="btn ghost" style="padding:8px 14px;font-size:13px;flex:none" ${attr}>${t}</button>`;
+  return `<div class="glass" style="padding:14px 18px;margin-top:14px">
+    <div class="label" style="margin-bottom:6px">Pour partager les parties</div>
+    ${step(me, 1, 'Choisis ton joueur dans « Toi dans le carnet », juste en dessous.')}
+    ${step(frs.length>0, 2, 'Ajoute tes amis avec leur code.', btn('data-go="friends"', 'Ajouter'))}
+    ${step(frs.length>0 && !un.length, 3, un.length ? `Relie chaque ami à son joueur&nbsp;: ${andList(un.map(f=>'<b>'+esc(f.name)+'</b>'))}.` : 'Relie chaque ami à son joueur.', un.length ? btn(`data-friend="${esc(un[0].uid)}"`, 'Relier') : '')}
+    <p class="hint" style="margin:10px 0 0">Tes amis font pareil de leur côté. Sinon, tes parties les attendent sans arriver dans leur carnet.</p>
+  </div>`;
 }
 function viewBackup(){
   return `<button class="back" data-go="settings">← Réglages</button>
@@ -906,21 +929,45 @@ function viewPlayer(){
 function lastName(id){ for(let i=S.games.length-1;i>=0;i--){ const r=(S.games[i].results||[]).find(r=>r.id===id); if(r) return r.name; } return 'Ancien joueur'; }
 const seg = (key, opts) => `<div class="seg" role="tablist">${opts.map(([v,t])=>`<button class="${S[key]===v?'on':''}" data-seg="${key}" data-val="${v}">${t}</button>`).join('')}</div>`;
 const award = (lab, r, val, sub, hero) => `<div class="award glass${hero?' hero':''}"><div class="label">${lab}</div><div class="aw-who"><div class="avatar sm" style="${colorOf(r.id)||photoOf(r.id) ? avStyle(r.id) : hero ? 'background:var(--inv-ink);color:var(--inv-bg)' : ''}">${initial(r.name)}</div><div class="big">${esc(r.name)}</div></div><div class="meta">${val}${sub?' · '+sub:''}</div></div>`;
+/* Face-à-face (v19) : sur les parties jouées ensemble, combien de fois chacun finit le mieux classé du groupe,
+   même si quelqu'un d'extérieur au groupe gagne. Ex æquo : tous ceux à égalité comptent. */
+function groupDuel(k, gs, grp, nameOf){
+  const cnt = Object.fromEntries(grp.map(id=>[id,0]));
+  const score = (g, r) => k==='yahtzee' ? -r.total : k==='skyjo' ? r.total : (g.loser===r.id ? 1e9 : (r.rank||99));
+  gs.forEach(g => { const rs = (g.results||[]).filter(r=>grp.includes(r.id)); if(!rs.length) return;
+    const m = Math.min(...rs.map(r=>score(g,r))); rs.forEach(r => { if(score(g,r)===m) cnt[r.id]++; }); });
+  const rows = grp.map(id=>({id, n:cnt[id]})).sort((a,b)=>b.n-a.n);
+  const two = grp.length===2;
+  return `<h2>${two ? 'Face-à-face' : 'Entre vous'}</h2>
+  <div class="glass" style="padding:4px 16px"><div class="list">${rows.map((r,i)=>`<div class="item"><span class="duel-rk">${i+1}</span>${av(r.id, nameOf(r.id))}<div class="grow"><div class="name">${esc(nameOf(r.id))}</div><div class="bar"><i style="width:${Math.round(r.n/gs.length*100)}%${barC(r.id)}"></i></div></div><div class="tok">${r.n}<small>/ ${gs.length}</small></div></div>`).join('')}</div></div>
+  <p class="note">${two ? 'Qui a fini devant l’autre' : 'Qui a fini le mieux classé du groupe'}, sur ${plural(gs.length,'partie')} ensemble${k==='421' ? ' (au 421 : sorti le plus tôt)' : ''}.</p>`;
+}
 function viewStats(){
-  const k = S.sgame; const gs = S.games.filter(g=>kindOf(g)===k);
-  const top = `<div class="label">${plural(gs.length,'partie')} de ${GAMES[k].name}</div><h1>Les <em>stats</em></h1>
-    <p class="sub">Sur l'ensemble des parties enregistrées.</p>${seg('sgame',[['yahtzee','Yahtzee'],['421','421'],['skyjo','Skyjo']])}`;
-  if(!gs.length) return top + `<div class="glass empty"><div class="serif">Pas encore de partie</div><p>Termine une première partie de ${GAMES[k].name} et le classement apparaîtra ici.</p><button class="btn" data-go="${k}">Lancer une partie</button></div>`;
-  const ids = new Set(); gs.forEach(g=>(g.results||[]).forEach(r=>ids.add(r.id)));
+  const k = S.sgame; const all = S.games.filter(g=>kindOf(g)===k);
+  const seen = new Set(); all.forEach(g=>(g.results||[]).forEach(r=>seen.add(r.id)));
   const nameOf = id => pname(id, lastName(id));
+  /* Filtre de groupe (v19) : on garde les parties où tous les joueurs choisis étaient présents. En mémoire seulement. */
+  const pickable = sortedPlayers().filter(([id])=>seen.has(id)).map(([id])=>id);
+  const grp = (S.sgroup||[]).filter(id=>pickable.includes(id));
+  const together = g => { const ids = (g.results||[]).map(r=>r.id); return grp.every(id=>ids.includes(id)); };
+  const gs = grp.length ? all.filter(together) : all;
+  const names = andList(grp.map(id=>esc(nameOf(id))));
+  const chips = pickable.length>1 ? `<div class="chips sm sgrp" role="group" aria-label="Filtrer par joueurs"><button class="chip${grp.length?'':' on'}" data-sgrp="" aria-pressed="${!grp.length}">Tous</button>${pickable.map(id=>`<button class="chip${grp.includes(id)?' on':''}" data-sgrp="${id}" aria-pressed="${grp.includes(id)}">${dot(id)}${esc(nameOf(id))}</button>`).join('')}</div>` : '';
+  const sub = !grp.length ? "Sur l'ensemble des parties enregistrées." : grp.length===1 ? `Seulement les parties avec ${names}.` : `Seulement les parties jouées ensemble par ${names}.`;
+  const top = `<div class="label">${plural(gs.length,'partie')} de ${GAMES[k].name}${grp.length>1?' ensemble':''}</div><h1>Les <em>stats</em></h1>
+    <p class="sub">${sub}</p>${seg('sgame',[['yahtzee','Yahtzee'],['421','421'],['skyjo','Skyjo']])}${chips}`;
+  if(!all.length) return top + `<div class="glass empty"><div class="serif">Pas encore de partie</div><p>Termine une première partie de ${GAMES[k].name} et le classement apparaîtra ici.</p><button class="btn" data-go="${k}">Lancer une partie</button></div>`;
+  if(!gs.length) return top + `<div class="glass empty"><div class="serif">Jamais ensemble</div><p>${names} n'ont pas encore fait de partie de ${GAMES[k].name} tous ensemble.</p><button class="btn ghost" data-sgrp="">Voir tout le monde</button></div>`;
+  const ids = new Set(); if(grp.length>1) grp.forEach(id=>ids.add(id)); else gs.forEach(g=>(g.results||[]).forEach(r=>ids.add(r.id)));
+  const vs = grp.length>1 ? groupDuel(k, gs, grp, nameOf) : '';
   const best = (rows, f) => [...rows].sort((a,b)=>b[f]-a[f])[0];
-  if(k==='skyjo') return statsSkyView(top, ids, nameOf);
+  if(k==='skyjo') return statsSkyView(top + vs, ids, nameOf, gs);
   if(k==='yahtzee'){
-    const rows = [...ids].map(id => ({id, name:nameOf(id), ...statsY(id)}));
+    const rows = [...ids].map(id => ({id, name:nameOf(id), ...statsY(id, gs)}));
     rows.sort((a,b)=> b.wins-a.wins || b.rate-a.rate || b.avg-a.avg);
     const w=rows[0], pts=best(rows,'points'), most=best(rows,'played'), rec=best(rows,'best'), avg=best(rows,'avg'), yz=best(rows,'yahtzees');
     const maxAvg = Math.max(...rows.map(r=>r.avg),1);
-    return top + `<div class="podium">
+    return top + vs + `<div class="podium">
       ${award('Le meilleur', w, plural(w.wins,'victoire'), Math.round(w.rate*100)+' % de victoires', true)}
       ${award('Le plus de points', pts, pts.points.toLocaleString('fr-FR')+' pts', '')}
       ${award('Le plus assidu', most, plural(most.played,'partie'), '')}
@@ -935,10 +982,10 @@ function viewStats(){
     </table></div>
     <p class="note">Classement par victoires, puis taux de victoire, puis moyenne. La barre montre la moyenne par partie.</p>`;
   }
-  const rows = [...ids].map(id => ({id, name:nameOf(id), ...stats4(id)}));
+  const rows = [...ids].map(id => ({id, name:nameOf(id), ...stats4(id, gs)}));
   rows.sort((a,b)=> a.lossRate-b.lossRate || b.played-a.played || b.first-a.first);
   const w=rows[0], los=best(rows,'losses'), most=best(rows,'played'), fst=best(rows,'first'), q=best(rows,'n421');
-  return top + `<div class="podium">
+  return top + vs + `<div class="podium">
     ${award('Le plus malin', w, Math.round(w.lossRate*100)+' % de défaites', plural(w.played,'partie'), true)}
     ${award('Paie la tournée', los, plural(los.losses,'défaite'), '')}
     ${award('Le plus assidu', most, plural(most.played,'partie'), '')}
@@ -1669,7 +1716,7 @@ async function watchPoll(){
     const d = s.data();
     if(d.status==='done' && d.result){ let g = null; try{ g = JSON.parse(d.result); }catch(e){}
       if(g){ S.watch = null; clearTimeout(wPollT); S.watchList = S.watchList.filter(x=>x.id!==W.id);
-        S.result = {g, from:'watch', owner:d.ownerName}; go('result'); return; } }
+        S.result = {g, from:'watch', owner:d.ownerName}; go('result'); celebrate(); return; } }
     let st = null; try{ st = JSON.parse(d.state); }catch(e){}
     if(!st || !st.order){ W.gone = true; render(); return; }
     W.d = {...d, st}; W.gone = false; W.err = false; render();
@@ -1737,6 +1784,42 @@ function watchSky(L, P){
     <p class="hint" style="margin:8px 0">• a fini la manche · ×2 points doublés</p></div>` : ''}`;
 }
 
+/* ================= confettis de fin de partie (v19) =================
+   Salve flat jaune/doré, comme l'icône : chaque confetti a une face claire et une face sombre, sans dégradé,
+   et bascule de l'une à l'autre en tournant. Rien si « Réduire les animations » est activé. */
+const CONF_TONES = [['#F7D45C','#C99417'],['#EDBE36','#A87A12'],['#FBE38A','#DDA628']];
+let confRun = 0;
+function celebrate(){
+  try{ if(matchMedia('(prefers-reduced-motion: reduce)').matches || document.hidden) return; }catch(e){ return; }
+  const run = ++confRun, old = document.getElementById('confetti'); if(old) old.remove();
+  const cv = document.createElement('canvas'); cv.id = 'confetti'; cv.setAttribute('aria-hidden','true');
+  cv.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:35';
+  document.body.appendChild(cv);
+  const dpr = Math.min(2, window.devicePixelRatio||1), W = innerWidth, H = innerHeight;
+  cv.width = W*dpr; cv.height = H*dpr; const c = cv.getContext('2d'); c.scale(dpr, dpr);
+  const P = [], N = Math.round(Math.min(150, Math.max(90, W/3.2)));
+  const burst = (x, y, n, power) => { for(let i=0;i<n;i++){
+    const a = -Math.PI/2 + (Math.random()-.5)*Math.PI*1.25, v = power*(.45+Math.random()*.75);
+    const t = CONF_TONES[(Math.random()*CONF_TONES.length)|0], r = Math.random();
+    P.push({x, y, vx:Math.cos(a)*v, vy:Math.sin(a)*v, w: r<.2 ? 7 : 6+Math.random()*4, h: r<.2 ? 7 : 11+Math.random()*7,
+      round: r<.2, rot:Math.random()*6.28, vr:(Math.random()-.5)*.35, flip:Math.random()*6.28, vf:.12+Math.random()*.2, t, drift:Math.random()*6.28}); } };
+  const ox = W/2, oy = Math.min(H*.24, 200), pw = Math.min(17, 9 + W/60);
+  burst(ox, oy, Math.round(N*.65), pw);
+  let t0 = null, second = false;
+  const life = 2900, fade = 700;
+  const frame = ts => { if(run!==confRun) return; if(t0===null) t0 = ts; const el = ts - t0;
+    if(!second && el>170){ second = true; burst(ox - W*.18, oy + 30, Math.round(N*.18), pw*.8); burst(ox + W*.18, oy + 30, Math.round(N*.17), pw*.8); }
+    c.clearRect(0, 0, W, H); const alpha = el > life-fade ? Math.max(0, (life-el)/fade) : 1;
+    for(const p of P){ p.vy += .32; p.vx *= .985; p.vy *= .985; p.vx += Math.sin(p.drift + el/260)*.04;
+      p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.flip += p.vf;
+      const f = Math.cos(p.flip); c.save(); c.globalAlpha = alpha; c.translate(p.x, p.y); c.rotate(p.rot); c.scale(1, Math.max(.08, Math.abs(f)));
+      c.fillStyle = f >= 0 ? p.t[0] : p.t[1];
+      if(p.round){ c.beginPath(); c.arc(0, 0, p.w/2, 0, 6.2832); c.fill(); } else c.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      c.restore(); }
+    if(el < life) requestAnimationFrame(frame); else cv.remove(); };
+  requestAnimationFrame(frame);
+}
+
 /* ================= fin de partie ================= */
 /* Enregistre la partie, l'efface du direct et ouvre l'écran des résultats.
    On garde une copie de la partie en cours pour pouvoir corriger la dernière saisie juste après. */
@@ -1745,7 +1828,7 @@ async function finishGame(k){
   if(finishing || !S.live[k]) return; finishing = true; S.confirm = null;
   try{ const live0 = JSON.parse(JSON.stringify(S.live[k]));
     const g = await saveFinished(k); const id = await store.addGame(g); watchDone(k, live0, {...g, id}); await store.setLive(k, null);
-    S.yzUndo = null; S.result = {g:{...g, id}, from:'end', live:live0}; S.sgame = k; go('result');
+    S.yzUndo = null; S.result = {g:{...g, id}, from:'end', live:live0}; S.sgame = k; go('result'); celebrate();
     if(!db){ const saved = S.games.find(x=>x.id===id); shareGame(saved); }
     if(!db && S.drive.on && tokNow()) driveRun(driveBackupNow, false); }
   catch(err){ toast("La partie n'a pas pu être enregistrée. Réessaie."); render(); }
@@ -1881,7 +1964,7 @@ async function saveFinished(k){
 }
 
 $app.addEventListener('click', async e => {
-  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-mg],[data-mg-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-me],[data-share],[data-frsend],[data-wshare],[data-watch],[data-game],td.cell,tr.rt'); if(!el) return;
+  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-mg],[data-mg-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-me],[data-share],[data-frsend],[data-wshare],[data-watch],[data-game],[data-sgrp],td.cell,tr.rt'); if(!el) return;
   if(el.matches('[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-me],[data-share],[data-wshare],[data-frsend],[data-a=fr-rm]') && await frClick(el)) return;
   if(el.matches('td.cell,tr.rt')){ const tr = el.closest('tr'); if(tr){ tr.classList.add('tapped'); setTimeout(()=>tr.classList.remove('tapped'), 220); } openCell(el.dataset.p, el.dataset.c); return; }
   if(el.dataset.watch){ watchOpen(el.dataset.watch); return; }
@@ -1891,6 +1974,7 @@ $app.addEventListener('click', async e => {
   if(el.dataset.player){ S.pid=el.dataset.player; go('player'); return; }
   if(el.dataset.color){ const i=document.getElementById('edit-name'); if(i) S.edit.name=i.value; S.edit.color=el.dataset.color; render(); return; }
   if(el.dataset.seg){ S[el.dataset.seg]=el.dataset.val; render(); return; }
+  if('sgrp' in el.dataset){ const id = el.dataset.sgrp, g = S.sgroup||[]; S.sgroup = !id ? [] : g.includes(id) ? g.filter(x=>x!==id) : [...g, id]; render(); return; }
   if(el.dataset.closer){ S.sky.closer = S.sky.closer===el.dataset.closer ? null : el.dataset.closer; render(); return; }
   if(el.dataset.rule){ S.rules421 = {...S.rules421, [el.dataset.rule]: Number(el.dataset.val)}; render();
     if(db){ try{ await db.doc('settings/r421').set(S.rules421); }catch(err){ toast("Le réglage n'a pas pu être enregistré."); } } else local.save(); return; }
@@ -1998,7 +2082,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '18';
+window.APP_VERSION = '19';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

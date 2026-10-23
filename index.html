@@ -405,7 +405,7 @@ const local = {
   load(){ const d = local.read(DATA_KEY) || local.read(PREV_KEY); if(d) applyData(d); },
   snapshot(){ return {v:DATA_V, players:S.players, games:S.games, lives:S.live, rules421:S.rules421, savedAt:Date.now(), exportedAt:S.exportedAt||0}; },
   save(){ try{ const cur = localStorage.getItem(DATA_KEY); if(cur) localStorage.setItem(PREV_KEY, cur);
-      localStorage.setItem(DATA_KEY, JSON.stringify(local.snapshot())); try{ pubSoon(); }catch(e){} }
+      localStorage.setItem(DATA_KEY, JSON.stringify(local.snapshot())); try{ pubSoon(); }catch(e){} try{ driveSoon(); }catch(e){} }
     catch(e){ toast("Sauvegarde impossible sur ce téléphone. Exporte tes données par sécurité."); } }
 };
 async function exportData(){
@@ -479,7 +479,7 @@ function viewHome(){
   return `<div class="label">Carnet de jeux</div><h1>On joue <em>à quoi</em> ?</h1>
   <p class="sub">Choisis un jeu. Les parties en cours t'attendent là où tu les as laissées.</p>
   ${S.watchList.map(d=>`<button class="wcard glass" data-watch="${d.id}"><span class="grow"><span class="label"><span class="live-dot"></span>En direct</span><b>${GAMES[d.k].name} de ${esc(d.ownerName)}</b><span class="hint">${watchWith(d)}</span></span><span class="pill">Suivre</span></button>`).join('')}
-  ${!db && driveDue() ? `<div class="glass row" style="padding:12px 14px 12px 18px;margin:0 0 14px;justify-content:space-between;flex-wrap:nowrap;border-radius:22px"><span class="grow"><b>Sauvegarde Drive</b><span class="hint">Dernière : ${ago(S.drive.last)}</span></span><button class="btn" style="padding:10px 16px;font-size:14px" data-a="drive-now" ${S.drive.busy?'disabled':''}>${S.drive.busy?'…':'Sauvegarder'}</button></div>` : ''}
+  ${!db && driveDue() ? `<div class="glass row" style="padding:12px 14px 12px 18px;margin:0 0 14px;justify-content:space-between;flex-wrap:nowrap;border-radius:22px"><span class="grow"><b>Sauvegarde Drive</b><span class="hint">${driveTodo()}</span></span><button class="btn" style="padding:10px 16px;font-size:14px" data-a="drive-now" ${S.drive.busy?'disabled':''}>${S.drive.busy?'…':'Sauvegarder'}</button></div>` : ''}
   <div class="games">
     <button class="gamecard glass" data-go="yahtzee" id="g-yahtzee">
       <span class="dice">${dieFace(5)}${dieFace(5)}</span>
@@ -1287,14 +1287,22 @@ async function acctForm(id){
 
 /* ================= sauvegarde Google Drive =================
    Accès « drive.file » : l'app ne voit que les fichiers qu'elle a créés. JSON lisible, 10 dernières sauvegardes gardées.
-   Une PWA ne peut pas tourner en tâche de fond : on sauvegarde à l'ouverture et après chaque partie quand le jeton Google
-   est encore valide, sinon on affiche un rappel qui demande un toucher (la fenêtre Google exige un geste). */
+   Une PWA ne peut pas tourner en tâche de fond : on sauvegarde dès que le carnet change (partie finie, reçue, supprimée),
+   à l'ouverture et au retour du réseau, quand le jeton Google est encore valide (1 h). Sinon un rappel demande un toucher
+   (la fenêtre Google exige un geste). `ids` = parties présentes dans la dernière sauvegarde, pour savoir ce qui reste à faire. */
 const DRIVE_CLIENT = '668352623353-u65fm6l3a2q6a6vqjmo752cctd2tg9tk.apps.googleusercontent.com';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const DRIVE_KEY = 'yz-drive', DRIVE_TOK = 'yz-drive-tok', DRIVE_KEEP = 10, DRIVE_FOLDER = 'Carnet de jeux';
 const DRIVE_AUTO = 12*3600*1000, DRIVE_DUE = 3*86400*1000;
-S.drive = Object.assign({on:false, folderId:null, last:0}, lsGet(DRIVE_KEY) || {}, {busy:false, err:null, list:null});
-const driveSave = () => lsSet(DRIVE_KEY, {on:S.drive.on, folderId:S.drive.folderId, last:S.drive.last});
+S.drive = Object.assign({on:false, folderId:null, last:0, ids:null}, lsGet(DRIVE_KEY) || {}, {busy:false, err:null, list:null});
+const driveSave = () => lsSet(DRIVE_KEY, {on:S.drive.on, folderId:S.drive.folderId, last:S.drive.last, ids:S.drive.ids});
+/* Parties pas encore dans une sauvegarde Drive, et carnet modifié depuis (une suppression compte aussi). */
+function driveIds(){ const D = S.drive;
+  /* Avant la v21 on ne gardait pas la liste : on considère comme sauvegardé ce qui existait à la dernière sauvegarde. */
+  if(!Array.isArray(D.ids)) D.ids = D.last ? S.games.filter(g => (g.date||0) <= D.last && !String(g.id).startsWith('r:')).map(g=>g.id) : [];
+  return D.ids; }
+const drivePending = () => { const ids = new Set(driveIds()); return S.games.filter(g => !ids.has(g.id)).length; };
+const driveChanged = () => drivePending() > 0 || driveIds().length !== S.games.length;
 let gisP = null, tokClient = null, tokWait = null;
 function loadGis(){
   if(!gisP) gisP = new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
@@ -1339,8 +1347,9 @@ async function driveBackupNow(){
   const body = JSON.stringify({app:'carnet-de-jeux', ...local.snapshot()}, null, 1);
   const bnd = 'carnet'+Math.random().toString(36).slice(2);
   const multipart = `--${bnd}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({name, parents:[folder], mimeType:'application/json'})}\r\n--${bnd}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${bnd}--`;
+  const ids = S.games.map(g=>g.id);
   await gapi('files?uploadType=multipart&fields=id', {method:'POST', headers:{'Content-Type':'multipart/related; boundary='+bnd}, body:multipart}, true);
-  S.drive.last = Date.now(); driveSave();
+  S.drive.last = Date.now(); S.drive.ids = ids; driveSave();
   /* Rotation : les plus anciennes vont à la corbeille Drive (récupérables 30 jours), jamais une suppression définitive. */
   try{ const files = await driveList(folder);
     for(const f of files.slice(DRIVE_KEEP)) await gapi('files/'+f.id, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({trashed:true})}); }catch(e){}
@@ -1360,10 +1369,17 @@ async function driveRun(fn, interactive){
   S.drive.busy = false; render();
 }
 function driveAuto(){
-  if(!S.drive.on || !navigator.onLine) return;
-  if(tokNow() && Date.now() - S.drive.last > DRIVE_AUTO) driveRun(driveBackupNow, false);
+  if(db || !S.drive.on || S.drive.busy || !navigator.onLine || !tokNow()) return;
+  if(!driveChanged() && Date.now() - S.drive.last < DRIVE_AUTO) return;
+  /* Garde-fou : si le carnet a beaucoup moins de parties que la dernière sauvegarde (données effacées ?), pas d'envoi
+     automatique qui ferait tourner les bonnes sauvegardes vers la corbeille. Le bouton manuel reste possible. */
+  if(S.games.length < driveIds().length - 5) return;
+  driveRun(driveBackupNow, false);
 }
-const driveDue = () => S.drive.on && Date.now() - S.drive.last > DRIVE_DUE;
+let driveT; const driveSoon = () => { if(!S.drive.on) return; clearTimeout(driveT); driveT = setTimeout(driveAuto, 1500); };
+const driveDue = () => S.drive.on && (drivePending() > 0 || Date.now() - S.drive.last > DRIVE_DUE);
+/* Texte du rappel : ce qui manque sur Drive. */
+const driveTodo = () => { const n = drivePending(); return n ? `${plural(n,'partie')} pas encore sur Drive` : `Dernière : ${ago(S.drive.last)}`; };
 const ago = t => { if(!t) return 'jamais'; const d = Math.floor((Date.now()-t)/86400000);
   return d<1 ? "aujourd'hui" : d===1 ? 'hier' : `il y a ${d} jours`; };
 function viewDrive(){
@@ -1886,7 +1902,7 @@ async function finishGame(k){
     const g = await saveFinished(k); const id = await store.addGame(g); watchDone(k, live0, {...g, id}); await store.setLive(k, null);
     S.yzUndo = null; S.result = {g:{...g, id}, from:'end', live:live0}; S.sgame = k; go('result'); celebrate();
     if(!db){ const saved = S.games.find(x=>x.id===id); shareGame(saved); }
-    if(!db && S.drive.on && tokNow()) driveRun(driveBackupNow, false); }
+    if(!db) driveAuto(); }
   catch(err){ toast("La partie n'a pas pu être enregistrée. Réessaie."); render(); }
   finishing = false;
 }
@@ -1945,6 +1961,11 @@ function viewSheet(g){
   return `<h2>${title}</h2><div class="glass" style="padding:14px 18px">${st.log.length ? `<div class="label" style="margin:0 0 2px">Charge</div>` : ''}<div class="log">${lines.join('')}</div>
     ${st.out.length ? `<p class="hint" style="margin:12px 0 0">Ordre de sortie : ${st.out.map(nmOf).join(', ')}${st.loser ? ` · ${nmOf(st.loser)} perd` : ''}</p>` : ''}</div>`;
 }
+/* État de la sauvegarde Drive sous le classement, juste après la fin d'une partie. */
+function viewResDrive(){ const D = S.drive;
+  if(D.busy) return `<p class="hint" id="res-drive">Sauvegarde sur Drive…</p>`;
+  if(!drivePending()) return `<p class="hint" id="res-drive">Sauvegardée sur Drive</p>`;
+  return `<div class="glass row" id="res-drive" style="padding:12px 14px 12px 18px;margin:14px 0 0;justify-content:space-between;flex-wrap:nowrap;border-radius:22px"><span class="grow"><b>Pas encore sur Drive</b><span class="hint">${D.err ? esc(D.err) : 'Un toucher pour reconnecter Google'}</span></span><button class="btn" style="padding:10px 16px;font-size:14px" data-a="drive-now">Sauvegarder</button></div>`; }
 function viewResult(){
   const R = S.result; if(!R || !R.g) return viewHome();
   const g = R.g, k = kindOf(g), res = [...(g.results||[])];
@@ -1975,6 +1996,7 @@ function viewResult(){
   <p class="sub">${R.from==='end' ? 'Partie enregistrée dans l\'historique.' : spect ? `Partie de ${esc(R.owner||'ton ami')} terminée.${myPid() ? ' Elle va arriver dans ton historique.' : ''}` : 'Classement final.'}</p>
   <div class="glass" style="padding:8px 16px"><div class="list res-list">${rows.map(x=>`<div class="item${x.win?' win':''}"><span class="rk">${x.rk}</span>${spect ? wav((g.cols||{})[x.r.id], x.r.name) : av(x.r.id, pname(x.r.id,x.r.name))}<div class="grow"><div class="name">${nm(x.r)}</div>${x.meta?`<div class="meta">${x.meta}</div>`:''}</div>${x.big?`<div class="tok">${x.big}</div>`:''}</div>`).join('')}</div></div>
   ${g.src ? `<p class="hint">Reçue de ${esc(g.src.name)}</p>` : ''}
+  ${R.from==='end' && !db && S.drive.on ? viewResDrive() : ''}
   ${viewSheet(g)}
   <div class="stack" style="margin-top:18px">
     ${spect ? '' : `<button class="btn block" data-a="res-again" id="res-again">Rejouer avec les mêmes</button>`}
@@ -2129,7 +2151,7 @@ async function boot(){
     if(S.acct.cache) fb().catch(()=>{});
     if(S.drive.on){ loadGis().catch(()=>{}); driveAuto(); }
     document.addEventListener('visibilitychange', () => { if(!document.hidden){ driveAuto(); checkInbox(); flushSoon(); watchSync(); if(S.view==='watch') watchPoll(); else watchCheck(true); } });
-    addEventListener('online', () => { checkInbox(); flushSoon(); pubSoon(); watchSync(); watchCheck(true); });
+    addEventListener('online', () => { checkInbox(); flushSoon(); pubSoon(); watchSync(); watchCheck(true); driveAuto(); });
     setInterval(() => { if(!document.hidden && S.view!=='watch') watchCheck(true); }, 30000);
     return; }
   db = d;
@@ -2147,7 +2169,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '20';
+window.APP_VERSION = '21';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

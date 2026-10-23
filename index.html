@@ -12,9 +12,9 @@
 <meta name="apple-mobile-web-app-title" content="Carnet de jeux">
 <link rel="manifest" href="manifest.webmanifest">
 <script>try{var L=JSON.parse(localStorage.getItem('yz-look')||'null');if(L&&typeof L.h==='number'){document.documentElement.classList.add('tint');document.documentElement.style.setProperty('--h',L.h);}}catch(e){}</script>
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=9">
-<link rel="apple-touch-icon-precomposed" sizes="180x180" href="icon-180.png?v=9">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=9">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=10">
+<link rel="apple-touch-icon-precomposed" sizes="180x180" href="icon-180.png?v=10">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=10">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}html{-webkit-text-size-adjust:100%}</style>
 </head>
 <body>
@@ -2169,7 +2169,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '21';
+window.APP_VERSION = '22';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

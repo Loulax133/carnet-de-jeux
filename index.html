@@ -11,6 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Carnet de jeux">
 <link rel="manifest" href="manifest.webmanifest">
+<script>try{var L=JSON.parse(localStorage.getItem('yz-look')||'null');if(L&&typeof L.h==='number'){document.documentElement.classList.add('tint');document.documentElement.style.setProperty('--h',L.h);}}catch(e){}</script>
 <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=9">
 <link rel="apple-touch-icon-precomposed" sizes="180x180" href="icon-180.png?v=9">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=9">
@@ -24,18 +25,24 @@
 /* Layout: one-column phone app, glass tab bar at the bottom, serif headlines over quiet sans data */
 :root{
   --bg:#ffffff; --ink:#0c0c0c; --mute:#77767a; --line:rgba(12,12,12,.10);
-  --glass:rgba(255,255,255,.55); --glass-edge:rgba(255,255,255,.9); --glass-shadow:0 8px 32px rgba(0,0,0,.08); --cat-bg:#ffffff;
+  --glass:rgba(255,255,255,.36); --glass-solid:rgba(255,255,255,.8); --glass-edge:rgba(255,255,255,.9); --glass-shadow:0 10px 30px rgba(0,0,0,.09),0 1px 2px rgba(0,0,0,.05);
+  --rim-hi:rgba(255,255,255,.95); --rim-lo:rgba(255,255,255,.35); --edge-dk:rgba(0,0,0,.10); --sheen:rgba(255,255,255,.55); --disp-a:rgba(255,110,150,.18); --disp-b:rgba(90,170,255,.20); --pill:rgba(255,255,255,.72);
+  --bs:85%; --bl:64%; --ba:.75; --cat-bg:#ffffff;
   --chip:#f2f2f3; --inv-bg:#0c0c0c; --inv-ink:#ffffff; --blob:rgba(0,0,0,.07);
   --serif:"Instrument Serif",Georgia,"Times New Roman",serif;
   --sans:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0a0a0a; --ink:#f4f4f4; --mute:#8f8e93; --line:rgba(255,255,255,.12);
-  --glass:rgba(28,28,30,.55); --glass-edge:rgba(255,255,255,.14); --glass-shadow:0 8px 32px rgba(0,0,0,.5); --cat-bg:#0a0a0a;
+  --glass:rgba(40,40,44,.36); --glass-solid:rgba(28,28,30,.84); --glass-edge:rgba(255,255,255,.14); --glass-shadow:0 10px 30px rgba(0,0,0,.55),0 1px 2px rgba(0,0,0,.4);
+  --rim-hi:rgba(255,255,255,.45); --rim-lo:rgba(255,255,255,.08); --edge-dk:rgba(0,0,0,.45); --sheen:rgba(255,255,255,.14); --disp-a:rgba(255,110,150,.14); --disp-b:rgba(90,170,255,.16); --pill:rgba(255,255,255,.17);
+  --bs:70%; --bl:36%; --ba:.7; --cat-bg:#0a0a0a;
   --chip:#1c1c1e; --inv-bg:#f4f4f4; --inv-ink:#0a0a0a; --blob:rgba(255,255,255,.07); color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0a0a0a; --ink:#f4f4f4; --mute:#8f8e93; --line:rgba(255,255,255,.12);
-  --glass:rgba(28,28,30,.55); --glass-edge:rgba(255,255,255,.14); --glass-shadow:0 8px 32px rgba(0,0,0,.5); --cat-bg:#0a0a0a;
+  --glass:rgba(40,40,44,.36); --glass-solid:rgba(28,28,30,.84); --glass-edge:rgba(255,255,255,.14); --glass-shadow:0 10px 30px rgba(0,0,0,.55),0 1px 2px rgba(0,0,0,.4);
+  --rim-hi:rgba(255,255,255,.45); --rim-lo:rgba(255,255,255,.08); --edge-dk:rgba(0,0,0,.45); --sheen:rgba(255,255,255,.14); --disp-a:rgba(255,110,150,.14); --disp-b:rgba(90,170,255,.16); --pill:rgba(255,255,255,.17);
+  --bs:70%; --bl:36%; --ba:.7; --cat-bg:#0a0a0a;
   --chip:#1c1c1e; --inv-bg:#f4f4f4; --inv-ink:#0a0a0a; --blob:rgba(255,255,255,.07); color-scheme:dark}
 *{box-sizing:border-box}
 html,body{min-height:100%}
@@ -45,13 +52,32 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .blobs i{position:absolute;border-radius:50%;filter:blur(60px);background:var(--blob)}
 .blobs i:nth-child(1){width:60vw;height:60vw;top:-10vw;right:-20vw}
 .blobs i:nth-child(2){width:50vw;height:50vw;bottom:10vh;left:-20vw}
+.blobs i:nth-child(n+3){display:none}
+/* Couleur de fond (v20) : --h = teinte choisie dans Réglages → Apparence. Dominante + complémentaire + voisine + opposée décalée. */
+.tint .blobs i{display:block;filter:blur(48px);opacity:var(--ba)}
+.tint .blobs i:nth-child(1){width:80vw;height:80vw;max-width:560px;max-height:560px;top:-18vw;right:-24vw;background:hsl(var(--h) var(--bs) var(--bl))}
+.tint .blobs i:nth-child(2){width:62vw;height:62vw;max-width:440px;max-height:440px;bottom:6vh;left:-24vw;background:hsl(calc(var(--h) + 180) var(--bs) var(--bl))}
+.tint .blobs i:nth-child(3){width:48vw;height:48vw;max-width:340px;max-height:340px;top:42vh;right:-16vw;background:hsl(calc(var(--h) + 35) var(--bs) var(--bl))}
+.tint .blobs i:nth-child(4){width:42vw;height:42vw;max-width:300px;max-height:300px;bottom:-8vh;right:18vw;background:hsl(calc(var(--h) + 220) var(--bs) var(--bl));opacity:calc(var(--ba) * .8)}
 main{position:relative;z-index:1;max-width:640px;margin:0 auto;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));padding-block:20px calc(110px + env(safe-area-inset-bottom,0px))}
 h1{font-family:var(--serif);font-weight:400;font-size:44px;line-height:1;letter-spacing:-.01em;margin:8px 0 4px;text-wrap:balance}
 h1 em{font-style:italic}
 h2{font-family:var(--serif);font-weight:400;font-size:26px;margin:28px 0 10px}
 .sub{color:var(--mute);margin:0 0 20px}
 .label{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
-.glass{background:var(--glass);border:1px solid var(--glass-edge);box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-edge);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);border-radius:24px}
+.glass{background:var(--glass);border:1px solid transparent;border-radius:24px;isolation:isolate;
+  box-shadow:var(--glass-shadow),inset 0 1px 0 var(--rim-hi),inset 0 -1px 0 var(--edge-dk),inset 10px 10px 18px -14px var(--sheen),inset -10px -10px 18px -14px var(--edge-dk),inset 1.5px 0 0 -.5px var(--disp-a),inset -1.5px 0 0 -.5px var(--disp-b);
+  backdrop-filter:blur(16px) saturate(185%) brightness(1.04);-webkit-backdrop-filter:blur(16px) saturate(185%) brightness(1.04)}
+/* Liquid Glass (v20) : liseré en dégradé + reflet, sans filtre SVG pour rester compatible Safari. :where() = aucune priorité, les .glass déjà positionnés (barre, panneaux, toast) gardent leur position. */
+:where(.glass){position:relative}
+.glass::before{content:"";position:absolute;inset:-1px;z-index:-1;border-radius:inherit;padding:1.2px;pointer-events:none;
+  background:linear-gradient(135deg,var(--rim-hi) 0%,var(--rim-lo) 22%,transparent 45%,transparent 62%,var(--rim-lo) 82%,var(--rim-hi) 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+.glass::after{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;background:radial-gradient(120% 70% at 20% -10%,var(--sheen),transparent 55%);opacity:.7}
+.glass.tbl-wrap::before,.glass.tbl-wrap::after,.sheet-wrap::before,.sheet-wrap::after{content:none}
+.panel.glass,.toast.glass{background:var(--glass-solid)}
+.gamecard,.wcard,.gcard[data-game],.item.tap{transition:transform .25s cubic-bezier(.3,1.4,.5,1)}
+.gamecard:active,.wcard:active,.gcard[data-game]:active{transform:scale(.975)}
 .btn{appearance:none;border:0;font:600 15px var(--sans);border-radius:999px;padding:14px 22px;cursor:pointer;background:var(--inv-bg);color:var(--inv-ink);display:inline-flex;align-items:center;justify-content:center;gap:8px}
 .btn.ghost{background:var(--chip);color:var(--ink)}
 .btn.block{width:100%}
@@ -110,7 +136,11 @@ table.sheet{border-collapse:separate;border-spacing:0;width:100%;font-variant-nu
 /* tab bar */
 nav.tabs{position:fixed;z-index:20;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;gap:4px;padding:6px;border-radius:999px;width:min(420px,calc(100% - 32px))}
 .tab{appearance:none;border:0;background:transparent;color:var(--mute);font:600 13px var(--sans);flex:1;padding:12px 6px;border-radius:999px;cursor:pointer}
-.tab.on{background:var(--inv-bg);color:var(--inv-ink)}
+.tab{position:relative;z-index:2;transition:color .3s}
+.tab.on{color:var(--ink)}
+.tab-ind{position:absolute;z-index:1;left:0;top:6px;bottom:6px;width:0;border-radius:999px;background:var(--pill);box-shadow:inset 0 1px 0 var(--rim-hi),inset 0 -1px 0 var(--edge-dk),0 2px 10px rgba(0,0,0,.10);pointer-events:none}
+.tab-ind.go{transition:transform .45s cubic-bezier(.3,1.35,.5,1),width .45s cubic-bezier(.3,1.35,.5,1)}
+@media (prefers-reduced-motion:reduce){.tab-ind.go,.gamecard,.wcard,.gcard[data-game],.item.tap{transition:none}}
 /* stats */
 .podium{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .award{padding:16px;border-radius:22px;min-width:0}
@@ -258,9 +288,10 @@ details.rules b{color:var(--ink);font-weight:600}
 .log b{color:var(--ink);font-weight:600}
 </style>
 
-<div class="blobs" aria-hidden="true"><i></i><i></i></div>
+<div class="blobs" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <main id="app"></main>
 <nav class="tabs glass" id="tabs" aria-label="Sections">
+  <span class="tab-ind" id="tab-ind" aria-hidden="true"></span>
   <button class="tab on" data-v="home" id="tab-home">Jeux</button>
   <button class="tab" data-v="stats" id="tab-stats">Stats</button>
   <button class="tab" data-v="history" id="tab-history">Historique</button>
@@ -751,6 +782,7 @@ function viewSettings(){
   <div class="label">Réglages</div><h1>Les <em>réglages</em></h1>
   <div class="glass" style="padding:8px 16px;margin-top:16px"><div class="list">
     <div class="item tap" role="button" tabindex="0" data-go="account"><div class="grow"><div class="name">Mon compte${linkTodo()?' <span class="pdot" style="background:var(--ink);margin:0 0 0 6px"></span>':''}</div><div class="meta">${acctSub}</div></div><span class="chev" aria-hidden="true">›</span></div>
+    <div class="item tap" role="button" tabindex="0" data-go="look"><div class="grow"><div class="name">Apparence</div><div class="meta">${lookName()}</div></div><span class="chev" aria-hidden="true">›</span></div>
     <div class="item tap" role="button" tabindex="0" data-go="backup"><div class="grow"><div class="name">Sauvegarde${driveDue()?' <span class="pdot" style="background:var(--ink);margin:0 0 0 6px"></span>':''}</div><div class="meta">${backSub}</div></div><span class="chev" aria-hidden="true">›</span></div>
   </div></div>`;
 }
@@ -772,6 +804,30 @@ function viewLinkGuide(){
     ${step(frs.length>0, 2, 'Ajoute tes amis avec leur code.', btn('data-go="friends"', 'Ajouter'))}
     ${step(frs.length>0 && !un.length, 3, un.length ? `Relie chaque ami à son joueur&nbsp;: ${andList(un.map(f=>'<b>'+esc(f.name)+'</b>'))}.` : 'Relie chaque ami à son joueur.', un.length ? btn(`data-friend="${esc(un[0].uid)}"`, 'Relier') : '')}
     <p class="hint" style="margin:10px 0 0">Tes amis font pareil de leur côté. Sinon, tes parties les attendent sans arriver dans leur carnet.</p>
+  </div>`;
+}
+/* Apparence (v20) : couleur dominante du fond, rangée sur ce téléphone seulement (clé yz-look {id, h}). */
+const LOOK_KEY = 'yz-look';
+const lookGet = () => { try{ return JSON.parse(localStorage.getItem(LOOK_KEY)||'null') || {}; }catch(e){ return {}; } };
+const hueOf = hex => { const n=parseInt(hex.slice(1),16), r=(n>>16)/255, g=(n>>8&255)/255, b=(n&255)/255, mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn;
+  if(!d) return 0; let h = mx===r ? ((g-b)/d)%6 : mx===g ? (b-r)/d+2 : (r-g)/d+4; h=Math.round(h*60); return h<0?h+360:h; };
+const LOOKS = () => COLORS.filter(c => c.c && c.id!=='gris');
+function lookName(){ const c = LOOKS().find(x=>x.id===lookGet().id); return c ? 'Fond ' + c.n.toLowerCase() : 'Sans couleur'; }
+function lookApply(){ const L = lookGet(), root = document.documentElement;
+  if(typeof L.h==='number'){ root.classList.add('tint'); root.style.setProperty('--h', L.h); } else { root.classList.remove('tint'); root.style.removeProperty('--h'); } }
+function lookSet(id){ const c = LOOKS().find(x=>x.id===id);
+  try{ if(c) localStorage.setItem(LOOK_KEY, JSON.stringify({id:c.id, h:hueOf(c.c)})); else localStorage.removeItem(LOOK_KEY); }catch(e){}
+  lookApply(); render(); }
+function viewLook(){
+  const cur = lookGet().id || null;
+  const sw = (id, n, bg, ink) => `<button class="sw${cur===id?' on':''}" data-look="${id||''}" aria-label="${n}" aria-pressed="${cur===id}" title="${n}" style="background:${bg};color:${ink}">${cur===id?'✓':''}</button>`;
+  return `<button class="back" data-go="settings">← Réglages</button>
+  <div class="label">Réglages</div><h1>L'<em>apparence</em></h1>
+  <p class="sub">Choisis une couleur pour le fond. L'app ajoute quelques teintes qui vont avec, et les cartes en verre prennent la couleur.</p>
+  <div class="glass" style="padding:18px">
+    <div class="label" style="margin-bottom:12px">Couleur du fond · ${lookName().replace('Fond ','').toLowerCase()}</div>
+    <div class="swatches">${sw(null,'Sans couleur','var(--bg)','var(--ink)')}${LOOKS().map(c=>sw(c.id, c.n, c.c, inkOn(c.c))).join('')}</div>
+    <p class="hint" style="margin:14px 0 0">Réglage gardé sur ce téléphone seulement. Il ne change rien à tes parties.</p>
   </div>`;
 }
 function viewBackup(){
@@ -1932,9 +1988,10 @@ function render(){
   if(!S.ready){ $app.innerHTML = `<div class="label">Carnet de jeux</div><h1>Un <em>instant</em>…</h1><p class="sub">Chargement des joueurs et des parties.</p>`; return; }
   if(S.locked){ $app.innerHTML = `<div class="label">Carnet de jeux</div><h1>Accès <em>réservé</em></h1><p class="sub">Ce carnet est personnel. Seul son propriétaire peut voir et noter les parties.</p>`; return; }
   const v = S.view;
-  $app.innerHTML = v==='players'?viewPlayers():v==='settings'?viewSettings():v==='friends'?viewFriends():v==='friend'?viewFriend():v==='account'?viewAccountPage():v==='backup'?viewBackup():v==='player'?viewPlayer():v==='stats'?viewStats():v==='history'?viewHistory():v==='yahtzee'?viewYahtzee():v==='421'?view421():v==='skyjo'?viewSky():v==='result'?viewResult():v==='watch'?viewWatch():viewHome();
-  const tabv = v==='watch' ? 'home' : v==='result' ? (S.result && S.result.from==='history' ? 'history' : 'home') : GAMES[v] ? 'home' : ['player','settings','account','backup','friends','friend'].includes(v) ? 'players' : v;
+  $app.innerHTML = v==='players'?viewPlayers():v==='settings'?viewSettings():v==='friends'?viewFriends():v==='friend'?viewFriend():v==='account'?viewAccountPage():v==='backup'?viewBackup():v==='look'?viewLook():v==='player'?viewPlayer():v==='stats'?viewStats():v==='history'?viewHistory():v==='yahtzee'?viewYahtzee():v==='421'?view421():v==='skyjo'?viewSky():v==='result'?viewResult():v==='watch'?viewWatch():viewHome();
+  const tabv = v==='watch' ? 'home' : v==='result' ? (S.result && S.result.from==='history' ? 'history' : 'home') : GAMES[v] ? 'home' : ['player','settings','account','backup','look','friends','friend'].includes(v) ? 'players' : v;
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.v===tabv));
+  placeInd();
   const f = document.getElementById('addp');
   if(f) f.onsubmit = async e => { e.preventDefault(); const i=document.getElementById('pname'); const n=i.value.trim(); if(!n) return;
     if(Object.values(S.players).some(p=>p.name.toLowerCase()===n.toLowerCase())){ toast(n+' est déjà dans la liste.'); return; }
@@ -1944,6 +2001,13 @@ function render(){
   ['acct-form','acct-rename-form','acct-fix-form','acct-del-form'].forEach(id => { const g = document.getElementById(id); if(g) g.onsubmit = e => { e.preventDefault(); acctForm(id); }; });
 }
 function go(v){ S.view=v; S.confirm=null; S.edit=null; if(v==='friends'){ S.fr.err=S.fr.info=null; } render(); window.scrollTo(0,0); if(['players','friends','friend'].includes(v)) frLoad(v!=='players'); if(['players','history'].includes(v)) checkInbox(); if(v==='home') watchCheck(); }
+/* Pastille de l'onglet actif (v20) : glisse d'un onglet à l'autre. Pas d'animation au premier placement. */
+function placeInd(){ const ind = document.getElementById('tab-ind'), on = document.querySelector('.tab.on'); if(!ind) return;
+  if(!on || !on.offsetWidth){ ind.style.width = '0'; return; }
+  ind.style.width = on.offsetWidth + 'px'; ind.style.transform = 'translateX(' + on.offsetLeft + 'px)';
+  if(!ind.classList.contains('go')) requestAnimationFrame(() => requestAnimationFrame(() => ind.classList.add('go'))); }
+window.addEventListener('resize', () => { const ind = document.getElementById('tab-ind'); if(ind) ind.classList.remove('go'); placeInd(); });
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(placeInd);
 document.getElementById('tabs').onclick = e => { const t=e.target.closest('.tab'); if(t) go(t.dataset.v); };
 
 async function saveFinished(k){
@@ -1964,11 +2028,12 @@ async function saveFinished(k){
 }
 
 $app.addEventListener('click', async e => {
-  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-mg],[data-mg-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-me],[data-share],[data-frsend],[data-wshare],[data-watch],[data-game],[data-sgrp],td.cell,tr.rt'); if(!el) return;
+  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-mg],[data-mg-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-me],[data-share],[data-frsend],[data-wshare],[data-watch],[data-game],[data-sgrp],[data-look],td.cell,tr.rt'); if(!el) return;
   if(el.matches('[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-me],[data-share],[data-wshare],[data-frsend],[data-a=fr-rm]') && await frClick(el)) return;
   if(el.matches('td.cell,tr.rt')){ const tr = el.closest('tr'); if(tr){ tr.classList.add('tapped'); setTimeout(()=>tr.classList.remove('tapped'), 220); } openCell(el.dataset.p, el.dataset.c); return; }
   if(el.dataset.watch){ watchOpen(el.dataset.watch); return; }
   if(el.dataset.game){ const g = S.games.find(x=>x.id===el.dataset.game); if(g){ S.result = {g, from:'history'}; go('result'); } return; }
+  if(el.matches('[data-look]')){ lookSet(el.dataset.look || null); return; }
   if(el.dataset.go){ go(el.dataset.go); return; }
   if(el.dataset.yzp){ const i=Number(el.dataset.yzp); if(i!==S.yzp){ S.yzAnim = i>S.yzp?'l':'r'; S.yzp=i; render(); } return; }
   if(el.dataset.player){ S.pid=el.dataset.player; go('player'); return; }
@@ -2082,7 +2147,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '19';
+window.APP_VERSION = '20';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

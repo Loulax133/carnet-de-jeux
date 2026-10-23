@@ -120,6 +120,9 @@ nav.tabs{position:fixed;z-index:20;left:50%;transform:translateX(-50%);bottom:ca
 .award.hero .label,.award.hero .meta{color:color-mix(in srgb,var(--inv-ink) 65%,transparent)}
 .award.hero .big{font-size:44px}
 .tbl-wrap{overflow-x:auto}
+.sheet-h th,.sheet-h td{padding:9px 8px}
+.sheet-h.wide td:first-child,.sheet-h.wide th:first-child{position:sticky;left:0;background:var(--cat-bg);z-index:1}
+.sheet-h tr.sh-tot td{border-bottom:0;font-size:15px}
 table.stats{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14px}
 .stats th,.stats td{padding:12px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
 .stats th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-weight:600}
@@ -702,6 +705,7 @@ function stats4(id){
   st.lossRate = st.played ? st.losses/st.played : 0;
   return st;
 }
+const tagOf = p => !p.uid || db ? '' : p.uid===myUid() ? '<b style="color:var(--ink)">Toi</b> · ' : friendUids().has(p.uid) ? '<b style="color:var(--ink)">Ami</b> · ' : '';
 function viewPlayers(){
   const ps = sortedPlayers(); const king = bestPlayer();
   return `<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div><div class="label">${plural(ps.length,'joueur')}</div><h1>Les <em>joueurs</em></h1></div>
@@ -709,7 +713,7 @@ function viewPlayers(){
   <p class="sub">Ajoute autant de monde que tu veux. Les mêmes joueurs servent pour tous les jeux.</p>
   <form id="addp" class="row" style="flex-wrap:nowrap"><input type="text" id="pname" placeholder="Prénom" maxlength="24" autocomplete="off" aria-label="Prénom du joueur"><button class="btn" type="submit" id="addbtn">Ajouter</button></form>
   ${ps.length ? `<div class="glass" style="padding:8px 16px;margin-top:16px"><div class="list">${ps.map(([id,p])=>{const y=statsY(id), q=stats4(id), sk=statsS(id);
-    return `<div class="item tap" role="button" tabindex="0" data-player="${id}">${crowned(av(id,p.name), id===king)}<div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">Yahtzee ${y.played} · 421 ${q.played} · Skyjo ${sk.played}</div></div><span class="chev" aria-hidden="true">›</span></div>`;}).join('')}</div></div>
+    return `<div class="item tap" role="button" tabindex="0" data-player="${id}">${crowned(av(id,p.name), id===king)}<div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">${tagOf(p)}Yahtzee ${y.played} · 421 ${q.played} · Skyjo ${sk.played}</div></div><span class="chev" aria-hidden="true">›</span></div>`;}).join('')}</div></div>
     <p class="note">Touche un joueur pour voir ses stats et modifier son profil. La couronne va au meilleur taux de victoire tous jeux confondus, à partir de 3 parties.</p>` : ''}
   ${viewFriendsBlock()}`;
 }
@@ -777,6 +781,13 @@ const dot = id => { const c = colorOf(id); return `<span class="pdot" style="bac
 const barC = id => colorOf(id) ? `;background:${colorOf(id)}` : '';
 const av = (id, name, cls='') => `<div class="avatar${cls?' '+cls:''}" style="${avStyle(id)}">${initial(name)}</div>`;
 
+function friendCard(p){
+  if(db || !p.uid || p.uid===myUid() || !friendUids().has(p.uid)) return '';
+  const f = S.fr.list.find(x=>x.uid===p.uid), r = S.fr.res[p.uid], l = r && r.list, w = l ? l.filter(x=>x.w).length : 0;
+  const sw = sharedWith(p.uid);
+  return `<div class="glass" style="padding:4px 16px;margin-top:14px"><div class="list"><div class="item tap" role="button" tabindex="0" data-friend="${esc(p.uid)}"><div class="grow"><div class="name">Ami · ${esc(f.name)}</div><div class="meta">${l ? 'Dans son carnet : '+plural(l.length,'partie')+' · '+plural(w,'victoire') : 'Son carnet et ses réglages d’ami'}</div></div><span class="chev" aria-hidden="true">›</span></div></div></div>
+  ${sw.todo.length ? `<div class="glass row" style="padding:12px 14px 12px 18px;margin-top:10px;flex-wrap:nowrap;border-radius:22px"><span class="grow"><b>${plural(sw.todo.length,'partie')} pas encore chez ${esc(f.name)}</b><span class="hint">Elles partiront dès qu’il y aura du réseau.</span></span><button class="btn" style="padding:10px 14px;font-size:14px" data-frsend="${esc(p.uid)}">Envoyer</button></div>` : ''}`;
+}
 function viewPlayer(){
   const id = S.pid, p = S.players[id];
   if(!p) return `<button class="back" data-go="players">← Joueurs</button><div class="glass empty"><div class="serif">Joueur introuvable</div><p>Il a peut-être été retiré.</p></div>`;
@@ -819,6 +830,7 @@ function viewPlayer(){
   return `<button class="back" data-go="players">← Joueurs</button>
   <div class="phead">${crowned(av(id, p.name, 'big'), isKing)}<div class="grow"><div class="label">${isKing ? 'Meilleur joueur · ' : ''}${plural(total,'partie')} au total</div><h1 style="margin:4px 0 0">${esc(p.name)}</h1></div>
     <button class="btn ghost" data-a="edit" id="edit-btn" style="padding:10px 16px">Modifier</button></div>
+  ${friendCard(p)}
   ${section('Yahtzee', y.played, tile('Victoires', y.wins, pct(y.rate)) + tile('Parties', y.played) + tile('Moyenne', y.avg, 'pts par partie') + tile('Record', y.best, 'pts') + tile('Yahtzees', y.yahtzees, 'bonus compris') + tile('Prime de 35', y.bonuses, 'fois'))}
   ${yScores.length>1 ? `<div class="glass" style="padding:14px 16px;margin-top:10px"><div class="label">Derniers scores</div>
     <div class="spark">${yScores.map((v,i)=>`<div class="sb" title="${v} pts"><span style="height:${Math.max(4,Math.round(v/yMax*100))}%;background:${i===yScores.length-1?accent:'color-mix(in srgb,'+accent+' 35%, transparent)'}"></span><em>${v}</em></div>`).join('')}</div></div>` : ''}
@@ -1223,10 +1235,10 @@ const FR_KEY = 'yz-friends', PUB_KEY = 'yz-pub';
 const pairId = (a, b) => a < b ? a+'_'+b : b+'_'+a;
 const myUid = () => (S.acct.user || S.acct.cache || {}).uid || null;
 const online = () => !!(myUid() && S.acct.profile && !S.acct.needsProfile);
-S.fr = {list:[], res:{}, sent:{}, at:0, busy:false, err:null, info:null, code:''};
-{ const c = lsGet(FR_KEY); if(c && c.owner && c.owner===myUid()){ S.fr.list = c.list||[]; S.fr.res = c.res||{}; S.fr.sent = c.sent||{}; } }
-const frSave = () => lsSet(FR_KEY, {owner:myUid(), list:S.fr.list, res:S.fr.res, sent:S.fr.sent});
-function frReset(){ S.fr.list = []; S.fr.res = {}; S.fr.sent = {}; S.fr.at = 0; lsSet(FR_KEY, null); lsSet(PUB_KEY, null); }
+S.fr = {list:[], res:{}, sent:{}, auto:[], at:0, busy:false, err:null, info:null, code:''};
+{ const c = lsGet(FR_KEY); if(c && c.owner && c.owner===myUid()){ S.fr.list = c.list||[]; S.fr.res = c.res||{}; S.fr.sent = c.sent||{}; S.fr.auto = c.auto||[]; } }
+const frSave = () => lsSet(FR_KEY, {owner:myUid(), list:S.fr.list, res:S.fr.res, sent:S.fr.sent, auto:S.fr.auto});
+function frReset(){ S.fr.list = []; S.fr.res = {}; S.fr.sent = {}; S.fr.auto = []; S.fr.at = 0; lsSet(FR_KEY, null); lsSet(PUB_KEY, null); }
 const friendsOk = () => S.fr.list.filter(f=>f.status==='ok').sort((a,b)=>a.name.localeCompare(b.name,'fr'));
 const pidOfUid = uid => { const e = Object.entries(S.players).find(([id,p])=>p.uid===uid); return e ? e[0] : null; };
 const myPid = () => { const u = myUid(); return u ? pidOfUid(u) : null; };
@@ -1249,7 +1261,7 @@ async function frLoad(force){
     await Promise.all(list.filter(f=>f.status==='ok').map(async f => {
       try{ const u = await m.getDoc(m.doc(fs, 'users', f.uid)); if(u.exists()) f.name = u.data().name; }catch(e){}
       try{ const r = await m.getDoc(m.doc(fs, 'results', f.uid)); S.fr.res[f.uid] = {list: r.exists() ? (r.data().list||[]) : null, at:Date.now()}; }catch(e){} }));
-    S.fr.list = list; frSave(); render();
+    S.fr.list = list; syncFriendPlayers(); frSave(); render();
   }catch(e){ /* hors ligne ou règles pas encore publiées : on garde le cache */ }
 }
 async function frFetchRes(uid){
@@ -1283,6 +1295,33 @@ async function frAccept(id){ await frRun(async () => { const {m, fs} = await fb(
   toast('Demande acceptée'); await frLoad(true); }); }
 async function frDrop(id, msg){ await frRun(async () => { const {m, fs} = await fb();
   await m.deleteDoc(m.doc(fs, 'friendships', id)); toast(msg); S.confirm = null; await frLoad(true); }); }
+
+/* ---- chaque ami confirmé devient un joueur du carnet ----
+   Une seule fois par ami (S.fr.auto) : s'il est retiré de la liste, on ne le recrée pas, il reste dans Amis.
+   On relie d'abord un joueur libre du même prénom (nom complet ou premier mot), sinon on crée le joueur (auto:true).
+   Puis on lui envoie les parties déjà jouées avec ce joueur qu'il n'a pas encore. */
+const normName = s => String(s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+function freePlayerFor(name){
+  const me = myPid(), full = normName(name), first = full.split(/\s+/)[0];
+  const free = Object.entries(S.players).filter(([id,p]) => id!==me && !p.uid && !p.guest);
+  const games = id => S.games.filter(g=>(g.results||[]).some(r=>r.id===id)).length;
+  const pick = l => l.sort((a,b)=>games(b[0])-games(a[0]))[0];
+  return pick(free.filter(([id,p]) => normName(p.name)===full)) || (first && first!==full ? pick(free.filter(([id,p]) => normName(p.name)===first)) : null) || null;
+}
+function syncFriendPlayers(){
+  if(db || !online() || !myPid()) return;
+  let changed = false; const linked = [];
+  friendsOk().forEach(f => {
+    if(S.fr.auto.includes(f.uid)) return;
+    S.fr.auto.push(f.uid);
+    if(pidOfUid(f.uid)) return;
+    const hit = freePlayerFor(f.name);
+    if(hit) hit[1].uid = f.uid;
+    else S.players[uid()] = {name:String(f.name||'Ami').slice(0,24), uid:f.uid, auto:true, createdAt:Date.now()};
+    changed = true; linked.push(f.uid);
+  });
+  if(changed){ local.save(); linked.forEach(u => sendPast(u, true)); }
+}
 
 /* ---- publication de mes résultats ---- */
 function myResults(){
@@ -1324,7 +1363,7 @@ function viewMe(){
 function viewFriendsBlock(){
   if(db) return '';
   if(!online()) return `<p class="note">Pour ajouter des amis, crée un compte : roue en haut à droite → Mon compte.</p>`;
-  const ok = friendsOk(), inc = S.fr.list.filter(f=>f.status==='in').length;
+  const ok = friendsOk().filter(f => !pidOfUid(f.uid)), inc = S.fr.list.filter(f=>f.status==='in').length;
   return `<h2>Amis</h2>${myPid() ? '' : `<div class="glass row" style="padding:12px 14px 12px 18px;margin-bottom:10px;flex-wrap:nowrap;border-radius:22px"><span class="grow hint" style="margin:0">Choisis qui tu es dans le carnet pour recevoir les parties de tes amis et partager tes résultats.</span><button class="btn ghost" style="padding:10px 14px;font-size:14px" data-go="account">Choisir</button></div>`}<div class="glass" style="padding:8px 16px"><div class="list">
     ${ok.map(f => { const r = S.fr.res[f.uid], l = r && r.list; const w = l ? l.filter(x=>x.w).length : 0;
       return `<div class="item tap" role="button" tabindex="0" data-friend="${esc(f.uid)}"><div class="avatar">${initial(f.name)}</div><div class="grow"><div class="name">${esc(f.name)}</div><div class="meta">${l ? plural(l.length,'partie')+' · '+plural(w,'victoire') : 'Ami'}</div></div><span class="chev" aria-hidden="true">›</span></div>`; }).join('')}
@@ -1353,7 +1392,7 @@ function friendStats(list, k){
 }
 function viewFriend(){
   const uid = S.fid, f = S.fr.list.find(x=>x.uid===uid && x.status==='ok');
-  const back = `<button class="back" data-go="players">← Joueurs</button>`;
+  const lp = pidOfUid(uid), back = lp ? `<button class="back" data-player="${lp}">← ${esc(S.players[lp].name)}</button>` : `<button class="back" data-go="players">← Joueurs</button>`;
   if(!f) return back + `<div class="glass empty"><div class="serif">Ami introuvable</div><p>Il a peut-être été retiré.</p></div>`;
   const r = S.fr.res[uid], list = r && r.list, linked = pidOfUid(uid);
   const tile = (lab, v, sub) => `<div class="stile"><div class="label">${lab}</div><div class="v">${v}</div>${sub?`<div class="meta">${sub}</div>`:''}</div>`;
@@ -1363,13 +1402,12 @@ function viewFriend(){
       ? tile('Défaites', s.n-s.w, pct(1-s.rate)) + tile('Parties', s.n) + tile('Sorti en 1er', s.first, 'fois')
       : tile('Victoires', s.w, pct(s.rate)) + tile('Parties', s.n) + tile('Moyenne', s.avg ?? '–', 'pts') + tile('Record', s.best ?? '–', k==='skyjo'?'total le plus bas':'pts')}</div>`; };
   const outc = x => x.k==='421' ? (x.w ? (x.r ? `Sorti ${x.r===1?'1er':x.r+'e'}` : 'Ne perd pas') : '<b>Perd</b>') : `${x.w?'<b>Gagne</b>':'Perd'} · ${x.p} pts`;
-  const others = sortedPlayers().filter(([id,p])=>!p.uid);
+  const others = sortedPlayers().filter(([id,p])=>!p.uid && !p.guest);
   return back + `<div class="phead"><div class="avatar big">${initial(f.name)}</div><div class="grow"><div class="label">Ami${list ? ' · '+plural(list.length,'partie') : ''}</div><h1 style="margin:4px 0 0">${esc(f.name)}</h1></div></div>
-  ${linked ? `<div class="glass" style="padding:4px 16px;margin-top:14px"><div class="item tap" role="button" tabindex="0" data-player="${linked}">${av(linked, S.players[linked].name)}<div class="grow"><div class="name">Vos parties ensemble</div><div class="meta">Joueur « ${esc(S.players[linked].name)} » du carnet</div></div><span class="chev" aria-hidden="true">›</span></div></div>
-    ${(() => { const sw = sharedWith(uid); return sw.all ? `<div class="glass row" style="padding:12px 14px 12px 18px;margin-top:10px;flex-wrap:nowrap;border-radius:22px"><span class="grow"><b>${plural(sw.all,'partie')} ensemble</b><span class="hint">${sw.todo.length ? `${plural(sw.todo.length,'partie')} pas encore dans son historique` : 'Toutes sont dans son historique'}</span></span>${sw.todo.length ? `<button class="btn" style="padding:10px 14px;font-size:14px" data-frsend="${esc(uid)}">Envoyer</button>` : ''}</div>` : ''; })()}`
-    : `<div class="glass" style="padding:6px 18px 14px;margin-top:14px"><div class="field"><span class="label">Relier à un joueur du carnet</span>
-      ${others.length ? `<div class="chips">${others.map(([id,p])=>`<button class="chip" data-frlink="${id}">${dot(id)}${esc(p.name)}</button>`).join('')}</div>` : '<span class="hint">Aucun joueur libre dans ton carnet.</span>'}
-      <span class="hint">Si ${esc(f.name)} est déjà dans tes joueurs, relie-le pour retrouver vos parties ensemble.</span></div></div>`}
+  <div class="glass" style="padding:6px 18px 14px;margin-top:14px"><div class="field"><span class="label">${linked ? 'Joueur du carnet' : 'Relier à un joueur du carnet'}</span>
+    ${linked ? `<span class="hint" style="margin-top:0">Relié à « ${esc(S.players[linked].name)} ». Ce n’est pas le bon ? Choisis-en un autre :</span>` : ''}
+    ${others.length ? `<div class="chips">${others.map(([id,p])=>`<button class="chip" data-frlink="${id}">${dot(id)}${esc(p.name)}</button>`).join('')}</div>` : `<span class="hint">${linked ? 'Aucun autre joueur libre.' : 'Aucun joueur libre dans ton carnet.'}</span>`}
+    ${linked ? '' : `<span class="hint">Si ${esc(f.name)} est déjà dans tes joueurs, relie-le pour retrouver vos parties ensemble.</span>`}</div></div>
   ${!r ? `<p class="hint" style="margin-top:18px">Chargement de ses résultats…</p>` : !list ? `<div class="glass empty" style="margin-top:14px"><div class="serif">Pas encore de résultats</div><p>${esc(f.name)} n'a pas encore choisi son joueur dans le carnet, ou ne partage pas ses résultats.</p></div>`
     : `${['yahtzee','421','skyjo'].map(section).join('')}
     ${list.length ? `<h2>Dernières parties</h2><div class="glass" style="padding:4px 16px"><div class="list">${list.slice(0,10).map(x=>`<div class="item"><div class="grow"><div class="name">${GAMES[x.k] ? GAMES[x.k].name : x.k}</div><div class="meta">${new Date(x.d).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long'})}</div></div><div class="meta" style="text-align:right;color:var(--ink)">${outc(x)}</div></div>`).join('')}</div></div>` : ''}`}
@@ -1382,11 +1420,14 @@ async function frClick(el){
   if(d.fra){ frAccept(d.fra); return true; }
   if(d.frsend){ sendPast(d.frsend); return true; }
   if(d.frx){ frDrop(d.frx, d.msg || 'Fait'); if(S.view==='friend') go('players'); return true; }
-  if(d.frlink){ const uid = S.fid; Object.entries(S.players).forEach(([id,p])=>{ if(p.uid===uid) delete p.uid; });
-    await store.updatePlayer(d.frlink, {uid}); toast('Joueur relié'); return true; }
+  if(d.frlink){ const uid = S.fid;
+    Object.entries(S.players).forEach(([id,p])=>{ if(p.uid!==uid) return;
+      if(p.auto && !S.games.some(g=>(g.results||[]).some(r=>r.id===id))) delete S.players[id]; else delete p.uid; });
+    if(!S.fr.auto.includes(uid)){ S.fr.auto.push(uid); frSave(); }
+    await store.updatePlayer(d.frlink, {uid}); sendPast(uid, true); toast('Joueur relié'); return true; }
   if(d.me){ const me = myUid(); if(!me) return true;
     for(const [id,p] of Object.entries(S.players)) if(p.uid===me && id!==d.me) await store.updatePlayer(id, {uid:null});
-    await store.updatePlayer(d.me, {uid:me}); toast('C’est noté'); pubSoon(); return true; }
+    await store.updatePlayer(d.me, {uid:me}); syncFriendPlayers(); frSave(); toast('C’est noté'); pubSoon(); return true; }
   if(d.share){ const on = d.share==='1'; const st = lsGet(PUB_KEY) || {};
     lsSet(PUB_KEY, on ? {} : {off:true, has:true}); render(); pubSoon(); toast(on ? 'Tes amis verront tes résultats' : 'Tes résultats ne sont plus partagés'); return true; }
   if(d.a==='fr-rm'){ S.confirm = 'frrm'; render(); return true; }
@@ -1437,8 +1478,9 @@ function shareDelete(g){ if(db || !g || !online()) return; queue((g.sentTo||[]).
 function sharedWith(uid){ const pid = pidOfUid(uid); if(!pid) return {all:0, todo:[]};
   const mine = S.games.filter(g => !g.src && (g.results||[]).some(r=>r.id===pid));
   return {all:mine.length, todo: mine.filter(g => !(g.sentTo||[]).includes(uid) && !outbox().some(x=>x.to===uid && x.gid===g.id))}; }
-function sendPast(uid){ const {todo} = sharedWith(uid);
+function sendPast(uid, quiet){ const {todo} = sharedWith(uid);
   queue(todo.map(g => ({to:uid, type:'game', gid:g.id, game:gamePayload(g)})));
+  if(quiet) return;
   toast(todo.length ? `${plural(todo.length,'partie')} en route` : 'Tout est déjà envoyé'); render(); }
 
 /* ---- réception ---- */
@@ -1463,8 +1505,16 @@ function importReceived(sender, game){
   const mp = id => map[id] || id;
   const results = (game.results||[]).map(r => ({...r, id:mp(r.id), name: (S.players[mp(r.id)]||{}).name || r.name}));
   const {who, ...g} = game;
+  if(g.sheet) g.sheet = mapSheet(g.sheet, mp);
   S.games.push({...g, id:gid, results, winners:(g.winners||[]).map(mp), loser: g.loser ? mp(g.loser) : g.loser, firstOut: g.firstOut ? mp(g.firstOut) : g.firstOut, src:{from:sender, name:senderName, id:game.id}});
   return true;
+}
+function mapSheet(sh, mp){
+  const o = JSON.parse(JSON.stringify(sh)), keys = x => Object.fromEntries(Object.entries(x||{}).map(([k,v]) => [mp(k), v]));
+  if(o.scores) o.scores = keys(o.scores);
+  if(Array.isArray(o.rounds)) o.rounds = o.rounds.map(r => { const n = {...r};
+    if(r.scores) n.scores = keys(r.scores); ['closer','w','l'].forEach(f => { if(r[f]) n[f] = mp(r[f]); }); return n; });
+  return o;
 }
 let inboxBusy = false;
 async function checkInbox(){
@@ -1528,6 +1578,37 @@ async function replay(){
   await store.setLive(k, k==='yahtzee' ? {order, names, scores:{}, startedAt:Date.now()} : k==='skyjo' ? {order, names, rounds:[], startedAt:Date.now()} : {order, names, rounds:[], rules:{...S.rules421}, startedAt:Date.now()});
   go(k);
 }
+/* Fiche de score complète d'une partie terminée (g.sheet, depuis la v16). Colonnes dans l'ordre de jeu. */
+function viewSheet(g){
+  const k = kindOf(g), sh = g.sheet, ids = (g.results||[]).map(r=>r.id);
+  const nmOf = id => { const r = (g.results||[]).find(x=>x.id===id); return esc(pname(id, r ? r.name : '')); };
+  const title = k==='yahtzee' ? 'Fiche de score' : 'Manches';
+  if(!sh) return `<h2>${title}</h2><p class="hint">Le détail n’est gardé que pour les parties terminées depuis la mise à jour de fin octobre 2026.</p>`;
+  const head = `<thead><tr><th></th>${ids.map(id=>`<th>${dot(id)}${nmOf(id)}</th>`).join('')}</tr></thead>`;
+  if(k==='yahtzee'){
+    const sc = id => (sh.scores||{})[id] || {}, t = id => totals(sc(id));
+    const v = (id, c) => { const x = sc(id)[c]; return x===undefined || x===null ? '<span class="meta">–</span>' : x; };
+    const row = c => `<tr><td>${c.label}</td>${ids.map(id=>`<td>${v(id,c.id)}</td>`).join('')}</tr>`;
+    const sum = (lab, f, strong) => `<tr${strong?' class="sh-tot"':''}><td><b>${lab}</b></td>${ids.map(id=>`<td><b>${f(t(id))}</b></td>`).join('')}</tr>`;
+    return `<h2>${title}</h2><div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats sheet-h${ids.length>3?' wide':''}">${head}<tbody>
+      ${UPPER.map(row).join('')}${sum('Sous-total', x=>x.up)}${sum('Prime', x=>x.bonus)}
+      ${LOWER.map(row).join('')}<tr><td>Yahtzee bonus</td>${ids.map(id=>`<td>${sc(id).yb ? '+'+sc(id).yb*100 : '<span class="meta">–</span>'}</td>`).join('')}</tr>
+      ${sum('Section basse', x=>x.low)}${sum('Total', x=>x.total, true)}</tbody></table></div>`;
+  }
+  if(k==='skyjo'){
+    const st = runSky({order:ids, rounds:sh.rounds||[]});
+    const rows = st.log.map((r,i)=>`<tr><td class="meta">M${i+1}</td>${ids.map(id=>`<td>${r.fin[id]}${r.closer===id?(r.dbl?' <span class="meta">×2</span>':' <span class="meta">•</span>'):''}</td>`).join('')}</tr>`).join('');
+    return `<h2>${title}</h2><div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats sheet-h${ids.length>3?' wide':''}">${head}<tbody>${rows}
+      <tr class="sh-tot"><td><b>Total</b></td>${ids.map(id=>`<td><b>${st.tot[id]}</b></td>`).join('')}</tr></tbody></table>
+      <p class="hint" style="margin:8px 0">• a fini la manche · ×2 points doublés</p></div>`;
+  }
+  const L = {order:ids, rounds:sh.rounds||[], rules:sh.rules}, st = run421(L), RU = rulesOf(L);
+  const lines = st.log.map((r,i) => `<div><b>${i+1}.</b> ${combo(r.c,RU).t}${r.nen?' + nénette':''} · ${r.phase==='charge' ? `${nmOf(r.l)} prend ${r.a}` : `${nmOf(r.w)} donne ${r.a} à ${nmOf(r.l)}`}</div>`);
+  const firstDech = st.log.findIndex(r=>r.phase==='decharge');
+  if(firstDech>0) lines.splice(firstDech, 0, `<div class="label" style="margin:8px 0 2px">Décharge</div>`);
+  return `<h2>${title}</h2><div class="glass" style="padding:14px 18px">${st.log.length ? `<div class="label" style="margin:0 0 2px">Charge</div>` : ''}<div class="log">${lines.join('')}</div>
+    ${st.out.length ? `<p class="hint" style="margin:12px 0 0">Ordre de sortie : ${st.out.map(nmOf).join(', ')}${st.loser ? ` · ${nmOf(st.loser)} perd` : ''}</p>` : ''}</div>`;
+}
 function viewResult(){
   const R = S.result; if(!R || !R.g) return viewHome();
   const g = R.g, k = kindOf(g), res = [...(g.results||[])];
@@ -1557,6 +1638,7 @@ function viewResult(){
   <p class="sub">${R.from==='end' ? 'Partie enregistrée dans l\'historique.' : 'Classement final.'}</p>
   <div class="glass" style="padding:8px 16px"><div class="list res-list">${rows.map(x=>`<div class="item${x.win?' win':''}"><span class="rk">${x.rk}</span>${av(x.r.id, pname(x.r.id,x.r.name))}<div class="grow"><div class="name">${nm(x.r)}</div>${x.meta?`<div class="meta">${x.meta}</div>`:''}</div>${x.big?`<div class="tok">${x.big}</div>`:''}</div>`).join('')}</div></div>
   ${g.src ? `<p class="hint">Reçue de ${esc(g.src.name)}</p>` : ''}
+  ${viewSheet(g)}
   <div class="stack" style="margin-top:18px">
     <button class="btn block" data-a="res-again" id="res-again">Rejouer avec les mêmes</button>
     <button class="btn ghost block" data-a="res-back" id="res-back">Retour</button>
@@ -1587,16 +1669,17 @@ async function saveFinished(k){
   if(k==='yahtzee'){ const L=S.live.yahtzee;
     const results = L.order.map(id=>{const sc=L.scores[id]||{}; const t=totals(sc); return {id, name:pname(id,L.names[id]), total:t.total, up:t.up, bonus:t.bonus, yz:sc.yz||0, yb:sc.yb||0};});
     const max = Math.max(...results.map(r=>r.total));
-    return {game:'yahtzee', date:Date.now(), startedAt:L.startedAt, results, winners: results.filter(r=>r.total===max).map(r=>r.id)};
+    const scores = {}; L.order.forEach(id => { scores[id] = {...(L.scores[id]||{})}; });
+    return {game:'yahtzee', date:Date.now(), startedAt:L.startedAt, results, winners: results.filter(r=>r.total===max).map(r=>r.id), sheet:{scores}};
   }
   if(k==='skyjo'){ const L=S.live.skyjo; const st=runSky(L);
     const results = L.order.map(id=>({id, name:pname(id,L.names[id]), total:st.tot[id], closed:st.closed[id], doubled:st.doubled[id], bestRound:st.bestRound[id]}));
-    return {game:'skyjo', date:Date.now(), startedAt:L.startedAt, results, winners:st.winners, rounds:st.log.length};
+    return {game:'skyjo', date:Date.now(), startedAt:L.startedAt, results, winners:st.winners, rounds:st.log.length, sheet:{rounds:JSON.parse(JSON.stringify(L.rounds||[]))}};
   }
   const L=S.live['421']; const st=run421(L);
   const results = L.order.map(id=>({id, name:pname(id,L.names[id]), rank: id===st.loser ? L.order.length : st.out.indexOf(id)+1,
     n421: st.log.filter(r=>r.w===id && r.c==='421').length}));
-  return {game:'421', date:Date.now(), startedAt:L.startedAt, results, loser:st.loser, firstOut:st.out[0]||null, rounds:st.log.length};
+  return {game:'421', date:Date.now(), startedAt:L.startedAt, results, loser:st.loser, firstOut:st.out[0]||null, rounds:st.log.length, sheet:{rounds:JSON.parse(JSON.stringify(L.rounds||[])), rules:rulesOf(L)}};
 }
 
 $app.addEventListener('click', async e => {
@@ -1711,7 +1794,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '14';
+window.APP_VERSION = '16';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

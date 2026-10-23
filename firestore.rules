@@ -1,5 +1,5 @@
 rules_version = '2';
-// Carnet de jeux — règles Firestore (étape 2 : comptes, codes, amis, résultats partagés).
+// Carnet de jeux — règles Firestore (comptes, codes, amis, résultats, parties partagées, partie en direct).
 // À coller dans Firebase > Firestore Database > Règles, puis « Publier ».
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -83,6 +83,33 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time;
       allow delete: if isMe();
       allow list: if false;
+    }
+
+    // Boîte aux lettres : un ami confirmé dépose une partie (ou une suppression), seul le destinataire lit et vide.
+    match /inbox/{uid}/items/{item} {
+      allow get, list, delete: if signedIn() && request.auth.uid == uid;
+      allow create: if friendOf(uid)
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.sentAt == request.time
+        && ((request.resource.data.type == 'game' && request.resource.data.keys().hasOnly(['from', 'type', 'game', 'sentAt']) && request.resource.data.game is map)
+          || (request.resource.data.type == 'del' && request.resource.data.keys().hasOnly(['from', 'type', 'gid', 'sentAt']) && request.resource.data.gid is string));
+      allow update: if false;
+    }
+
+    // Partie en direct : un document par joueur qui saisit et par jeu ({uid}_{jeu}).
+    // Lisible seulement par son auteur et par les joueurs de la partie (viewers). Un ami qui ne joue pas ne voit rien.
+    match /watch/{wid} {
+      function own() { return signedIn() && wid.matches(request.auth.uid + '_(yahtzee|421|skyjo)'); }
+      allow get: if signedIn() && (resource == null || own() || request.auth.uid in resource.data.viewers);
+      allow list: if signedIn() && request.auth.uid in resource.data.viewers;
+      allow create, update: if own()
+        && request.resource.data.keys().hasOnly(['owner', 'ownerName', 'k', 'viewers', 'uids', 'status', 'state', 'result', 'updatedAt'])
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.viewers is list && request.resource.data.viewers.size() <= 12
+        && request.resource.data.state is string && request.resource.data.state.size() < 200000
+        && (!('result' in request.resource.data) || (request.resource.data.result is string && request.resource.data.result.size() < 200000))
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if own();
     }
 
     // Tout le reste : fermé.

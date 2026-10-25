@@ -1,5 +1,5 @@
 rules_version = '2';
-// Carnet de jeux — règles Firestore (comptes, codes, amis, résultats, parties partagées, partie en direct).
+// Carnet de jeux — règles Firestore (comptes, codes, amis, résultats, parties partagées, partie en direct, bugs et idées).
 // À coller dans Firebase > Firestore Database > Règles, puis « Publier ».
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -110,6 +110,29 @@ service cloud.firestore {
         && (!('result' in request.resource.data) || (request.resource.data.result is string && request.resource.data.result.size() < 200000))
         && request.resource.data.updatedAt == request.time;
       allow delete: if own();
+    }
+
+    // Bugs et idées (v26) : tout compte connecté peut envoyer un message, seul l'administrateur le lit.
+    // L'administrateur est désigné par son code ami (visible dans Mon compte, jamais modifiable après création).
+    function isAdmin() {
+      return signedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.code == 'TON_CODE_AMI';
+    }
+    match /feedback/{fid} {
+      allow get, list, delete: if isAdmin();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'type', 'text', 'app', 'device', 'view', 'createdAt', 'done'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.name is string && request.resource.data.name.size() <= 24
+        && request.resource.data.type in ['bug', 'idea']
+        && request.resource.data.text is string && request.resource.data.text.size() >= 1 && request.resource.data.text.size() <= 2000
+        && request.resource.data.app is string && request.resource.data.app.size() <= 10
+        && request.resource.data.device is string && request.resource.data.device.size() <= 200
+        && request.resource.data.view is string && request.resource.data.view.size() <= 40
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.done == false;
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['done'])
+        && request.resource.data.done is bool;
     }
 
     // Tout le reste : fermé.

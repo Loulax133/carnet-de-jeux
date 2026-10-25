@@ -87,6 +87,10 @@ h2{font-family:var(--serif);font-weight:400;font-size:26px;margin:28px 0 10px}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{appearance:none;border:1px solid var(--line);background:var(--chip);color:var(--ink);font:500 15px var(--sans);border-radius:999px;padding:10px 16px;cursor:pointer;font-variant-numeric:tabular-nums}
 .chip.on{background:var(--inv-bg);color:var(--inv-ink);border-color:var(--inv-bg)}
+textarea.fb-text{display:block;width:100%;min-height:150px;resize:vertical;font:400 17px/1.4 var(--sans);color:var(--ink);background:var(--chip);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.fb-item{padding:14px 4px;border-bottom:1px solid var(--line)}.fb-item:last-child{border-bottom:0}
+.fb-item.done{opacity:.5}
+.fb-txt{margin:6px 0 8px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px;line-height:1.4}
 input[type=text],input[type=email],input[type=password]{width:100%;min-width:0;font:400 17px var(--sans);color:var(--ink);background:var(--chip);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
 .list{display:flex;flex-direction:column}
 .item{display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid var(--line)}
@@ -818,7 +822,7 @@ const tagOf = p => !p.uid || db ? '' : p.uid===myUid() ? '<b style="color:var(--
 function viewPlayers(){
   const ps = sortedPlayers(); const king = bestPlayer();
   return `<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div><div class="label">${plural(ps.length,'joueur')}</div><h1>Les <em>joueurs</em></h1></div>
-    ${!db ? `<span class="crowned" style="margin-top:6px"><button class="navb" data-go="settings" id="settings-btn" aria-label="Réglages : compte et sauvegarde">${GEAR}</button>${driveDue()||linkTodo()?'<span class="obadge" style="min-width:12px;height:12px;padding:0;right:0;bottom:auto;top:0" aria-hidden="true"></span>':''}</span>` : ''}</div>
+    ${!db ? `<span class="crowned" style="margin-top:6px"><button class="navb" data-go="settings" id="settings-btn" aria-label="Réglages : compte et sauvegarde">${GEAR}</button>${driveDue()||linkTodo()||fbkTodo()?'<span class="obadge" style="min-width:12px;height:12px;padding:0;right:0;bottom:auto;top:0" aria-hidden="true"></span>':''}</span>` : ''}</div>
   <p class="sub">Ajoute autant de monde que tu veux. Les mêmes joueurs servent pour tous les jeux.</p>
   <form id="addp" class="row" style="flex-wrap:nowrap"><input type="text" id="pname" placeholder="Prénom" maxlength="24" autocomplete="off" aria-label="Prénom du joueur"><button class="btn" type="submit" id="addbtn">Ajouter</button></form>
   ${ps.length ? `<div class="glass" style="padding:8px 16px;margin-top:16px"><div class="list">${ps.map(([id,p])=>{const y=statsY(id), q=stats4(id), sk=statsS(id);
@@ -840,7 +844,87 @@ function viewSettings(){
     <div class="item tap" role="button" tabindex="0" data-go="account"><div class="grow"><div class="name">Mon compte${linkTodo()?' <span class="pdot" style="background:var(--ink);margin:0 0 0 6px"></span>':''}</div><div class="meta">${acctSub}</div></div><span class="chev" aria-hidden="true">›</span></div>
     <div class="item tap" role="button" tabindex="0" data-go="look"><div class="grow"><div class="name">Apparence</div><div class="meta">${lookName()}</div></div><span class="chev" aria-hidden="true">›</span></div>
     <div class="item tap" role="button" tabindex="0" data-go="backup"><div class="grow"><div class="name">Sauvegarde${driveDue()?' <span class="pdot" style="background:var(--ink);margin:0 0 0 6px"></span>':''}</div><div class="meta">${backSub}</div></div><span class="chev" aria-hidden="true">›</span></div>
+    <div class="item tap" role="button" tabindex="0" data-go="feedback"><div class="grow"><div class="name">Bug ou idée</div><div class="meta">Signaler un problème, proposer une option</div></div><span class="chev" aria-hidden="true">›</span></div>
+    ${S.fbk.admin ? `<div class="item tap" role="button" tabindex="0" data-go="fbadmin"><div class="grow"><div class="name">Retours reçus${fbkTodo()?' <span class="pdot" style="background:var(--ink);margin:0 0 0 6px"></span>':''}</div><div class="meta">${fbkTodo() ? plural(fbkTodo(),'message')+' à lire' : 'Tout est traité'}</div></div><span class="chev" aria-hidden="true">›</span></div>` : ''}
   </div></div>`;
+}
+/* ================= bugs et idées (v26) =================
+   feedback/{id} {uid, name, type:'bug'|'idea', text, app, device, view, createdAt, done}. Tout compte connecté peut écrire,
+   seul l'administrateur (désigné dans les règles Firestore par son code ami) peut lire, marquer traité et supprimer.
+   L'app ne connaît pas l'administrateur : elle essaie de lire la liste, et l'affiche si le serveur accepte. */
+S.fbk = {type:'bug', draft:'', busy:false, sent:false, err:null, admin:false, list:null, at:0, filter:'todo'};
+const fbkTodo = () => (S.fbk.list||[]).filter(x=>!x.done).length;
+function fbkDevice(){ const ua = navigator.userAgent;
+  const ios = ua.match(/(iPhone|iPad|iPod).*?OS (\d+)[_.](\d+)/), and = ua.match(/Android (\d+(?:\.\d+)?)/);
+  const os = ios ? `${ios[1]} · iOS ${ios[2]}.${ios[3]}` : and ? `Android ${and[1]}` : /Mac OS X/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : 'Autre';
+  const app = matchMedia('(display-mode: standalone)').matches || navigator.standalone ? 'app installée' : 'navigateur';
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches ? 'sombre' : 'clair';
+  return `${os} · ${app} · ${screen.width}×${screen.height} · ${dark}`.slice(0, 200); }
+async function fbkLoad(force){
+  if(db || !online() || !navigator.onLine) return;
+  if(!force && Date.now() - S.fbk.at < 20000) return; S.fbk.at = Date.now();
+  try{ const {m, fs} = await fb(); const snap = await m.getDocs(m.collection(fs, 'feedback'));
+    S.fbk.admin = true; S.fbk.list = snap.docs.map(x => ({id:x.id, ...x.data()})).sort((a,b) => tsMs(b.createdAt) - tsMs(a.createdAt)); }
+  catch(e){ if(/permission|PERMISSION/.test(String(e && (e.code||e.message)))){ S.fbk.admin = false; S.fbk.list = null; } }
+  if(['settings','fbadmin','players'].includes(S.view)) render();
+}
+function viewFeedback(){
+  const F = S.fbk, back = `<button class="back" data-go="settings">← Réglages</button>`;
+  const head = `${back}<div class="label">Réglages</div><h1>Bug ou <em>idée</em> ?</h1>`;
+  if(F.sent) return head + `<p class="sub">Merci, c'est bien parti. Ton message sera lu.</p>
+    <div class="row" style="margin-top:16px"><button class="btn" data-a="fb-again">Écrire autre chose</button><button class="btn ghost" data-go="settings">Retour</button></div>`;
+  if(!online()) return head + `<p class="sub">Pour envoyer un message, connecte-toi d'abord à ton compte.</p><button class="btn" data-go="account" style="margin-top:16px">Mon compte</button>`;
+  return head + `<p class="sub">Explique ce qui s'est passé ou ce que tu aimerais. La version de l'app, ton téléphone et l'écran d'où tu viens sont joints.</p>
+  <div class="glass" style="padding:16px 18px;margin-top:16px">
+    <div class="seg"><button class="${F.type==='bug'?'on':''}" data-a="fb-bug">Un bug</button><button class="${F.type==='idea'?'on':''}" data-a="fb-idea">Une idée</button></div>
+    <textarea class="fb-text" id="fb-text" maxlength="2000" placeholder="${F.type==='bug' ? 'Ce que tu faisais, ce qui s’est passé, ce que tu attendais…' : 'L’option ou le changement que tu aimerais…'}" aria-label="Ton message">${esc(F.draft)}</textarea>
+    <p class="hint" style="margin:8px 0 14px">${esc(APP_VERSION_LABEL())} · ${esc(fbkDevice())}</p>
+    <button class="btn block" data-a="fb-send" ${F.busy?'disabled':''}>${F.busy?'Envoi…':'Envoyer'}</button>
+    ${F.err ? `<p class="hint" id="fb-err" style="color:var(--ink);margin:10px 0 0">${esc(F.err)}</p>` : ''}
+  </div>`;
+}
+const FB_VIEWS = {home:'Jeux', players:'Joueurs', stats:'Stats', history:'Historique', yahtzee:'Yahtzee', '421':'421', skyjo:'Skyjo', watch:'Direct', result:'Résultat', player:'Fiche joueur', friend:'Fiche ami', friends:'Amis'};
+function viewFbAdmin(){
+  const F = S.fbk, back = `<button class="back" data-go="settings">← Réglages</button>`;
+  if(!F.admin) return back + `<div class="label">Réglages</div><h1>Retours <em>reçus</em></h1><p class="sub">Un instant…</p>`;
+  const all = F.list||[], list = F.filter==='todo' ? all.filter(x=>!x.done) : all;
+  const when = t => { const ms = tsMs(t); return ms ? new Date(ms).toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' · '+new Date(ms).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : ''; };
+  return back + `<div class="label">Réglages</div><h1>Retours <em>reçus</em></h1>
+  <div class="seg" style="margin-top:12px"><button class="${F.filter==='todo'?'on':''}" data-a="fb-ftodo">À lire · ${fbkTodo()}</button><button class="${F.filter==='all'?'on':''}" data-a="fb-fall">Tous · ${all.length}</button></div>
+  ${list.length ? `<div class="glass" style="padding:4px 16px">${list.map(x => `<div class="fb-item${x.done?' done':''}">
+      <div class="label">${x.type==='idea'?'Idée':'Bug'} · ${esc(x.name||'?')} · ${when(x.createdAt)}</div>
+      <p class="fb-txt">${esc(x.text||'')}</p>
+      <div class="meta">v${esc(x.app||'?')} · ${esc(x.device||'')}${x.view ? ' · depuis '+esc(FB_VIEWS[x.view]||x.view) : ''}</div>
+      <div class="row" style="gap:16px;margin-top:8px">${S.confirm==='fbdel-'+x.id
+        ? `<span class="meta">Supprimer ce message ?</span><button class="link" data-a="fb-delyes" data-id="${esc(x.id)}">Supprimer</button><button class="link" data-a="cancel">Annuler</button>`
+        : `<button class="link" data-a="fb-done" data-id="${esc(x.id)}">${x.done?'Remettre à lire':'Traité'}</button><button class="link" data-a="fb-del" data-id="${esc(x.id)}">Supprimer</button>`}</div>
+    </div>`).join('')}</div>` : `<p class="sub">${F.filter==='todo' ? 'Rien à lire. Tout est traité.' : 'Aucun message pour l’instant.'}</p>`}
+  <div class="row" style="justify-content:center;margin-top:14px"><button class="link" data-a="fb-reload">Actualiser</button></div>`;
+}
+const APP_VERSION_LABEL = () => 'Version '+APP_VERSION;
+async function fbAction(a, el){
+  const F = S.fbk, id = el.dataset.id;
+  if(a==='fb-bug' || a==='fb-idea'){ F.type = a==='fb-bug' ? 'bug' : 'idea'; render(); return; }
+  if(a==='fb-again'){ F.sent = false; F.err = null; render(); return; }
+  if(a==='fb-ftodo' || a==='fb-fall'){ F.filter = a==='fb-ftodo' ? 'todo' : 'all'; render(); return; }
+  if(a==='fb-reload'){ await fbkLoad(true); return; }
+  if(a==='fb-del'){ S.confirm = 'fbdel-'+id; render(); return; }
+  const {m, fs} = await fb().catch(() => ({})); if(!m){ toast('Pas de connexion. Réessaie quand tu as du réseau.'); return; }
+  if(a==='fb-send'){
+    const ta = document.getElementById('fb-text'); if(ta) F.draft = ta.value;
+    const text = F.draft.trim(); if(text.length < 3){ F.err = 'Écris quelques mots avant d’envoyer.'; render(); return; }
+    if(!online() || F.busy) return; F.busy = true; F.err = null; render();
+    try{ const fid = Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+      await m.setDoc(m.doc(fs, 'feedback', fid), {uid:myUid(), name:String((S.acct.profile||{}).name||'').slice(0,24), type:F.type, text:text.slice(0,2000),
+        app:String(APP_VERSION), device:fbkDevice(), view:String(S.fbFrom||'').slice(0,40), createdAt:m.serverTimestamp(), done:false});
+      F.draft = ''; F.sent = true; if(F.admin) fbkLoad(true); }
+    catch(e){ F.err = FR_ERR(e); }
+    F.busy = false; render(); return; }
+  if(a==='fb-done'){ const x = (F.list||[]).find(y=>y.id===id); if(!x) return;
+    try{ await m.setDoc(m.doc(fs, 'feedback', id), {done:!x.done}, {merge:true}); x.done = !x.done; render(); }catch(e){ toast(FR_ERR(e)); } return; }
+  if(a==='fb-delyes'){ S.confirm = null;
+    try{ await m.deleteDoc(m.doc(fs, 'feedback', id)); F.list = (F.list||[]).filter(y=>y.id!==id); toast('Message supprimé'); }catch(e){ toast(FR_ERR(e)); }
+    render(); return; }
 }
 function viewAccountPage(){
   return `<button class="back" data-go="settings">← Réglages</button>
@@ -1221,7 +1305,7 @@ async function onUser(u){
   render();
   if(S.acct.creating) return;
   try{ const {m, fs} = FB; const snap = await m.getDoc(m.doc(fs, 'users', u.uid));
-    if(snap.exists()){ const d = snap.data(); setProfile({name:d.name, code:d.code}); frLoad(true).then(()=>{ checkInbox(); flushSoon(); watchSync(); watchCheck(true); resyncAuto(); }); pubSoon(); }
+    if(snap.exists()){ const d = snap.data(); setProfile({name:d.name, code:d.code}); frLoad(true).then(()=>{ checkInbox(); flushSoon(); watchSync(); watchCheck(true); resyncAuto(); fbkLoad(true); }); pubSoon(); }
     else if(!S.acct.profile) S.acct.needsProfile = true;
   }catch(e){ /* hors ligne : on garde le profil en cache */ }
   render();
@@ -2204,8 +2288,8 @@ function render(){
   const keep = v===lastView ? [...$app.querySelectorAll('.sheet-wrap,.tbl-wrap')].map(el => [el.scrollLeft, el.scrollTop]) : null;
   const keepY = v===lastView && v==='watch' ? window.scrollY : null;
   lastView = v;
-  $app.innerHTML = v==='players'?viewPlayers():v==='settings'?viewSettings():v==='friends'?viewFriends():v==='friend'?viewFriend():v==='account'?viewAccountPage():v==='backup'?viewBackup():v==='look'?viewLook():v==='player'?viewPlayer():v==='stats'?viewStats():v==='history'?viewHistory():v==='yahtzee'?viewYahtzee():v==='421'?view421():v==='skyjo'?viewSky():v==='result'?viewResult():v==='watch'?viewWatch():viewHome();
-  const tabv = v==='watch' ? 'home' : v==='result' ? (S.result && S.result.from==='history' ? 'history' : 'home') : GAMES[v] ? 'home' : ['player','settings','account','backup','look','friends','friend'].includes(v) ? 'players' : v;
+  $app.innerHTML = v==='players'?viewPlayers():v==='settings'?viewSettings():v==='friends'?viewFriends():v==='friend'?viewFriend():v==='account'?viewAccountPage():v==='backup'?viewBackup():v==='look'?viewLook():v==='feedback'?viewFeedback():v==='fbadmin'?viewFbAdmin():v==='player'?viewPlayer():v==='stats'?viewStats():v==='history'?viewHistory():v==='yahtzee'?viewYahtzee():v==='421'?view421():v==='skyjo'?viewSky():v==='result'?viewResult():v==='watch'?viewWatch():viewHome();
+  const tabv = v==='watch' ? 'home' : v==='result' ? (S.result && S.result.from==='history' ? 'history' : 'home') : GAMES[v] ? 'home' : ['player','settings','account','backup','look','friends','friend','feedback','fbadmin'].includes(v) ? 'players' : v;
   if(keep){ const els = $app.querySelectorAll('.sheet-wrap,.tbl-wrap');
     if(els.length===keep.length) els.forEach((el,i) => { el.scrollLeft = keep[i][0]; el.scrollTop = keep[i][1]; });
     if(keepY!==null && Math.abs(window.scrollY-keepY)>1) window.scrollTo(0, keepY); }
@@ -2221,7 +2305,8 @@ function render(){
   { const g = document.getElementById('fr-form'); if(g) g.onsubmit = e => { e.preventDefault(); frAdd(); }; }
   ['acct-form','acct-rename-form','acct-fix-form','acct-del-form'].forEach(id => { const g = document.getElementById(id); if(g) g.onsubmit = e => { e.preventDefault(); acctForm(id); }; });
 }
-function go(v){ S.view=v; S.confirm=null; S.edit=null; if(v==='friends'){ S.fr.err=S.fr.info=null; } render(); window.scrollTo(0,0); if(['players','friends','friend'].includes(v)) frLoad(v!=='players'); if(['players','history'].includes(v)) checkInbox(); if(v==='home') watchCheck(); }
+function go(v){ if(!['settings','account','backup','look','feedback','fbadmin'].includes(S.view)) S.fbFrom = S.view; if(v==='feedback' && S.view!=='feedback'){ S.fbk.sent = false; S.fbk.err = null; } if(v==='settings' || v==='fbadmin') fbkLoad(true);
+  S.view=v; S.confirm=null; S.edit=null; if(v==='friends'){ S.fr.err=S.fr.info=null; } render(); window.scrollTo(0,0); if(['players','friends','friend'].includes(v)) frLoad(v!=='players'); if(['players','history'].includes(v)) checkInbox(); if(v==='home') watchCheck(); }
 /* Pastille de l'onglet actif (v20) : glisse d'un onglet à l'autre. Pas d'animation au premier placement. */
 function placeInd(){ const ind = document.getElementById('tab-ind'), on = document.querySelector('.tab.on'); if(!ind) return;
   if(!on || !on.offsetWidth){ ind.style.width = '0'; return; }
@@ -2248,6 +2333,7 @@ async function saveFinished(k){
   return {game:'421', date:Date.now(), startedAt:L.startedAt, results, loser:st.loser, firstOut:st.out[0]||null, rounds:st.log.length, sheet:{rounds:JSON.parse(JSON.stringify(L.rounds||[])), rules:rulesOf(L)}};
 }
 
+$app.addEventListener('input', e => { if(e.target && e.target.id==='fb-text'){ S.fbk.draft = e.target.value; if(S.fbk.err){ S.fbk.err = null; const x = document.getElementById('fb-err'); if(x) x.remove(); } } });
 $app.addEventListener('click', async e => {
   const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-mg],[data-mg-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-me],[data-share],[data-frsend],[data-wshare],[data-watch],[data-game],[data-sgrp],[data-look],td.cell,tr.rt'); if(!el) return;
   if(el.matches('[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-me],[data-share],[data-wshare],[data-frsend],[data-a=fr-rm]') && await frClick(el)) return;
@@ -2277,6 +2363,7 @@ $app.addEventListener('click', async e => {
   const a = el.dataset.a, k = el.dataset.k;
   if(a && a.startsWith('acct-')){ acctAction(a); return; }
   if(a && a.startsWith('drive-')){ driveAction(a, el); return; }
+  if(a && a.startsWith('fb-')){ fbAction(a, el); return; }
   if(a==='cancel'){ S.confirm=null; render(); }
   else if(a==='start'){ S.yzUndo=null; const order=[...S.pick[k]]; const names={}; order.forEach(id=>names[id]=S.players[id].name);
     S.pick[k]=new Set(); S.yzp=0; S.r421={c:'421',w:null,l:null,nen:false}; S.sky={scores:{},closer:null};
@@ -2417,7 +2504,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '25';
+window.APP_VERSION = '26';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

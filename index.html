@@ -183,6 +183,18 @@ table.stats{width:100%;border-collapse:collapse;font-variant-numeric:tabular-num
 .toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(16px + env(safe-area-inset-top,0px));z-index:40;padding:12px 18px;border-radius:999px;font-weight:600;font-size:14px}
 .note{font-size:13px;color:var(--mute);text-align:center;margin-top:12px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* Téléphone en paysage (v24) : les vues avec tableau prennent toute la largeur (encoche respectée), les autres restent lisibles ;
+   barre du bas et marges plus serrées pour gagner de la hauteur. */
+@media (orientation:landscape) and (max-height:520px){
+main{max-width:760px;padding-top:12px;padding-bottom:calc(78px + env(safe-area-inset-bottom,0px));padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
+body[data-view="yahtzee"] main,body[data-view="421"] main,body[data-view="skyjo"] main,body[data-view="watch"] main,body[data-view="result"] main,body[data-view="stats"] main{max-width:none}
+h1{font-size:36px;margin:4px 0 2px}
+nav.tabs{bottom:calc(8px + env(safe-area-inset-bottom,0px));padding:4px;width:min(420px,calc(100% - 32px))}
+.tab{padding:9px 6px}
+.sheet th,.sheet td{height:40px}
+.sheet tr.total td{height:50px}
+.panel{bottom:calc(8px + env(safe-area-inset-bottom,0px));max-height:calc(100% - 24px);overflow:auto}
+}
 .hint{display:block;font-size:12px;line-height:1.35;color:var(--mute);font-weight:400;white-space:normal}
 .sheet .hint{font-size:11.5px;max-width:150px}
 .card{width:24px;height:34px;border-radius:6px;background:var(--inv-bg);color:var(--inv-ink);display:grid;place-items:center;font:700 11px var(--sans);font-variant-numeric:tabular-nums}
@@ -1527,6 +1539,50 @@ function viewMe(){
       <span class="hint">Les joueurs de la partie qui sont tes amis peuvent suivre les scores en direct sur leur téléphone, sans rien modifier. Personne d'autre.</span></div>
   </div>`;
 }
+/* ---- « C'est qui, toi ? » : fenêtre bloquante tant qu'un compte connecté n'a pas choisi sa fiche ----
+   Sans fiche, la boîte aux lettres attend et les amis ne voient rien (cas d'Emma, v15). Carnet vide (nouveau téléphone,
+   réinstallation) : on propose d'abord la restauration Drive, sinon créer une fiche neuve ferait un doublon de l'ancienne. */
+const ME_PANEL = {open:false, none:false};
+const meNeeded = () => !db && S.ready && !S.locked && online() && !S.acct.creating && !myPid();
+function meCheck(){
+  if(ME_PANEL.open && !meNeeded()){ ME_PANEL.open = false; ME_PANEL.none = false; closePanel(); return; }
+  if(ME_PANEL.open){ mePanel(); return; }
+  if(meNeeded() && !$ov.innerHTML){ ME_PANEL.open = true; if(!S.games.length) loadGis().catch(()=>{}); mePanel(); }
+}
+function meNewName(){ const n = String((S.acct.profile||{}).name || 'Moi').slice(0,24);
+  return Object.values(S.players).some(p => p.name.toLowerCase()===n.toLowerCase()) ? (n+' (moi)').slice(0,24) : n; }
+function mePanel(){
+  const me = myUid(), D = S.drive, empty = !S.games.length;
+  const ps = sortedPlayers().filter(([id,p]) => !p.uid || p.uid===me);
+  const restore = empty ? `<div class="glass" style="padding:14px 16px;border-radius:22px;margin:0 0 14px">
+      <b>Déjà joué sur un autre téléphone ?</b>
+      <span class="hint" style="display:block;margin:2px 0 12px">${ME_PANEL.none ? 'Aucune sauvegarde trouvée dans ce Drive. Tu peux créer ta fiche.' : 'Récupère d’abord ton carnet depuis Google Drive : ta fiche revient avec.'}</span>
+      <button class="btn" data-mea="restore" ${D.busy?'disabled':''} style="width:100%">${D.busy?'Un instant…':'Restaurer depuis Drive'}</button>
+      ${D.err ? `<p class="hint" style="color:var(--ink);margin:8px 0 0">${esc(D.err)}</p>` : ''}</div>` : '';
+  $ov.innerHTML = `<div class="scrim"></div><div class="panel glass" role="dialog" aria-modal="true" aria-label="Choisis ta fiche" style="max-height:calc(100% - 40px);overflow:auto">
+    <div class="label">Compte · ${esc((S.acct.profile||{}).name||'')}</div><h3>C'est qui, <em>toi</em> ?</h3>
+    <div class="meta">Choisis ta fiche dans le carnet. C'est elle qui reçoit les parties de tes amis et qu'ils voient.</div>
+    ${restore}
+    ${ps.length ? `<span class="label">${empty ? 'Ou choisis' : 'Ta fiche'}</span><div class="chips" style="margin:6px 0 14px">${ps.map(([id,p])=>`<button class="chip" data-mepick="${id}">${dot(id)}${esc(p.name)}</button>`).join('')}</div>` : ''}
+    <button class="btn${empty && !ME_PANEL.none ? ' ghost' : ''}" data-mea="new" style="width:100%">Créer ma fiche « ${esc(meNewName())} »</button>
+    <div class="row" style="justify-content:center;margin-top:12px"><button class="link" data-mea="logout">Ce n'est pas moi · Se déconnecter</button></div></div>`;
+  $ov.onclick = async e => {
+    const b = e.target.closest('[data-mepick],[data-mea]'); if(!b) return;
+    const a = b.dataset.mea, mine = myUid(); if(!mine) return;
+    if(b.dataset.mepick){ await meSet(b.dataset.mepick); return; }
+    if(a==='new'){ const id = uid(); S.players[id] = {name:meNewName(), createdAt:Date.now(), uid:mine}; local.save(); toast('Ta fiche est créée'); pubSoon(); checkInbox(); render(); return; }
+    if(a==='logout'){ ME_PANEL.open = false; closePanel(); acctAction('acct-logout'); return; }
+    if(a==='restore'){ ME_PANEL.none = false; D.on = true; driveSave();
+      /* driveRun appelle la fenêtre Google tout de suite, dans le toucher. */
+      await driveRun(async () => { const files = await driveList(await driveFolder());
+        if(!files.length){ ME_PANEL.none = true; return; }
+        const d = await (await gapi('files/'+files[0].id+'?alt=media')).json(); mergeData(d); }, true);
+      render(); }
+  };
+}
+async function meSet(id){ const me = myUid(); if(!me) return;
+  for(const [pid,p] of Object.entries(S.players)) if(p.uid===me && pid!==id) await store.updatePlayer(pid, {uid:null});
+  await store.updatePlayer(id, {uid:me}); toast('C’est noté'); pubSoon(); checkInbox(); }
 function viewFriendsBlock(){
   if(db) return '';
   if(!online()) return `<p class="note">Pour ajouter des amis, crée un compte : roue en haut à droite → Mon compte.</p>`;
@@ -1595,9 +1651,7 @@ async function frClick(el){
     await store.updatePlayer(d.frlink, patch); sendPast(uid, true); toast('Joueur relié'); return true; }
   if(d.frnew){ const uid = S.fid, f = S.fr.list.find(x=>x.uid===uid); if(!f || pidOfUid(uid)) return true;
     const id = uid_(); S.players[id] = {name:String(f.name||'Ami').slice(0,24), uid, createdAt:Date.now()}; local.save(); toast('Joueur créé'); S.pid = id; go('player'); return true; }
-  if(d.me){ const me = myUid(); if(!me) return true;
-    for(const [id,p] of Object.entries(S.players)) if(p.uid===me && id!==d.me) await store.updatePlayer(id, {uid:null});
-    await store.updatePlayer(d.me, {uid:me}); toast('C’est noté'); pubSoon(); return true; }
+  if(d.me){ await meSet(d.me); return true; }
   if(d.share){ const on = d.share==='1'; const st = lsGet(PUB_KEY) || {};
     lsSet(PUB_KEY, on ? {} : {off:true, has:true}); render(); pubSoon(); toast(on ? 'Tes amis verront tes résultats' : 'Tes résultats ne sont plus partagés'); return true; }
   if(d.wshare){ const on = d.wshare==='1'; lsSet(WATCH_KEY, {...(lsGet(WATCH_KEY)||{}), off:!on}); render(); watchSync();
@@ -1726,6 +1780,18 @@ const wTimers = {}; let wPollT = null, wCheckAt = 0;
 const tsMs = t => t && t.toMillis ? t.toMillis() : 0;
 const colHex = cid => { const c = COLORS.find(x=>x.id===cid); return c && c.c ? c.c : null; };
 const wav = (cid, name) => { const c = colHex(cid); return `<div class="avatar" style="${c?`background:${c};color:${inkOn(c)}`:''}">${initial(name)}</div>`; };
+/* Photo du joueur prise dans le carnet du spectateur (les photos ne sont jamais envoyées) :
+   par son compte (moi ou un ami relié), sinon un invité de l'auteur retrouvé par {from, name} (guest ou aka). */
+function watchLocalPid(d, p){
+  const u = (d.uids||{})[p], me = myUid();
+  if(u) return u===me ? myPid() : pidOfUid(u);
+  const nm = ((d.st && d.st.names) || {})[p]; if(!nm) return null;
+  const same = g => g && g.from===d.owner && g.name===nm;
+  const e = Object.entries(S.players).find(([id,pl]) => same(pl.guest) || (pl.aka||[]).some(same));
+  return e ? e[0] : null;
+}
+const wavLocal = (d, p, cid, name) => { const lp = watchLocalPid(d, p), ph = lp && photoOf(lp);
+  return ph ? `<div class="avatar" style="${photoStyle(ph, colHex(cid) || colorOf(lp))}">${initial(name)}</div>` : wav(cid, name); };
 const wdot = cid => `<span class="pdot" style="background:${colHex(cid)||'currentColor'}"></span>`;
 const andList = a => a.length>1 ? a.slice(0,-1).join(', ')+' et '+a[a.length-1] : (a[0]||'');
 function watchSoon(k){ if(db) return; clearTimeout(wTimers[k]); wTimers[k] = setTimeout(()=>watchPush(k).catch(()=>{}), 700); }
@@ -1805,7 +1871,7 @@ function viewWatch(){
   if(W.gone) return back + `<div class="label">En direct</div><h1>Partie <em>arrêtée</em></h1><p class="sub">Cette partie n'est plus en ligne : elle a été abandonnée, ou elle est finie depuis un moment. Si tu y as joué, elle arrivera dans ton historique.</p>`;
   if(!W.d) return back + `<div class="label">En direct</div><h1>Un <em>instant</em>…</h1><p class="sub">${W.err ? 'Pas de connexion. On réessaie…' : 'Chargement de la partie.'}</p>`;
   const d = W.d, L = d.st, me = myUid(), cols = L.cols||{};
-  const P = {mine: p => (d.uids||{})[p]===me, nm: p => esc(L.names[p]||'Joueur'), av: p => wav(cols[p], L.names[p]), dot: p => wdot(cols[p])};
+  const P = {mine: p => (d.uids||{})[p]===me, nm: p => esc(L.names[p]||'Joueur'), av: p => wavLocal(d, p, cols[p], L.names[p]), dot: p => wdot(cols[p])};
   const age = Date.now() - tsMs(d.updatedAt);
   return `${back}<div class="label"><span class="live-dot"></span>En direct · partie de ${esc(d.ownerName)}</div>
   <h1>Le <em>${GAMES[d.k].name}</em></h1>
@@ -2011,12 +2077,23 @@ function viewResult(){
 }
 
 /* ================= render & events ================= */
+let lastView = null;
 function render(){
   if(!S.ready){ $app.innerHTML = `<div class="label">Carnet de jeux</div><h1>Un <em>instant</em>…</h1><p class="sub">Chargement des joueurs et des parties.</p>`; return; }
   if(S.locked){ $app.innerHTML = `<div class="label">Carnet de jeux</div><h1>Accès <em>réservé</em></h1><p class="sub">Ce carnet est personnel. Seul son propriétaire peut voir et noter les parties.</p>`; return; }
   const v = S.view;
+  /* Même vue redessinée (rafraîchissement du direct, saisie…) : on garde la position des tableaux qui défilent
+     et de la page, pour ne pas revenir au début à chaque mise à jour. */
+  const keep = v===lastView ? [...$app.querySelectorAll('.sheet-wrap,.tbl-wrap')].map(el => [el.scrollLeft, el.scrollTop]) : null;
+  const keepY = v===lastView && v==='watch' ? window.scrollY : null;
+  lastView = v;
   $app.innerHTML = v==='players'?viewPlayers():v==='settings'?viewSettings():v==='friends'?viewFriends():v==='friend'?viewFriend():v==='account'?viewAccountPage():v==='backup'?viewBackup():v==='look'?viewLook():v==='player'?viewPlayer():v==='stats'?viewStats():v==='history'?viewHistory():v==='yahtzee'?viewYahtzee():v==='421'?view421():v==='skyjo'?viewSky():v==='result'?viewResult():v==='watch'?viewWatch():viewHome();
   const tabv = v==='watch' ? 'home' : v==='result' ? (S.result && S.result.from==='history' ? 'history' : 'home') : GAMES[v] ? 'home' : ['player','settings','account','backup','look','friends','friend'].includes(v) ? 'players' : v;
+  if(keep){ const els = $app.querySelectorAll('.sheet-wrap,.tbl-wrap');
+    if(els.length===keep.length) els.forEach((el,i) => { el.scrollLeft = keep[i][0]; el.scrollTop = keep[i][1]; });
+    if(keepY!==null && Math.abs(window.scrollY-keepY)>1) window.scrollTo(0, keepY); }
+  document.body.dataset.view = v;
+  meCheck();
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.v===tabv));
   placeInd();
   const f = document.getElementById('addp');
@@ -2219,7 +2296,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '23';
+window.APP_VERSION = '24';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

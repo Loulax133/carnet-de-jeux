@@ -391,7 +391,7 @@ const GAMES = {
   yahtzee:{name:'Yahtzee', doc:'current', min:1},
   '421':{name:'421', doc:'g421', min:2},
   skyjo:{name:'Skyjo', doc:'gsky', min:2}};
-const S = { players:{}, games:[], live:{yahtzee:null,'421':null,skyjo:null}, view:'home', ready:false, confirm:null, pick:{yahtzee:new Set(),'421':new Set(),skyjo:new Set()}, sky:{scores:{},closer:null}, sgame:'yahtzee', hfilter:'all', r421:{c:'421',w:null,l:null,nen:false}, rules421:{...DEF_RULES} };
+const S = { players:{}, games:[], live:{yahtzee:null,'421':null,skyjo:null}, paused:[], view:'home', ready:false, confirm:null, pick:{yahtzee:new Set(),'421':new Set(),skyjo:new Set()}, sky:{scores:{},closer:null}, sgame:'yahtzee', hfilter:'all', r421:{c:'421',w:null,l:null,nen:false}, rules421:{...DEF_RULES} };
 const kindOf = g => GAMES[g.game] ? g.game : 'yahtzee';
 let db = null;
 const $app = document.getElementById('app'), $ov = document.getElementById('overlay');
@@ -406,7 +406,7 @@ const plural = (n, w) => n+' '+w+(n>1?'s':'');
 const DATA_KEY = 'yz-carnet', PREV_KEY = 'yz-carnet-prev', DATA_V = 1;
 function migrate(d){
   if(!d || typeof d!=='object') return null;
-  const out = {v:DATA_V, players:d.players||{}, games:Array.isArray(d.games)?d.games:[], lives:{}, rules421:d.rules421||null, savedAt:d.savedAt||0, exportedAt:d.exportedAt||0};
+  const out = {v:DATA_V, players:d.players||{}, games:Array.isArray(d.games)?d.games:[], lives:{}, paused:Array.isArray(d.paused)?d.paused.filter(x=>x && x.id && x.live && GAMES[x.k]):[], rules421:d.rules421||null, savedAt:d.savedAt||0, exportedAt:d.exportedAt||0};
   if(d.live && d.live.order) out.lives.yahtzee = d.live;
   if(d.lives) Object.assign(out.lives, d.lives);
   return out;
@@ -414,13 +414,14 @@ function migrate(d){
 function applyData(d){
   S.players = d.players; S.games = d.games;
   S.live = Object.assign({yahtzee:null,'421':null,skyjo:null}, d.lives);
+  S.paused = d.paused || [];
   if(d.rules421) S.rules421 = {...DEF_RULES, ...d.rules421};
   S.exportedAt = d.exportedAt||0;
 }
 const local = {
   read(key){ try{ return migrate(JSON.parse(localStorage.getItem(key)||'null')); }catch(e){ return null; } },
-  load(){ const d = local.read(DATA_KEY) || local.read(PREV_KEY); if(d) applyData(d); },
-  snapshot(){ return {v:DATA_V, players:S.players, games:S.games, lives:S.live, rules421:S.rules421, savedAt:Date.now(), exportedAt:S.exportedAt||0}; },
+  load(){ const d = local.read(DATA_KEY) || local.read(PREV_KEY); if(d) applyData(d); if(!S.paused) S.paused = []; },
+  snapshot(){ return {v:DATA_V, players:S.players, games:S.games, lives:S.live, paused:S.paused||[], rules421:S.rules421, savedAt:Date.now(), exportedAt:S.exportedAt||0}; },
   save(){ try{ const cur = localStorage.getItem(DATA_KEY); if(cur) localStorage.setItem(PREV_KEY, cur);
       localStorage.setItem(DATA_KEY, JSON.stringify(local.snapshot())); try{ pubSoon(); }catch(e){} try{ driveSoon(); }catch(e){} }
     catch(e){ toast("Sauvegarde impossible sur ce téléphone. Exporte tes données par sécurité."); } }
@@ -451,6 +452,7 @@ function mergeData(raw){
     const have = new Set(S.games.map(g=>g.id));
     d.games.forEach(g=>{ if(g && g.id && !have.has(g.id)){ S.games.push(g); ng++; } });
     Object.keys(d.lives||{}).forEach(k=>{ if(!S.live[k] && d.lives[k]) S.live[k]=d.lives[k]; });
+    { const hp = new Set((S.paused||[]).map(x=>x.id)); S.paused = (S.paused||[]).concat((d.paused||[]).filter(x=>!hp.has(x.id))); }
     local.save(); render(); toast(`${plural(np,'joueur')} et ${plural(ng,'partie')} ajoutés`); }
 }
 const store = {
@@ -486,6 +488,41 @@ const dieMini = n => { const P={1:[5],2:[3,7],3:[3,5,7],4:[1,3,7,9],5:[1,3,5,7,9
 const dieFace = n => { const P={1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]}[n];
   return `<span class="die">${[1,2,3,4,5,6,7,8,9].map(i=>P.includes(i)?'<i></i>':'<span></span>').join('')}</span>`; };
 
+/* ================= parties en pause (v25) =================
+   S.paused = [{id, k, live, at}] : parties mises de côté, rangées avec le carnet (yz-carnet, Drive). La place « en cours »
+   du jeu est libérée, on peut donc lancer d'autres parties, du même jeu compris. Le direct est coupé pendant la pause
+   (store.setLive(k, null) efface le doc watch). Reprendre alors qu'une partie du même jeu est en cours : on échange les deux. */
+function liveSummary(k, L){
+  const who = (L.order||[]).map(id => pname(id, (L.names||{})[id])).join(', ');
+  let st = '';
+  if(k==='yahtzee') st = 'tour '+Math.min(13, Math.min(...L.order.map(id=>filled((L.scores||{})[id])))+1)+' sur 13';
+  else if(k==='skyjo'){ const r = runSky(L); const n = (L.rounds||[]).length;
+    st = n ? plural(n,'manche')+' · '+L.order.map(id=>r.tot[id]).join(' / ') : 'pas encore de manche'; }
+  else { const r = run421(L); st = (L.rounds||[]).length ? (r.phase==='charge' ? 'charge' : 'décharge') : 'pas encore commencé'; }
+  return {who, st};
+}
+function pausedCards(){
+  if(db || !(S.paused||[]).length) return '';
+  return [...S.paused].sort((a,b)=>b.at-a.at).map(x => { const {who, st} = liveSummary(x.k, x.live);
+    return `<button class="wcard glass" data-a="resume" data-id="${esc(x.id)}"><span class="grow"><span class="label">${ago(x.at)}</span><b>${GAMES[x.k].name}</b><span class="hint">${esc(who)} · ${st}</span></span><span class="pill">Reprendre</span></button>`; }).join('');
+}
+function resetGameUi(k){ S.yzp = null; S.yzUndo = null; S.confirm = null;
+  if(k==='421') S.r421 = {c:'421',w:null,l:null,nen:false}; if(k==='skyjo') S.sky = {scores:{},closer:null}; }
+async function pauseGame(k){
+  const L = S.live[k]; if(db || !L) return;
+  S.paused = [...(S.paused||[]), {id:uid(), k, live:JSON.parse(JSON.stringify(L)), at:Date.now()}];
+  resetGameUi(k); await store.setLive(k, null); go('home');
+  toast('Partie de '+GAMES[k].name+' en pause. Reprends-la depuis l’accueil.');
+}
+async function resumeGame(id){
+  const x = (S.paused||[]).find(p => p.id===id); if(!x) return;
+  const cur = S.live[x.k];
+  S.paused = S.paused.filter(p => p.id!==id);
+  if(cur) S.paused.push({id:uid(), k:x.k, live:JSON.parse(JSON.stringify(cur)), at:Date.now()});
+  resetGameUi(x.k); await store.setLive(x.k, x.live); go(x.k);
+  toast(cur ? 'Partie reprise. L’autre partie de '+GAMES[x.k].name+' est en pause.' : 'Partie reprise');
+}
+
 /* ================= home ================= */
 function viewHome(){
   const y = S.live.yahtzee, q = S.live['421'], k = S.live.skyjo;
@@ -513,7 +550,8 @@ function viewHome(){
       <span class="grow"><span class="t">Skyjo</span><span class="hint">Cartes de −2 à 12 · le plus petit total gagne</span>
       ${k ? `<span class="pill">En cours · manche ${(k.rounds||[]).length+1}</span>` : `<span class="pill soft">${plural(n('skyjo'),'partie')}</span>`}</span>
     </button>
-  </div>`;
+  </div>
+  ${pausedCards() ? `<div class="label" style="margin:22px 0 10px">En pause</div>${pausedCards()}` : ''}`;
 }
 
 /* ================= setup (shared) ================= */
@@ -616,6 +654,7 @@ function endControls(k, done, question){
   return `<div class="stack" style="margin-top:18px">
     ${S.confirm==='end' ? `<div class="glass" style="padding:16px"><p style="margin:0 0 12px">${question}</p><div class="confirm"><button class="btn" data-a="end-yes" data-k="${k}">Enregistrer</button><button class="btn ghost" data-a="cancel">Continuer à jouer</button></div></div>`
       : `<button class="btn block" data-a="end" ${k!=='yahtzee'&&!done?'hidden':''}>${done?'Enregistrer la partie':'Terminer la partie'}</button>`}
+    ${!db && S.confirm!=='end' && S.confirm!=='abandon' ? `<button class="btn ghost block" data-a="pause" data-k="${k}">Mettre en pause</button>` : ''}
     ${S.confirm==='abandon' ? `<div class="confirm" style="justify-content:center"><span class="meta">La partie sera effacée sans être comptée.</span><button class="btn ghost" data-a="abandon-yes" data-k="${k}">Effacer</button><button class="link" data-a="cancel">Annuler</button></div>`
       : `<button class="link" style="align-self:center" data-a="abandon">Abandonner cette partie</button>`}
   </div>`;
@@ -908,6 +947,7 @@ function mergeBlock(keep, gone){
   if(a.uid && b.uid && a.uid!==b.uid) return 'deux comptes différents';
   if(Object.values(S.live).some(L => L && (L.order||[]).includes(keep) && (L.order||[]).includes(gone))) return 'partie en cours';
   if(Object.values(S.live).some(L => L && (L.order||[]).includes(gone))) return 'partie en cours';
+  if((S.paused||[]).some(x => (x.live.order||[]).includes(gone))) return 'partie en pause';
   if(S.games.some(g => { const ids = (g.results||[]).map(r=>r.id); return ids.includes(keep) && ids.includes(gone); })) return 'ont joué ensemble';
   return '';
 }
@@ -1181,7 +1221,7 @@ async function onUser(u){
   render();
   if(S.acct.creating) return;
   try{ const {m, fs} = FB; const snap = await m.getDoc(m.doc(fs, 'users', u.uid));
-    if(snap.exists()){ const d = snap.data(); setProfile({name:d.name, code:d.code}); frLoad(true).then(()=>{ checkInbox(); flushSoon(); watchSync(); watchCheck(true); }); pubSoon(); }
+    if(snap.exists()){ const d = snap.data(); setProfile({name:d.name, code:d.code}); frLoad(true).then(()=>{ checkInbox(); flushSoon(); watchSync(); watchCheck(true); resyncAuto(); }); pubSoon(); }
     else if(!S.acct.profile) S.acct.needsProfile = true;
   }catch(e){ /* hors ligne : on garde le profil en cache */ }
   render();
@@ -1537,6 +1577,10 @@ function viewMe(){
     <div class="field"><span class="label">Partie en cours visible par les joueurs</span>
       <div class="seg" style="margin:0"><button class="${watchOn()?'on':''}" data-wshare="1">Oui</button><button class="${watchOn()?'':'on'}" data-wshare="0">Non</button></div>
       <span class="hint">Les joueurs de la partie qui sont tes amis peuvent suivre les scores en direct sur leur téléphone, sans rien modifier. Personne d'autre.</span></div>
+    <div class="field"><span class="label">Resynchroniser l'historique</span>
+      <div class="row" style="gap:10px;align-items:center"><button class="btn ghost" style="padding:10px 16px;font-size:14px" data-a="resync">Resynchroniser</button>
+        <div class="seg" style="margin:0"><button class="${resyncState().off?'':'on'}" data-a="resync-on">Chaque semaine</button><button class="${resyncState().off?'on':''}" data-a="resync-off">À la main</button></div></div>
+      <span class="hint">Renvoie à tes amis les parties jouées avec eux. Chez eux, seules celles qui manquent sont ajoutées, et les doublons sont retirés. Dernière fois : ${ago(resyncState().last)}.</span></div>
   </div>`;
 }
 /* ---- « C'est qui, toi ? » : fenêtre bloquante tant qu'un compte connecté n'a pas choisi sa fiche ----
@@ -1676,7 +1720,7 @@ function gameTargets(g){
 function gamePayload(g){
   const who = {};
   (g.results||[]).forEach(r => { const p = S.players[r.id]; who[r.id] = {uid:(p && p.uid) || null, name: pname(r.id, r.name)}; });
-  const {sentTo, ...rest} = g;
+  const {sentTo, alias, ...rest} = g;
   return JSON.parse(JSON.stringify({...rest, who}));
 }
 const outbox = () => lsGet(OUT_KEY) || [];
@@ -1722,18 +1766,89 @@ function resolvePlayer(w, sender, senderName){
   if(g) return g[0];
   const id = uid(); S.players[id] = {name:label.slice(0,40), guest:{from:sender, name:w.name}, createdAt:Date.now()}; return id;
 }
+/* Anti-doublon (v25) : la même partie saisie sur deux téléphones. Même jeu, à moins de 12 h, même nombre de joueurs,
+   chaque joueur relié à un compte présent des deux côtés avec le même score (au 421 : la même place), et les autres
+   scores identiques (les invités n'ont pas le même id d'un téléphone à l'autre). Il faut au moins un joueur relié en commun.
+   La copie n'est pas ajoutée : son id va dans `alias` de la partie gardée, pour qu'un renvoi ne la fasse pas revenir. */
+const gVal = (g, r) => kindOf(g)==='421' ? r.rank : r.total;
+function sameGame(a, b){
+  if(a===b || kindOf(a)!==kindOf(b) || Math.abs((a.date||0)-(b.date||0)) > 12*3600000) return false;
+  const ra = a.results||[], rb = b.results||[]; if(!ra.length || ra.length!==rb.length) return false;
+  const left = [...ra]; let linked = 0;
+  for(const r of rb){ const u = (S.players[r.id]||{}).uid; if(!u) continue;
+    const i = left.findIndex(x => x.id===r.id); if(i<0 || gVal(a,left[i])!==gVal(b,r)) return false;
+    left.splice(i,1); linked++; }
+  if(!linked) return false;
+  const rest = rb.filter(r => !(S.players[r.id]||{}).uid).map(r=>gVal(b,r)).sort((x,y)=>x-y);
+  const restA = left.map(r=>gVal(a,r)).sort((x,y)=>x-y);
+  return rest.length===restA.length && rest.every((v,i)=>v===restA[i]);
+}
+const knownGame = gid => S.games.some(g => g.id===gid || (g.alias||[]).includes(gid));
+const usedPids = () => { const u = new Set();
+  S.games.forEach(g => (g.results||[]).forEach(r => u.add(r.id)));
+  [...Object.values(S.live), ...(S.paused||[]).map(x=>x.live)].forEach(L => L && (L.order||[]).forEach(id => u.add(id)));
+  return u; };
 function importReceived(sender, game){
   const gid = 'r:'+sender+':'+game.id;
-  if(S.games.some(g=>g.id===gid) || (lsGet(RDEL_KEY)||[]).includes(gid)) return false;
+  if(knownGame(gid) || (lsGet(RDEL_KEY)||[]).includes(gid)) return false;
   const f = S.fr.list.find(x=>x.uid===sender), senderName = (f && f.name) || 'un ami';
+  const before = new Set(Object.keys(S.players));
   const map = {}; Object.entries(game.who||{}).forEach(([pid,w]) => { map[pid] = resolvePlayer(w, sender, senderName); });
   const mp = id => map[id] || id;
   const results = (game.results||[]).map(r => ({...r, id:mp(r.id), name: (S.players[mp(r.id)]||{}).name || r.name}));
   const {who, ...g} = game;
   if(g.sheet) g.sheet = mapSheet(g.sheet, mp);
-  S.games.push({...g, id:gid, results, winners:(g.winners||[]).map(mp), loser: g.loser ? mp(g.loser) : g.loser, firstOut: g.firstOut ? mp(g.firstOut) : g.firstOut, src:{from:sender, name:senderName, id:game.id}});
+  const ng = {...g, id:gid, results, winners:(g.winners||[]).map(mp), loser: g.loser ? mp(g.loser) : g.loser, firstOut: g.firstOut ? mp(g.firstOut) : g.firstOut, src:{from:sender, name:senderName, id:game.id}};
+  delete ng.alias; delete ng.sentTo;
+  const twin = S.games.find(a => sameGame(a, ng));
+  if(twin){ twin.alias = [...new Set([...(twin.alias||[]), gid])];
+    /* Joueurs créés juste pour cette copie (invité, ami pas encore relié) : on les retire s'ils ne servent nulle part. */
+    const used = usedPids(); Object.keys(S.players).forEach(id => { if(!before.has(id) && !used.has(id)) delete S.players[id]; });
+    return 'dup'; }
+  S.games.push(ng);
   return true;
 }
+/* Doublons déjà présents (reçus avant la v25) : on garde la partie saisie ici, sinon la plus ancienne reçue.
+   Une partie saisie sur ce téléphone n'est jamais retirée. Les invités qui ne servent plus sont retirés. */
+function dedupeExisting(){
+  let n = 0;
+  const order = [...S.games].sort((a,b) => (a.src?1:0)-(b.src?1:0) || (a.date||0)-(b.date||0));
+  const gone = new Set();
+  for(const g of order){ if(!g.src || gone.has(g.id)) continue;
+    const keep = order.find(a => a!==g && !gone.has(a.id) && (!a.src || order.indexOf(a) < order.indexOf(g)) && sameGame(a, g));
+    if(!keep) continue;
+    keep.alias = [...new Set([...(keep.alias||[]), g.id, ...(g.alias||[])])]; gone.add(g.id); n++; }
+  if(!n) return 0;
+  const pids = new Set(); S.games.filter(g=>gone.has(g.id)).forEach(g => (g.results||[]).forEach(r => pids.add(r.id)));
+  S.games = S.games.filter(g => !gone.has(g.id));
+  const used = usedPids(); pids.forEach(id => { const p = S.players[id]; if(p && p.guest && !p.uid && !used.has(id)) delete S.players[id]; });
+  local.save(); return n;
+}
+
+/* ---- resynchronisation (v25) ----
+   Renvoie à chaque ami confirmé et relié toutes les parties saisies ici où il a joué, sans tenir compte de sentTo.
+   Chez lui, ce qui existe déjà (id, alias, doublon) est ignoré et une partie qu'il a supprimée ne revient pas.
+   Bouton dans Mon compte + automatique une fois par semaine (yz-resync {off, last}). */
+const RESYNC_KEY = 'yz-resync', RESYNC_EVERY = 7*86400000;
+const resyncState = () => lsGet(RESYNC_KEY) || {};
+function resyncAll(manual){
+  if(db) return;
+  if(!online() || !navigator.onLine){ if(manual) toast('Pas de connexion. Réessaie quand tu as du réseau.'); return; }
+  const fixed = dedupeExisting();
+  const q = outbox(); let n = 0, who = 0; const items = [];
+  friendsOk().forEach(f => { const pid = pidOfUid(f.uid); if(!pid) return;
+    const games = S.games.filter(g => !g.src && (g.results||[]).some(r=>r.id===pid) && !q.some(x=>x.to===f.uid && x.gid===g.id && x.type==='game'));
+    if(games.length) who++; n += games.length;
+    games.forEach(g => items.push({to:f.uid, type:'game', gid:g.id, game:gamePayload(g)})); });
+  queue(items);
+  lsSet(RESYNC_KEY, {...resyncState(), last:Date.now()});
+  checkInbox();
+  if(manual){ toast((n ? `${plural(n,'partie')} renvoyée${n>1?'s':''} à ${plural(who,'ami')}` : 'Rien à renvoyer') + (fixed ? ` · ${plural(fixed,'doublon')} retiré${fixed>1?'s':''}` : '')); render(); }
+}
+function resyncAuto(){ const st = resyncState();
+  if(db || st.off || !online() || !navigator.onLine || !myPid()) return;
+  if(Date.now() - (st.last||0) < RESYNC_EVERY) return;
+  resyncAll(false); }
 function mapSheet(sh, mp){
   const o = JSON.parse(JSON.stringify(sh)), keys = x => Object.fromEntries(Object.entries(x||{}).map(([k,v]) => [mp(k), v]));
   if(o.scores) o.scores = keys(o.scores);
@@ -1751,8 +1866,10 @@ async function checkInbox(){
     if(!S.fr.list.length) await frLoad(true);
     let added = 0, removed = 0; const by = new Set();
     for(const x of snap.docs){ const d = x.data();
-      if(d.type==='game' && d.game){ if(importReceived(d.from, d.game)){ added++; by.add(d.from); } }
-      else if(d.type==='del' && d.gid){ const gid = 'r:'+d.from+':'+d.gid; const n = S.games.length; S.games = S.games.filter(g=>g.id!==gid); if(S.games.length<n) removed++; }
+      if(d.type==='game' && d.game){ if(importReceived(d.from, d.game)===true){ added++; by.add(d.from); } }
+      else if(d.type==='del' && d.gid){ const gid = 'r:'+d.from+':'+d.gid; const n = S.games.length; S.games = S.games.filter(g=>g.id!==gid); if(S.games.length<n) removed++;
+        /* Une copie reliée (alias) : on oublie juste le lien, la partie gardée ici n'est pas celle de l'ami. */
+        S.games.forEach(g => { if((g.alias||[]).includes(gid)) g.alias = g.alias.filter(x=>x!==gid); }); }
     }
     local.save();
     for(const x of snap.docs){ try{ await m.deleteDoc(x.ref); }catch(e){} }
@@ -2202,6 +2319,10 @@ $app.addEventListener('click', async e => {
   else if(a==='undo'){ const L=S.live['421']; L.rounds = (L.rounds||[]).slice(0,-1); saveLiveSoon('421'); }
   else if(a==='end'){ S.confirm='end'; render(); }
   else if(a==='abandon'){ S.confirm='abandon'; render(); }
+  else if(a==='pause'){ pauseGame(k); }
+  else if(a==='resume'){ resumeGame(el.dataset.id); }
+  else if(a==='resync'){ resyncAll(true); }
+  else if(a==='resync-on' || a==='resync-off'){ lsSet(RESYNC_KEY, {...resyncState(), off:a==='resync-off'}); render(); toast(a==='resync-on' ? 'Resynchronisation chaque semaine' : 'Plus de resynchronisation automatique'); }
   else if(a==='abandon-yes'){ S.confirm=null; await store.setLive(k, null); }
   else if(a==='end-yes'){ S.confirm=null; finishGame(k); }
 });
@@ -2277,7 +2398,7 @@ async function boot(){
   if(!d){ local.load(); S.ready=true; render(); try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
     if(S.acct.cache) fb().catch(()=>{});
     if(S.drive.on){ loadGis().catch(()=>{}); driveAuto(); }
-    document.addEventListener('visibilitychange', () => { if(!document.hidden){ driveAuto(); checkInbox(); flushSoon(); watchSync(); if(S.view==='watch') watchPoll(); else watchCheck(true); } });
+    document.addEventListener('visibilitychange', () => { if(!document.hidden){ driveAuto(); checkInbox(); flushSoon(); watchSync(); resyncAuto(); if(S.view==='watch') watchPoll(); else watchCheck(true); } });
     addEventListener('online', () => { checkInbox(); flushSoon(); pubSoon(); watchSync(); watchCheck(true); driveAuto(); });
     setInterval(() => { if(!document.hidden && S.view!=='watch') watchCheck(true); }, 30000);
     return; }
@@ -2296,7 +2417,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '24';
+window.APP_VERSION = '25';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

@@ -1,5 +1,5 @@
 /* Carnet de jeux — service worker. VERSION changes on every release. Only Cache Storage is managed here; localStorage (game data) is never touched. */
-const VERSION = 'v24';
+const VERSION = 'v25';
 const APP = 'carnet-app-' + VERSION, FONTS = 'carnet-fonts';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png', './firebase-13.1.0.js'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(APP).then(c => c.addAll(ASSETS.map(u => new Request(u, {cache: 'reload'}))))); });

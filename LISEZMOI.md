@@ -1,6 +1,6 @@
 # Carnet de jeux — version hors ligne
 
-Compteur de points pour Yahtzee, 421 et Skyjo. Fonctionne sans réseau une fois installé.
+Compteur de points pour Yahtzee, 421, Skyjo, Shut the Box et Farkle. Fonctionne sans réseau une fois installé.
 
 ## Fichiers
 - `index.html` — l'application
@@ -36,3 +36,10 @@ Les données de jeu sont stockées dans chaque téléphone, à part : une mise �
 - Correspondance : « Toi dans le carnet » pour lui-même, joueurs reliés pour les autres comptes, un joueur non relié du même nom est relié automatiquement, sinon un joueur est créé. Les invités deviennent « Prénom (invité de X) ».
 - Supprimer une partie envoyée la retire aussi chez les amis. Supprimer une partie reçue ne la fait pas revenir.
 - Clés locales : `yz-outbox` (envois en attente, hors ligne), `yz-recv-del` (parties reçues supprimées).
+
+## Jeux en modules et jeu virtuel (versions 31 et 32)
+- Chaque jeu est un module dans `index.html` (`defGame(clé, {...})`) : règles, saisie, fin, fiche, stats, historique, direct. Ajouter un jeu = écrire un module.
+- Nouveaux jeux : Shut the Box (`shutbox`) et Farkle (`farkle`), seul ou à plusieurs.
+- « Jeu virtuel » au lancement (Yahtzee, Shut the Box, Farkle) : dés en 3D sur le téléphone, score inscrit tout seul. L'état du tour est gardé dans la partie (pause, rechargement, Drive).
+- Option « Jeu virtuel » décochée par défaut à chaque nouvelle partie (version 33). Marche hors ligne.
+- Version 33 : partie en direct aussi pour Shut the Box et Farkle → `firestore.rules` change (règle `watch`). La couronne ne compte que les parties à plusieurs.

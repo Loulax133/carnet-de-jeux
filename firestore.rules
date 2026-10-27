@@ -99,7 +99,7 @@ service cloud.firestore {
     // Partie en direct : un document par joueur qui saisit et par jeu ({uid}_{jeu}).
     // Lisible seulement par son auteur et par les joueurs de la partie (viewers). Un ami qui ne joue pas ne voit rien.
     match /watch/{wid} {
-      function own() { return signedIn() && wid.matches(request.auth.uid + '_(yahtzee|421|skyjo)'); }
+      function own() { return signedIn() && wid.matches(request.auth.uid + '_(yahtzee|421|skyjo|shutbox|farkle)'); }
       allow get: if signedIn() && (resource == null || own() || request.auth.uid in resource.data.viewers);
       allow list: if signedIn() && request.auth.uid in resource.data.viewers;
       allow create, update: if own()

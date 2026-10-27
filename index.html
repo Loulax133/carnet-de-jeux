@@ -318,6 +318,60 @@ details.rules b{color:var(--ink);font-weight:600}
 .seg button.on{background:var(--inv-bg);color:var(--inv-ink)}
 .log{font-size:13.5px;color:var(--mute);display:flex;flex-direction:column;gap:4px}
 .log b{color:var(--ink);font-weight:600}
+/* ===== v29 : synchro, alerte unique de l'accueil ===== */
+.alert-card{padding:12px 14px 12px 18px;margin:0 0 14px;justify-content:space-between;flex-wrap:nowrap;border-radius:22px}
+.sync-card{display:flex;align-items:center;gap:14px;padding:14px 14px 14px 16px;border-radius:22px;margin-top:16px}
+.sync-ic{width:30px;height:30px;flex:none;border-radius:50%;display:grid;place-items:center;font:700 14px var(--sans);background:var(--inv-bg);color:var(--inv-ink)}
+.sync-ic.todo{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.navb.sync{position:relative}.navb.sync .obadge{min-width:10px;height:10px;padding:0;right:2px;top:2px;bottom:auto}
+details.rules .field{padding:10px 0 14px}
+/* ===== v29 : animations. Toutes coupées par « Réduire les animations » (règle globale plus haut) et aucune ne bloque le toucher. ===== */
+/* Changement d'écran : le contenu arrive de côté (onglet voisin, écran plus profond) ou du bas. Les blocs qui contiennent
+   du verre ne bougent qu'en position : une opacité sur un parent couperait le flou des cartes pendant l'animation. */
+@keyframes vt-r{from{opacity:0;transform:translateX(18px)}}
+@keyframes vt-l{from{opacity:0;transform:translateX(-18px)}}
+@keyframes vt-u{from{opacity:0;transform:translateY(10px)}}
+@keyframes vt-rx{from{transform:translateX(18px)}}
+@keyframes vt-lx{from{transform:translateX(-18px)}}
+@keyframes vt-ux{from{transform:translateY(10px)}}
+main[data-vt]>*{animation-duration:.24s;animation-timing-function:cubic-bezier(.2,.8,.25,1);animation-fill-mode:backwards;animation-delay:calc(var(--vt-off,0ms) + 60ms)}
+main[data-vt="r"]>*{animation-name:vt-r}main[data-vt="l"]>*{animation-name:vt-l}main[data-vt="u"]>*{animation-name:vt-u}
+main[data-vt="r"]>:not(.glass):has(.glass){animation-name:vt-rx}main[data-vt="l"]>:not(.glass):has(.glass){animation-name:vt-lx}main[data-vt="u"]>:not(.glass):has(.glass){animation-name:vt-ux}
+main[data-vt]>:nth-child(1){animation-delay:var(--vt-off,0ms)}main[data-vt]>:nth-child(2){animation-delay:calc(var(--vt-off,0ms) + 15ms)}
+main[data-vt]>:nth-child(3){animation-delay:calc(var(--vt-off,0ms) + 30ms)}main[data-vt]>:nth-child(4){animation-delay:calc(var(--vt-off,0ms) + 45ms)}
+/* Panneaux du bas et toasts */
+@keyframes sheet-in{from{opacity:0;transform:translate(-50%,28px)}}
+@keyframes fade-in{from{opacity:0}}
+@keyframes toast-in{from{opacity:0;transform:translate(-50%,-10px) scale(.96)}}
+.panel.pop{animation:sheet-in .26s cubic-bezier(.2,.9,.3,1) backwards}
+.scrim.fade{animation:fade-in .2s ease backwards}
+.toast{animation:toast-in .22s cubic-bezier(.2,.9,.3,1) backwards}
+/* Moments forts (prime, Yahtzee, 421, doublement Skyjo) : une carte au centre, qui ne capte pas les touchers. */
+.moment{position:fixed;left:24px;right:24px;top:40%;z-index:36;pointer-events:none;transform:translateY(-50%);display:flex;justify-content:center;text-align:center}
+.moment .m-card{padding:16px 28px 14px;border-radius:30px;background:var(--glass-solid);max-width:100%;animation:m-in 1.15s cubic-bezier(.2,.9,.3,1) both}
+.moment b{display:block;font:400 58px/1 var(--serif);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.moment small{display:block;margin-top:6px;font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.moment .m-ring{position:absolute;left:50%;top:50%;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--ink);opacity:0;animation:m-ring .8s ease-out both}
+@keyframes m-in{0%{opacity:0;transform:scale(.82)}16%{opacity:1;transform:scale(1.04)}26%{transform:scale(1)}78%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.97)}}
+@keyframes m-ring{0%{opacity:.35;transform:scale(.5)}100%{opacity:0;transform:scale(1.9)}}
+/* Fin de partie : classement révélé du dernier au premier */
+@keyframes rv-in{from{opacity:0;transform:translateY(10px)}}
+@keyframes rv-win{0%{opacity:0;transform:scale(.94)}60%{opacity:1;transform:scale(1.02)}100%{transform:none}}
+.res-list .item.rv{animation:rv-in .34s cubic-bezier(.2,.8,.3,1) backwards}
+.res-list .item.rv.win{animation-name:rv-win;animation-duration:.46s}
+h1.rv{animation:rv-in .4s cubic-bezier(.2,.8,.3,1) backwards}
+/* Courbe Skyjo qui se dessine */
+@keyframes draw{from{stroke-dashoffset:1}}
+@keyframes dot-in{from{opacity:0;transform:scale(.2)}}
+.sky-chart .ln{stroke-dasharray:1;stroke-dashoffset:0;animation:draw .9s cubic-bezier(.4,0,.2,1) backwards}
+.sky-chart .ln-f{animation:fade-in .5s ease backwards}
+.sky-chart circle.pt{transform-box:fill-box;transform-origin:center;animation:dot-in .22s ease-out backwards}
+/* Direct : ce qui vient de changer chez le spectateur */
+@keyframes flash{0%{background-color:color-mix(in srgb,var(--ink) 16%,transparent)}100%{background-color:transparent}}
+.wsheet td.v.flash,.item.flash{animation:flash 1.6s ease-out both}
+.item.flash{border-radius:14px}
+/* 421 : jetons qui passent du pot (ou du meilleur) au plus faible */
+.fly-tok{position:fixed;left:0;top:0;z-index:34;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;pointer-events:none;background:var(--inv-bg);box-shadow:0 0 0 2px var(--bg),0 2px 6px rgba(0,0,0,.25)}
 </style>
 
 <div class="blobs" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
@@ -545,10 +599,10 @@ function viewHome(){
   const qs = q ? run421(q) : null;
   const n = k => S.games.filter(g=>kindOf(g)===k).length;
   const cards = [-2,5,12].map(v=>`<span class="card">${v}</span>`).join('');
-  return `<div class="label">Carnet de jeux</div><h1>On joue <em>à quoi</em> ?</h1>
+  return `<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div><div class="label">Carnet de jeux</div><h1>On joue <em>à quoi</em> ?</h1></div>${setBtn('home-settings')}</div>
   <p class="sub">Choisis un jeu. Les parties en cours t'attendent là où tu les as laissées.</p>
   ${S.watchList.map(d=>`<button class="wcard glass" data-watch="${d.id}"><span class="grow"><span class="label"><span class="live-dot"></span>En direct</span><b>${GAMES[d.k].name} de ${esc(d.ownerName)}</b><span class="hint">${watchWith(d)}</span></span><span class="pill">Suivre</span></button>`).join('')}
-  ${!db && driveDue() ? `<div class="glass row" style="padding:12px 14px 12px 18px;margin:0 0 14px;justify-content:space-between;flex-wrap:nowrap;border-radius:22px"><span class="grow"><b>Sauvegarde Drive</b><span class="hint">${driveTodo()}</span></span><button class="btn" style="padding:10px 16px;font-size:14px" data-a="drive-now" ${S.drive.busy?'disabled':''}>${S.drive.busy?'…':'Sauvegarder'}</button></div>` : ''}
+  ${homeAlert()}
   <div class="games">
     <button class="gamecard glass" data-go="yahtzee" id="g-yahtzee">
       <span class="dice">${dieFace(5)}${dieFace(5)}</span>
@@ -567,6 +621,29 @@ function viewHome(){
     </button>
   </div>
   ${pausedCards() ? `<div class="label" style="margin:22px 0 10px">En pause</div>${pausedCards()}` : ''}`;
+}
+
+/* Accès aux réglages (v29) : la même roue en haut de l'accueil et de Joueurs (avant : seulement Joueurs).
+   Un point signale ce qui attend (Drive, ami à relier, retours à lire). */
+function setBtn(id){
+  if(db) return '';
+  const todo = driveDue() || linkTodo() || fbkTodo();
+  return `<span class="crowned" style="margin-top:6px"><button class="navb" data-go="settings" id="${id}" aria-label="Réglages : compte, apparence et sauvegarde">${GEAR}</button>${todo?'<span class="obadge" style="min-width:12px;height:12px;padding:0;right:0;bottom:auto;top:0" aria-hidden="true"></span>':''}</span>`;
+}
+/* Une seule carte d'alerte sur l'accueil, la plus importante : demande d'ami, ami à relier, puis sauvegarde Drive. */
+function homeAlert(){
+  if(db) return '';
+  const card = (title, hint, btn) => `<div class="glass row alert-card" id="home-alert"><span class="grow"><b>${title}</b><span class="hint">${hint}</span></span>${btn}</div>`;
+  const B = (attr, t, dis) => `<button class="btn" style="padding:10px 16px;font-size:14px;flex:none" ${attr}${dis?' disabled':''}>${t}</button>`;
+  if(online()){
+    const inc = S.fr.list.filter(f=>f.status==='in');
+    if(inc.length===1) return card(`${esc(inc[0].name)} veut être ton ami`, 'Accepte pour partager vos parties.', B(`data-fra="${esc(inc[0].id)}"`, S.fr.busy?'…':'Accepter', S.fr.busy));
+    if(inc.length>1) return card(`${plural(inc.length,'demande')} d'amis`, andList(inc.map(f=>esc(f.name))), B('data-go="friends"', 'Voir'));
+    const un = myPid() ? unlinkedFriends() : [];
+    if(un.length) return card(`Relie ${esc(un[0].name)} à son joueur`, 'Sinon vos parties ne s’échangent pas.', B(`data-lkopen="${esc(un[0].uid)}"`, 'Relier'));
+  }
+  if(driveDue()) return card('Sauvegarde Drive', driveTodo(), B('data-a="drive-now"', S.drive.busy?'…':'Sauvegarder', S.drive.busy));
+  return '';
 }
 
 /* ================= setup (shared) ================= */
@@ -639,10 +716,10 @@ function viewYahtzee(){
   <h1>Le <em>Yahtzee</em></h1>
   <div class="pnav glass">
     <button class="navb" data-a="yz-prev" aria-label="Joueur précédent" ${n<2?'disabled':''}>‹</button>
-    <div class="pcur">${av(id, name)}<div class="grow"><div class="name">${esc(name)}</div><div class="meta">${mine}/13 cases${tots[S.yzp]===best && best>0 && n>1 ? ' · en tête' : ''}</div></div><div class="ptot">${t.total}<small>pts</small></div></div>
+    <div class="pcur">${av(id, name)}<div class="grow"><div class="name">${esc(name)}</div><div class="meta">${mine}/13 cases${tots[S.yzp]===best && best>0 && n>1 ? ' · en tête' : ''}</div></div><div class="ptot"><span data-ck="yz:${id}" data-n="${t.total}">${t.total}</span><small>pts</small></div></div>
     <button class="navb" data-a="yz-next" aria-label="Joueur suivant" ${n<2?'disabled':''}>›</button>
   </div>
-  ${n>1 ? `<div class="pstrip">${ids.map((x,i)=>`<button class="pchip${i===S.yzp?' on':''}" data-yzp="${i}">${dot(x)}${esc(pname(x,L.names[x]))} <b>${tots[i]}</b></button>`).join('')}</div>` : ''}
+  ${n>1 ? `<div class="pstrip">${ids.map((x,i)=>`<button class="pchip${i===S.yzp?' on':''}" data-yzp="${i}">${dot(x)}${esc(pname(x,L.names[x]))} <b data-ck="yzc:${x}" data-n="${tots[i]}">${tots[i]}</b></button>`).join('')}</div>` : ''}
   ${S.yzUndo && L.order.includes(S.yzUndo.pid) ? `<div class="undo-bar glass"><span class="meta">${dot(S.yzUndo.pid)}${esc(pname(S.yzUndo.pid,L.names[S.yzUndo.pid]))} · ${S.yzUndo.label} : <b>${S.yzUndo.txt}</b></span><button class="link" data-a="yz-undo" id="yz-undo">Annuler</button></div>` : ''}
   <div class="sheet-wrap glass dense${anim}" id="yzsheet"><table class="sheet solo">
     <tbody>
@@ -654,7 +731,7 @@ function viewYahtzee(){
       ${LOWER.map(row).join('')}
       <tr class="rt" data-p="${id}" data-c="yb"><td class="cat">Yahtzee bonus<span class="hint">+100 par Yahtzee en plus</span></td>${cell('yb','Yahtzee bonus', nb||null, '+'+nb*100)}</tr>
       ${sum('Section basse', t.low)}
-      <tr class="total"><td class="cat">Total</td><td>${t.total}</td></tr>
+      <tr class="total"><td class="cat">Total</td><td data-ck="yzt:${id}" data-n="${t.total}">${t.total}</td></tr>
     </tbody></table></div>
   <p class="note">Touche une ligne pour noter le score. Après chaque nouveau score, on passe au joueur suivant. Glisse ou utilise les flèches pour corriger.</p>
   ${endControls('yahtzee', done, done?'Enregistrer cette partie dans l\'historique ?':'Toutes les cases ne sont pas remplies. Enregistrer quand même avec les scores actuels ?')}
@@ -679,7 +756,7 @@ function endControls(k, done, question){
 /* Ligne « Pot » en tête de liste pendant la charge ; disparaît quand le pot est vide. */
 const POT_IC = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><ellipse cx="12" cy="6.5" rx="7" ry="2.6"/><path d="M5 6.5v3.6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6.5"/><path d="M5 10.1v3.6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6v-3.6"/><path d="M5 13.7v3.6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6v-3.6"/></svg>`;
 const potRow = st => st.done || st.phase!=='charge' || st.pot<=0 ? '' : `<div class="item pot-row" id="pot-row"><div class="avatar pot-av">${POT_IC}</div><div class="grow"><div class="name">Pot</div><div class="meta">Reste à prendre</div>
-  <div class="bar"><i style="width:${Math.round(st.pot/POT*100)}%;background:var(--mute)"></i></div></div><div class="tok">${st.pot}<small>jeton${st.pot>1?'s':''}</small></div></div>`;
+  <div class="bar"><i data-bk="qb:pot" data-w="${Math.round(st.pot/POT*100)}" style="width:${Math.round(st.pot/POT*100)}%;background:var(--mute)"></i></div></div><div class="tok"><span data-ck="q:pot" data-n="${st.pot}">${st.pot}</span><small>jeton${st.pot>1?'s':''}</small></div></div>`;
 function view421(){
   const L = S.live['421'];
   if(!L) return viewSetup('421');
@@ -696,8 +773,8 @@ function view421(){
   const rank = id => { const i = st.out.indexOf(id); return i<0 ? '' : (i===0?'1er':(i+1)+'e')+' sorti'; };
   const players = L.order.map(id => {
     const out = st.out.includes(id); const t = st.tokens[id];
-    return `<div class="item${out?' out':''}">${av(id,pname(id,L.names[id]))}<div class="grow"><div class="name">${nm(id)}</div><div class="meta">${out ? rank(id) : (st.done && id===st.loser ? 'Perd la partie' : '')}</div>
-      <div class="bar"><i style="width:${Math.round(t/POT*100)}%${barC(id)}"></i></div></div><div class="tok">${t}<small>jeton${t>1?'s':''}</small></div></div>`;}).join('');
+    return `<div class="item${out?' out':''}" data-row="${id}">${av(id,pname(id,L.names[id]))}<div class="grow"><div class="name">${nm(id)}</div><div class="meta">${out ? rank(id) : (st.done && id===st.loser ? 'Perd la partie' : '')}</div>
+      <div class="bar"><i data-bk="qb:${id}" data-w="${Math.round(t/POT*100)}" style="width:${Math.round(t/POT*100)}%${barC(id)}"></i></div></div><div class="tok"><span data-ck="q:${id}" data-n="${t}">${t}</span><small>jeton${t>1?'s':''}</small></div></div>`;}).join('');
   const chipsFor = (key, exclude) => playing.filter(id=>id!==exclude).map(id=>`<button class="chip${R[key]===id?' on':''}" data-r="${key}" data-id="${id}">${dot(id)}${nm(id)}</button>`).join('');
   const last = st.log.slice(-5).reverse();
   return `<button class="back" data-go="home">← Jeux</button>
@@ -754,7 +831,7 @@ function viewSky(){
   const standings = order.map((id,i) => { const t = st.tot[id];
     return `<div class="item">${av(id,pname(id,L.names[id]))}<div class="grow"><div class="name">${nm(id)}</div>
       <div class="meta">${st.done && st.winners.includes(id) ? 'Gagne la partie' : i===0 && st.log.length ? 'En tête' : t>=SKY_END-20 && !st.done ? 'Reste '+Math.max(0,SKY_END-t)+' avant '+SKY_END : ''}</div>
-      <div class="bar"><i style="width:${Math.max(0,Math.round(t/maxT*100))}%${barC(id)}"></i></div></div><div class="tok">${t}<small>pts</small></div></div>`; }).join('');
+      <div class="bar"><i data-bk="sb:${id}" data-w="${Math.max(0,Math.round(t/maxT*100))}" style="width:${Math.max(0,Math.round(t/maxT*100))}%${barC(id)}"></i></div></div><div class="tok"><span data-ck="s:${id}" data-n="${t}">${t}</span><small>pts</small></div></div>`; }).join('');
   const all = L.order.every(id => R.scores[id]!==undefined);
   let preview = '';
   if(all && R.closer){ const c=R.closer, v=R.scores[c];
@@ -837,7 +914,7 @@ const tagOf = p => !p.uid || db ? '' : p.uid===myUid() ? '<b style="color:var(--
 function viewPlayers(){
   const ps = sortedPlayers(); const king = bestPlayer();
   return `<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div><div class="label">${plural(ps.length,'joueur')}</div><h1>Les <em>joueurs</em></h1></div>
-    ${!db ? `<span class="crowned" style="margin-top:6px"><button class="navb" data-go="settings" id="settings-btn" aria-label="Réglages : compte et sauvegarde">${GEAR}</button>${driveDue()||linkTodo()||fbkTodo()?'<span class="obadge" style="min-width:12px;height:12px;padding:0;right:0;bottom:auto;top:0" aria-hidden="true"></span>':''}</span>` : ''}</div>
+    ${setBtn('settings-btn')}</div>
   <p class="sub">Ajoute autant de monde que tu veux. Les mêmes joueurs servent pour tous les jeux.</p>
   <form id="addp" class="row" style="flex-wrap:nowrap"><input type="text" id="pname" placeholder="Prénom" maxlength="24" autocomplete="off" aria-label="Prénom du joueur"><button class="btn" type="submit" id="addbtn">Ajouter</button></form>
   ${ps.length ? `<div class="glass" style="padding:8px 16px;margin-top:16px"><div class="list">${ps.map(([id,p])=>{const y=statsY(id), q=stats4(id), sk=statsS(id);
@@ -853,17 +930,50 @@ const GEAR = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke
 function viewSettings(){
   const A = S.acct, p = A.profile, u = A.user || A.cache;
   const acctSub = u && p ? `${esc(p.name)} · code ${esc(p.code)}` : 'Pas de compte';
-  const backSub = S.drive.on ? `Drive · dernière sauvegarde ${ago(S.drive.last)}` : 'Export et import · Drive non connecté';
-  return `<button class="back" data-go="players">← Joueurs</button>
+  const backSub = S.drive.on ? `Drive${online()?' et amis':''} · ${ago(S.drive.last)}` : online() ? 'Amis · Drive non connecté' : 'Export et import · Drive non connecté';
+  return `${setBack()}
   <div class="label">Réglages</div><h1>Les <em>réglages</em></h1>
-  <div class="glass" style="padding:8px 16px;margin-top:16px"><div class="list">
+  ${syncCard()}
+  <div class="glass" style="padding:8px 16px;margin-top:10px"><div class="list">
     <div class="item tap" role="button" tabindex="0" data-go="account"><div class="grow"><div class="name">Mon compte${linkTodo()?' <span class="pdot" style="background:var(--ink);margin:0 0 0 6px"></span>':''}</div><div class="meta">${acctSub}</div></div><span class="chev" aria-hidden="true">›</span></div>
     <div class="item tap" role="button" tabindex="0" data-go="look"><div class="grow"><div class="name">Apparence</div><div class="meta">${lookName()}</div></div><span class="chev" aria-hidden="true">›</span></div>
-    <div class="item tap" role="button" tabindex="0" data-go="backup"><div class="grow"><div class="name">Sauvegarde${driveDue()?' <span class="pdot" style="background:var(--ink);margin:0 0 0 6px"></span>':''}</div><div class="meta">${backSub}</div></div><span class="chev" aria-hidden="true">›</span></div>
+    <div class="item tap" role="button" tabindex="0" data-go="backup"><div class="grow"><div class="name">Sauvegarde et synchro${driveDue()?' <span class="pdot" style="background:var(--ink);margin:0 0 0 6px"></span>':''}</div><div class="meta">${backSub}</div></div><span class="chev" aria-hidden="true">›</span></div>
     <div class="item tap" role="button" tabindex="0" data-go="feedback"><div class="grow"><div class="name">Bug ou idée</div><div class="meta">Signaler un problème, proposer une option</div></div><span class="chev" aria-hidden="true">›</span></div>
     ${S.fbk.admin ? `<div class="item tap" role="button" tabindex="0" data-go="fbadmin"><div class="grow"><div class="name">Retours reçus${fbkTodo()?' <span class="pdot" style="background:var(--ink);margin:0 0 0 6px"></span>':''}</div><div class="meta">${fbkTodo() ? plural(fbkTodo(),'message')+' à lire' : 'Tout est traité'}</div></div><span class="chev" aria-hidden="true">›</span></div>` : ''}
   </div></div>`;
 }
+/* Les réglages s'ouvrent depuis Jeux ou Joueurs (v29) : le retour et l'onglet allumé suivent l'écran d'origine. */
+const SET_VIEWS = ['settings','account','backup','look','feedback','fbadmin'];
+const TAB_NAMES = {home:'Jeux', stats:'Stats', history:'Historique', players:'Joueurs'};
+const setBack = () => { const f = TAB_NAMES[S.setFrom] ? S.setFrom : 'players'; return `<button class="back" data-go="${f}">← ${TAB_NAMES[f]}</button>`; };
+/* ---- synchro en un toucher (v29) : Drive + renvoi aux amis ----
+   Pour l'utilisateur c'est la même question, « est-ce que tout est à jour ? ». Un seul bouton fait les deux :
+   le renvoi aux amis (resyncAll) puis la sauvegarde Drive si quelque chose manque (le toucher autorise la fenêtre Google). */
+const syncTodo = () => !db && S.drive.on && drivePending() > 0;
+function syncCard(){
+  if(db) return '';
+  const fr = online(), D = S.drive, busy = S.syncing || D.busy;
+  if(!D.on && !fr) return `<div class="glass sync-card" id="sync-card"><span class="sync-ic todo" aria-hidden="true">!</span><span class="grow"><b>Pas de copie ailleurs</b><span class="hint">Connecte Google Drive pour retrouver tes parties si tu changes de téléphone.</span></span><button class="btn" style="padding:10px 16px;font-size:14px;flex:none" data-a="drive-on" ${D.busy?'disabled':''}>${D.busy?'…':'Connecter'}</button></div>`;
+  const todo = syncTodo(), bits = [];
+  if(D.on) bits.push(drivePending() ? `${plural(drivePending(),'partie')} pas encore sur Drive` : `Drive ${ago(D.last)}`); else bits.push('Drive non connecté');
+  if(fr) bits.push(`amis ${ago(resyncState().last)}`);
+  return `<div class="glass sync-card" id="sync-card"><span class="sync-ic${todo?' todo':''}" aria-hidden="true">${todo?'!':'✓'}</span><span class="grow"><b>${todo ? 'À synchroniser' : 'Tout est à jour'}</b><span class="hint">${bits.join(' · ')}</span></span><button class="btn${todo?'':' ghost'}" style="padding:10px 16px;font-size:14px;flex:none" data-a="sync-all" ${busy?'disabled':''}>${busy?'…':'Synchroniser'}</button></div>`;
+}
+async function syncAll(){
+  if(db || S.syncing) return;
+  if(!navigator.onLine){ toast('Pas de connexion. Réessaie quand tu as du réseau.'); return; }
+  S.syncing = true; render(); const t0 = Date.now(), msg = [];
+  try{
+    if(online()){ const r = resyncAll(false) || {n:0, fixed:0};
+      if(r.n) msg.push(`${plural(r.n,'partie')} renvoyée${r.n>1?'s':''} à ${plural(r.who,'ami')}`);
+      if(r.fixed) msg.push(`${plural(r.fixed,'doublon')} retiré${r.fixed>1?'s':''}`); }
+    if(S.drive.on && (driveChanged() || Date.now() - S.drive.last > DRIVE_AUTO)){ await driveRun(driveBackupNow, true); if(!S.drive.err) msg.push('Drive à jour'); }
+  }catch(e){}
+  await new Promise(r => setTimeout(r, Math.max(0, 900 - (Date.now()-t0))));
+  S.syncing = false; render();
+  toast(S.drive.err ? S.drive.err : msg.length ? msg.join(' · ') : 'Tout est déjà à jour');
+}
+
 /* ================= bugs et idées (v26) =================
    feedback/{id} {uid, name, type:'bug'|'idea', text, app, device, view, createdAt, done}. Tout compte connecté peut écrire,
    seul l'administrateur (désigné dans les règles Firestore par son code ami) peut lire, marquer traité et supprimer.
@@ -945,7 +1055,7 @@ async function fbAction(a, el){
 function viewAccountPage(){
   return `<button class="back" data-go="settings">← Réglages</button>
   <div class="label">Réglages</div><h1>Mon <em>compte</em></h1>
-  <p class="sub">Pour retrouver tes amis et partager les parties.</p>${viewAccount()}${online() && !S.acct.mode ? viewLinkGuide() + viewMe() : ''}`;
+  <p class="sub">Pour retrouver tes amis et partager les parties.</p>${viewAccount()}${online() && !S.acct.mode ? (linkTodo() ? viewLinkGuide() : '') + viewMe() : ''}`;
 }
 /* Aide à la liaison (v19) : les 3 conditions pour que les parties partent et arrivent. */
 const unlinkedFriends = () => friendsOk().filter(f => !pidOfUid(f.uid));
@@ -989,8 +1099,10 @@ function viewLook(){
 function viewBackup(){
   return `<button class="back" data-go="settings">← Réglages</button>
   <div class="label">Réglages</div><h1>La <em>sauvegarde</em></h1>
-  <p class="sub">Tes parties vivent sur ce téléphone. Ici, tu en gardes une copie ailleurs.</p>
+  <p class="sub">Tes parties vivent sur ce téléphone. Ici, tu en gardes une copie ailleurs et tu les échanges avec tes amis.</p>
+  ${S.drive.on || online() ? `<div style="margin:-6px 0 10px">${syncCard()}</div>` : ''}
   ${viewDrive()}
+  ${viewFriendsSync()}
   <div class="glass" style="padding:16px 18px;margin-top:10px"><p style="margin:0 0 4px">Tout est enregistré dans ce téléphone, même hors ligne. Les mises à jour de l'app n'y touchent pas.</p>
     <p class="hint" style="margin:0 0 14px">Exporte de temps en temps pour garder une copie ailleurs (Fichiers, iCloud, mail). Importer ajoute les parties du fichier sans rien effacer. ${S.exportedAt ? 'Dernier export : '+new Date(S.exportedAt).toLocaleDateString('fr-FR',{day:'numeric',month:'long'})+'.' : 'Aucun export pour l\u2019instant.'}</p>
     <div class="row"><button class="btn" data-a="export" id="export">Exporter</button><label class="btn ghost" for="import-file" style="cursor:pointer">Importer</label>
@@ -1218,7 +1330,7 @@ function viewHistory(){
   const f = S.hfilter;
   const gs = [...S.games].filter(g => f==='all' || kindOf(g)===f).sort((a,b)=>b.date-a.date);
   const top = `<div class="label">${plural(gs.length,'partie')}</div><h1>Les <em>parties</em></h1>
-    <p class="sub">La plus récente en premier.</p><div class="hbar">${seg('hfilter',[['all','Tout'],['yahtzee','Yahtzee'],['421','421'],['skyjo','Skyjo']])}${!db && online() ? `<button class="navb sync${S.syncing?' go':''}" data-a="hsync" aria-label="Synchroniser avec mes amis" title="Synchroniser avec mes amis" ${S.syncing?'disabled':''}>${SYNC_IC}</button>` : ''}</div>`;
+    <p class="sub">La plus récente en premier.</p><div class="hbar">${seg('hfilter',[['all','Tout'],['yahtzee','Yahtzee'],['421','421'],['skyjo','Skyjo']])}${!db && (online() || S.drive.on) ? `<button class="navb sync${S.syncing?' go':''}" data-a="sync-all" id="hsync" aria-label="Synchroniser avec mes amis et Drive" title="Synchroniser avec mes amis et Drive" ${S.syncing?'disabled':''}>${SYNC_IC}${syncTodo()?'<span class="obadge" aria-hidden="true"></span>':''}</button>` : ''}</div>`;
   if(!gs.length) return top + `<div class="glass empty"><div class="serif">Rien d'enregistré</div><p>Chaque partie terminée arrive ici avec la date et les scores de chacun.</p></div>`;
   const fmt = d => new Date(d).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
   return top + `<div class="stack">${gs.map(g=>{
@@ -1240,7 +1352,7 @@ function viewHistory(){
 /* ================= wheel picker ================= */
 function wheel({who, whoId, title, meta, opts, start, onOk, onClear}){
   let idx = Math.max(0, start);
-  $ov.innerHTML = `<div class="scrim" data-close></div><div class="panel glass" role="dialog" aria-label="${esc(title)}">
+  $ov.innerHTML = `<div class="scrim fade" data-close></div><div class="panel glass pop" role="dialog" aria-label="${esc(title)}">
     <div class="label">${whoId?dot(whoId):""}${esc(who)}</div><h3>${esc(title)}</h3><div class="meta">${meta}</div>
     <div class="wheel-box"><div class="wheel-band" aria-hidden="true"></div>
       <div class="wheel" id="wheel" tabindex="0" role="listbox" aria-label="${esc(title)}">${opts.map((o,i)=>`<div class="wi" role="option" data-i="${i}">${o.t}${o.s?`<span class="s">${o.s}</span>`:''}</div>`).join('')}</div></div>
@@ -1273,10 +1385,15 @@ function openCell(pid, cid){
   else { opts=[{v:0,t:'0'}].concat(Array.from({length:26},(_,i)=>({v:i+5,t:String(i+5)}))); meta = c.id==='ch' ? 'Aucune condition : additionne les cinq dés.' : c.hint.split(' · ')[0]+', puis additionne les cinq dés, pas seulement ceux qui sont pareils.'; }
   const start = cur!==undefined && cur!==null ? cur : def;
   const wasEmpty = cur===undefined || cur===null;
-  const set = v => { const sc = {...(L.scores[pid]||{})}; if(v===null) delete sc[cid]; else sc[cid]=v;
+  const set = v => { const before = totals(L.scores[pid]||{}); const sc = {...(L.scores[pid]||{})}; if(v===null) delete sc[cid]; else sc[cid]=v;
     if(v!==cur) S.yzUndo = {pid, cid, prev:cur, idx:L.order.indexOf(pid), label:title, txt: v===null ? 'effacé' : cid==='yb' ? (v?'+'+v*100:'0') : String(v)};
     L.scores = {...L.scores, [pid]: sc}; S.just = pid+cid; saveLiveSoon('yahtzee'); setTimeout(()=>{S.just=null},400);
     const over = L.order.every(x => filled(L.scores[x]) === ALL.length);
+    /* Moments forts (v29), sauf sur la dernière case : l'écran de fin prend le relais. */
+    if(!over && v!==null){ const after = totals(sc);
+      if(cid==='yz' && v===50 && cur!==50) moment('Yahtzee\u202f!', '+50 · '+esc(pname(pid,L.names[pid])), true);
+      else if(cid==='yb' && v > (cur||0)) moment('+100', 'Yahtzee bonus · '+esc(pname(pid,L.names[pid])), true);
+      else if(before.up < BONUS_AT && after.up >= BONUS_AT) moment('+35', 'Prime gagnée · '+esc(pname(pid,L.names[pid]))); }
     if(v!==null && wasEmpty && cid!=='yb' && over){ setTimeout(()=>{ S.just=null; if(S.live.yahtzee===L) finishGame('yahtzee'); }, 450); return; }
     if(v!==null && wasEmpty && cid!=='yb' && L.order.length>1){ setTimeout(()=>{ S.just=null; yzMove(1, true); }, 420); } };
   wheel({who:pname(pid,L.names[pid]), whoId:pid, title, meta, opts, start: opts.findIndex(o=>o.v===start), onOk:o=>set(o.v), onClear:()=>set(null)});
@@ -1595,13 +1712,16 @@ async function frLoad(force){
   S.fr.at = Date.now();
   try{ const {m, fs} = await fb(); const me = myUid();
     const snap = await m.getDocs(m.query(m.collection(fs, 'friendships'), m.where('members', 'array-contains', me)));
+    const was = new Map(S.fr.list.map(f => [f.uid, f.status]));
     const list = snap.docs.map(x => { const d = x.data(); const other = (d.members||[]).find(u=>u!==me);
       const old = S.fr.list.find(f=>f.uid===other);
       return {id:x.id, uid:other, name:(d.names && d.names[other]) || (old && old.name) || 'Ami', status: d.status==='ok' ? 'ok' : d.from===me ? 'out' : 'in'}; });
     await Promise.all(list.filter(f=>f.status==='ok').map(async f => {
       try{ const u = await m.getDoc(m.doc(fs, 'users', f.uid)); if(u.exists()) f.name = u.data().name; }catch(e){}
       try{ const r = await m.getDoc(m.doc(fs, 'results', f.uid)); S.fr.res[f.uid] = {list: r.exists() ? (r.data().list||[]) : null, at:Date.now()}; }catch(e){} }));
-    S.fr.list = list; frSave(); render();
+    /* Ma demande vient d'être acceptée : on propose tout de suite de relier l'ami à son joueur (v29). */
+    list.forEach(f => { if(f.status==='ok' && was.get(f.uid)==='out' && !pidOfUid(f.uid)) linkAsk(f.uid); });
+    S.fr.list = list; frSave(); render(); linkNext();
   }catch(e){ /* hors ligne ou règles pas encore publiées : on garde le cache */ }
 }
 async function frFetchRes(uid){
@@ -1622,7 +1742,7 @@ async function frAdd(){
     if(f.exists()){ const d = f.data();
       if(d.status==='ok') S.fr.info = 'Vous êtes déjà amis.';
       else if(d.from===me) S.fr.info = 'Ta demande est déjà partie. Elle attend que ton ami l’accepte.';
-      else { await m.setDoc(ref, {status:'ok', names:{[me]:S.acct.profile.name}}, {merge:true}); S.fr.info = 'Il t’avait déjà envoyé une demande : vous êtes amis.'; }
+      else { await m.setDoc(ref, {status:'ok', names:{[me]:S.acct.profile.name}}, {merge:true}); S.fr.info = 'Il t’avait déjà envoyé une demande : vous êtes amis.'; linkAsk(other); }
     } else {
       await m.setDoc(ref, {members:[me, other], from:me, status:'pending', names:{[me]:S.acct.profile.name}, createdAt:m.serverTimestamp()});
       S.fr.sent[id] = code; frSave();
@@ -1632,13 +1752,49 @@ async function frAdd(){
 }
 async function frAccept(id){ await frRun(async () => { const {m, fs} = await fb();
   await m.setDoc(m.doc(fs, 'friendships', id), {status:'ok', names:{[myUid()]:S.acct.profile.name}}, {merge:true});
-  toast('Demande acceptée'); await frLoad(true); }); }
+  const f = S.fr.list.find(x => x.id===id); if(f) linkAsk(f.uid);
+  toast('Demande acceptée'); await frLoad(true); }); linkNext(); }
 async function frDrop(id, msg){ await frRun(async () => { const {m, fs} = await fb();
   await m.deleteDoc(m.doc(fs, 'friendships', id)); toast(msg); S.confirm = null; await frLoad(true); }); }
 
 /* ---- liaison ami ↔ joueur : toujours à la main (v18) ----
    Deux amis peuvent avoir le même prénom : on ne devine jamais. Un ami confirmé sans joueur reste dans la section
-   Amis (« À relier »), et sa fiche propose les joueurs du carnet ou d'en créer un. */
+   Amis (« À relier »), et sa fiche propose les joueurs du carnet ou d'en créer un.
+   v29 : dès qu'une amitié est confirmée (j'accepte, ou ma demande est acceptée), une fenêtre demande « X, c'est qui ? ».
+   Rien n'est présélectionné : c'est toujours l'utilisateur qui choisit. */
+async function frLinkTo(uid, pid){
+  Object.entries(S.players).forEach(([id,p])=>{ if(p.uid!==uid) return;
+    if(p.auto && !S.games.some(g=>(g.results||[]).some(r=>r.id===id))) delete S.players[id]; else delete p.uid; });
+  const t = S.players[pid], patch = {uid};
+  if(t && t.guest){ const f = S.fr.list.find(x=>x.uid===uid); patch.aka = [...(t.aka||[]), t.guest]; patch.guest = null; if(f) patch.name = String(f.name).slice(0,24); }
+  await store.updatePlayer(pid, patch); sendPast(uid, true); toast('Joueur relié');
+}
+function frNewPlayer(uid){ const f = S.fr.list.find(x=>x.uid===uid); if(!f || pidOfUid(uid)) return null;
+  const id = uid_(); S.players[id] = {name:String(f.name||'Ami').slice(0,24), uid, createdAt:Date.now()}; local.save(); toast('Joueur créé'); return id; }
+S.linkQ = [];
+const linkAsk = uid => { if(uid && !S.linkQ.includes(uid)) S.linkQ.push(uid); };
+/* Pas pendant une partie, ni par-dessus une autre fenêtre : la question attend le prochain passage sur Jeux ou Joueurs. */
+function linkNext(){
+  while(S.linkQ.length){
+    if(db || $ov.innerHTML || meNeeded() || GAMES[S.view] || ['watch','result'].includes(S.view)) return;
+    const u = S.linkQ.shift(); if(linkPanel(u)) return; }
+}
+function linkPanel(uid){
+  const f = S.fr.list.find(x=>x.uid===uid && x.status==='ok'); if(!f || pidOfUid(uid)) return false;
+  const others = sortedPlayers().filter(([id,p])=>!p.uid);
+  $ov.innerHTML = `<div class="scrim fade" data-close></div><div class="panel glass pop" role="dialog" aria-modal="true" aria-label="Relier ${esc(f.name)}" style="max-height:calc(100% - 40px);overflow:auto">
+    <div class="label">Nouvel ami</div><h3>${esc(f.name)}, c'est <em>qui</em> ?</h3>
+    <div class="meta">Choisis sa fiche dans ton carnet, même en invité. Vos parties ensemble lui seront envoyées.</div>
+    ${others.length ? `<div class="chips" style="margin:0 0 14px">${others.map(([id,p])=>`<button class="chip" data-lkpick="${id}">${dot(id)}${esc(p.name)}</button>`).join('')}</div>` : ''}
+    <button class="btn${others.length?' ghost':''}" data-lknew style="width:100%">Nouveau joueur « ${esc(f.name)} »</button>
+    <div class="row" style="justify-content:center;margin-top:12px"><button class="link" data-close>Plus tard</button></div></div>`;
+  $ov.onclick = async e => { const b = e.target.closest('[data-lkpick],[data-lknew],[data-close]'); if(!b) return;
+    closePanel();
+    if(b.matches('[data-lkpick]')) await frLinkTo(uid, b.dataset.lkpick);
+    else if(b.matches('[data-lknew]')) frNewPlayer(uid);
+    render(); linkNext(); };
+  return true;
+}
 /* ---- publication de mes résultats ---- */
 function myResults(){
   const pid = myPid(); if(!pid) return [];
@@ -1671,17 +1827,22 @@ function viewMe(){
     <div class="field"><span class="label">Toi dans le carnet</span>
       ${ps.length ? `<div class="chips">${ps.map(([id,p])=>`<button class="chip${id===mine?' on':''}" data-me="${id}">${dot(id)}${esc(p.name)}</button>`).join('')}</div>` : '<span class="hint">Ajoute-toi d’abord dans la liste des joueurs.</span>'}
       <span class="hint">Choisis ton joueur : ce sont ses parties que tes amis verront.</span></div>
+  </div>
+  <details class="rules glass" id="privacy"${S.privOpen?' open':''}><summary>Confidentialité</summary>
     <div class="field"><span class="label">Montrer mes résultats à mes amis</span>
       <div class="seg" style="margin:0"><button class="${shareOn()?'on':''}" data-share="1">Oui</button><button class="${shareOn()?'':'on'}" data-share="0">Non</button></div>
       <span class="hint">Pour chaque partie, tes amis voient le jeu, la date, si tu as gagné et tes points. Jamais avec qui tu as joué.</span></div>
     <div class="field"><span class="label">Partie en cours visible par les joueurs</span>
       <div class="seg" style="margin:0"><button class="${watchOn()?'on':''}" data-wshare="1">Oui</button><button class="${watchOn()?'':'on'}" data-wshare="0">Non</button></div>
       <span class="hint">Les joueurs de la partie qui sont tes amis peuvent suivre les scores en direct sur leur téléphone, sans rien modifier. Personne d'autre.</span></div>
-    <div class="field"><span class="label">Resynchroniser l'historique</span>
-      <div class="row" style="gap:10px;align-items:center"><button class="btn ghost" style="padding:10px 16px;font-size:14px" data-a="resync">Resynchroniser</button>
-        <div class="seg" style="margin:0"><button class="${resyncState().off?'':'on'}" data-a="resync-on">Chaque semaine</button><button class="${resyncState().off?'on':''}" data-a="resync-off">À la main</button></div></div>
-      <span class="hint">Renvoie à tes amis les parties jouées avec eux. Chez eux, seules celles qui manquent sont ajoutées, et les doublons sont retirés. Dernière fois : ${ago(resyncState().last)}.</span></div>
-  </div>`;
+  </details>`;
+}
+/* Renvoi aux amis (v25), rangé depuis la v29 avec la sauvegarde : le bouton Synchroniser fait les deux. */
+function viewFriendsSync(){
+  if(!online()) return '';
+  return `<div class="glass" style="padding:6px 18px 14px;margin-top:10px"><div class="field"><span class="label">Avec tes amis</span>
+    <div class="seg" style="margin:0"><button class="${resyncState().off?'':'on'}" data-a="resync-on">Chaque semaine</button><button class="${resyncState().off?'on':''}" data-a="resync-off">À la main</button></div>
+    <span class="hint">Synchroniser renvoie à tes amis les parties jouées avec eux. Chez eux, seules celles qui manquent sont ajoutées, et les doublons sont retirés. Dernière fois : ${ago(resyncState().last)}.</span></div></div>`;
 }
 /* ---- « C'est qui, toi ? » : fenêtre bloquante tant qu'un compte connecté n'a pas choisi sa fiche ----
    Sans fiche, la boîte aux lettres attend et les amis ne voient rien (cas d'Emma, v15). Carnet vide (nouveau téléphone,
@@ -1691,7 +1852,7 @@ const meNeeded = () => !db && S.ready && !S.locked && online() && !S.acct.creati
 function meCheck(){
   if(ME_PANEL.open && !meNeeded()){ ME_PANEL.open = false; ME_PANEL.none = false; closePanel(); return; }
   if(ME_PANEL.open){ mePanel(); return; }
-  if(meNeeded() && !$ov.innerHTML){ ME_PANEL.open = true; if(!S.games.length) loadGis().catch(()=>{}); mePanel(); }
+  if(meNeeded() && !$ov.innerHTML){ ME_PANEL.open = true; ME_PANEL.fresh = true; if(!S.games.length) loadGis().catch(()=>{}); mePanel(); }
 }
 function meNewName(){ const n = String((S.acct.profile||{}).name || 'Moi').slice(0,24);
   return Object.values(S.players).some(p => p.name.toLowerCase()===n.toLowerCase()) ? (n+' (moi)').slice(0,24) : n; }
@@ -1703,7 +1864,8 @@ function mePanel(){
       <span class="hint" style="display:block;margin:2px 0 12px">${ME_PANEL.none ? 'Aucune sauvegarde trouvée dans ce Drive. Tu peux créer ta fiche.' : 'Récupère d’abord ton carnet depuis Google Drive : ta fiche revient avec.'}</span>
       <button class="btn" data-mea="restore" ${D.busy?'disabled':''} style="width:100%">${D.busy?'Un instant…':'Restaurer depuis Drive'}</button>
       ${D.err ? `<p class="hint" style="color:var(--ink);margin:8px 0 0">${esc(D.err)}</p>` : ''}</div>` : '';
-  $ov.innerHTML = `<div class="scrim"></div><div class="panel glass" role="dialog" aria-modal="true" aria-label="Choisis ta fiche" style="max-height:calc(100% - 40px);overflow:auto">
+  const pop = ME_PANEL.fresh ? ' pop' : ''; ME_PANEL.fresh = false;
+  $ov.innerHTML = `<div class="scrim${pop?' fade':''}"></div><div class="panel glass${pop}" role="dialog" aria-modal="true" aria-label="Choisis ta fiche" style="max-height:calc(100% - 40px);overflow:auto">
     <div class="label">Compte · ${esc((S.acct.profile||{}).name||'')}</div><h3>C'est qui, <em>toi</em> ?</h3>
     <div class="meta">Choisis ta fiche dans le carnet. C'est elle qui reçoit les parties de tes amis et qu'ils voient.</div>
     ${restore}
@@ -1787,14 +1949,9 @@ async function frClick(el){
   if(d.fra){ frAccept(d.fra); return true; }
   if(d.frsend){ sendPast(d.frsend); return true; }
   if(d.frx){ frDrop(d.frx, d.msg || 'Fait'); if(S.view==='friend') go('players'); return true; }
-  if(d.frlink){ const uid = S.fid;
-    Object.entries(S.players).forEach(([id,p])=>{ if(p.uid!==uid) return;
-      if(p.auto && !S.games.some(g=>(g.results||[]).some(r=>r.id===id))) delete S.players[id]; else delete p.uid; });
-    const t = S.players[d.frlink], patch = {uid};
-    if(t && t.guest){ const f = S.fr.list.find(x=>x.uid===uid); patch.aka = [...(t.aka||[]), t.guest]; patch.guest = null; if(f) patch.name = String(f.name).slice(0,24); }
-    await store.updatePlayer(d.frlink, patch); sendPast(uid, true); toast('Joueur relié'); return true; }
-  if(d.frnew){ const uid = S.fid, f = S.fr.list.find(x=>x.uid===uid); if(!f || pidOfUid(uid)) return true;
-    const id = uid_(); S.players[id] = {name:String(f.name||'Ami').slice(0,24), uid, createdAt:Date.now()}; local.save(); toast('Joueur créé'); S.pid = id; go('player'); return true; }
+  if(d.lkopen){ linkPanel(d.lkopen); return true; }
+  if(d.frlink){ await frLinkTo(S.fid, d.frlink); return true; }
+  if(d.frnew){ const id = frNewPlayer(S.fid); if(id){ S.pid = id; go('player'); } return true; }
   if(d.me){ await meSet(d.me); return true; }
   if(d.share){ const on = d.share==='1'; const st = lsGet(PUB_KEY) || {};
     lsSet(PUB_KEY, on ? {} : {off:true, has:true}); render(); pubSoon(); toast(on ? 'Tes amis verront tes résultats' : 'Tes résultats ne sont plus partagés'); return true; }
@@ -1944,6 +2101,7 @@ function resyncAll(manual){
   lsSet(RESYNC_KEY, {...resyncState(), last:Date.now()});
   checkInbox();
   if(manual){ toast((n ? `${plural(n,'partie')} renvoyée${n>1?'s':''} à ${plural(who,'ami')}` : 'Rien à renvoyer') + (fixed ? ` · ${plural(fixed,'doublon')} retiré${fixed>1?'s':''}` : '')); render(); }
+  return {n, who, fixed};
 }
 function resyncAuto(){ const st = resyncState();
   if(db || st.off || !online() || !navigator.onLine || !myPid()) return;
@@ -2056,7 +2214,7 @@ async function watchCheck(force){
 }
 function watchInvite(d){
   S.watchList.forEach(x => S.watchSeen.add(x.id+':'+x.st.startedAt));
-  $ov.innerHTML = `<div class="scrim" data-close></div><div class="panel glass" role="dialog" aria-label="Partie en cours">
+  $ov.innerHTML = `<div class="scrim fade" data-close></div><div class="panel glass pop" role="dialog" aria-label="Partie en cours">
     <div class="label"><span class="live-dot"></span>En direct</div><h3>${esc(d.ownerName)} joue au ${GAMES[d.k].name} avec toi</h3>
     <div class="meta">${watchWith(d)}. Tu peux suivre les scores sur ton téléphone, sans rien modifier.</div>
     <div class="foot"><button class="btn ghost" data-close>Plus tard</button><button class="btn" data-wgo>Suivre la partie</button></div></div>`;
@@ -2076,11 +2234,22 @@ async function watchPoll(){
     const d = s.data();
     if(d.status==='done' && d.result){ let g = null; try{ g = JSON.parse(d.result); }catch(e){}
       if(g){ S.watch = null; clearTimeout(wPollT); S.watchList = S.watchList.filter(x=>x.id!==W.id);
-        S.result = {g, from:'watch', owner:d.ownerName}; go('result'); celebrate(); return; } }
+        openResult({g, from:'watch', owner:d.ownerName}); return; } }
     let st = null; try{ st = JSON.parse(d.state); }catch(e){}
     if(!st || !st.order){ W.gone = true; render(); return; }
+    /* v29 : ce qui a changé depuis la dernière lecture clignote une fois chez le spectateur. */
+    const prev = W.d && W.d.st; S.wflash = null;
+    if(prev && prev.order && W.d.k===d.k){ const keys = watchDiff(d.k, prev, st); if(keys.size) S.wflash = {keys, at:Date.now()}; }
     W.d = {...d, st}; W.gone = false; W.err = false; render();
   }catch(e){ if(S.watch===W){ W.err = true; render(); } }
+}
+function watchDiff(k, a, b){
+  const out = new Set();
+  try{ if(k==='yahtzee'){ b.order.forEach(p => { const x = (a.scores||{})[p]||{}, y = (b.scores||{})[p]||{};
+        [...ALL.map(c=>c.id), 'yb'].forEach(c => { if((x[c]??null)!==(y[c]??null)) out.add(p+':'+c); }); }); }
+    else if(k==='421'){ const x = run421(a), y = run421(b); b.order.forEach(p => { if(x.tokens[p]!==y.tokens[p]) out.add(p); }); }
+    else { const x = runSky(a), y = runSky(b); b.order.forEach(p => { if(x.tot[p]!==y.tot[p]) out.add(p); }); } }catch(e){}
+  return out;
 }
 function viewWatch(){
   const W = S.watch; if(!W) return viewHome();
@@ -2088,7 +2257,9 @@ function viewWatch(){
   if(W.gone) return back + `<div class="label">En direct</div><h1>Partie <em>arrêtée</em></h1><p class="sub">Cette partie n'est plus en ligne : elle a été abandonnée, ou elle est finie depuis un moment. Si tu y as joué, elle arrivera dans ton historique.</p>`;
   if(!W.d) return back + `<div class="label">En direct</div><h1>Un <em>instant</em>…</h1><p class="sub">${W.err ? 'Pas de connexion. On réessaie…' : 'Chargement de la partie.'}</p>`;
   const d = W.d, L = d.st, me = myUid(), cols = L.cols||{};
-  const P = {mine: p => (d.uids||{})[p]===me, nm: p => esc(L.names[p]||'Joueur'), av: p => wavLocal(d, p, cols[p], L.names[p]), dot: p => wdot(cols[p])};
+  const F = S.wflash && Date.now() - S.wflash.at < 1500 ? S.wflash.keys : null;
+  const P = {mine: p => (d.uids||{})[p]===me, nm: p => esc(L.names[p]||'Joueur'), av: p => wavLocal(d, p, cols[p], L.names[p]), dot: p => wdot(cols[p]),
+    fl: key => F && F.has(key) ? ' flash' : ''};
   const age = Date.now() - tsMs(d.updatedAt);
   return `${back}<div class="label"><span class="live-dot"></span>En direct · partie de ${esc(d.ownerName)}</div>
   <h1>Le <em>${GAMES[d.k].name}</em></h1>
@@ -2101,11 +2272,11 @@ function watchYz(L, P){
   const turn = ids.length>1 && Math.min(...f) < ALL.length ? f.indexOf(Math.min(...f)) : -1;
   const me = p => P.mine(p) ? ' me' : '';
   const v = (p, cid) => { const x = (L.scores[p]||{})[cid]; const has = x!==undefined && x!==null;
-    return `<td class="v${me(p)}${has ? (x===0 && cid!=='yb' ? ' zero' : '') : ' empty'}">${has ? (cid==='yb' ? (x?'+'+x*100:'0') : x) : '–'}</td>`; };
+    return `<td class="v${me(p)}${has ? (x===0 && cid!=='yb' ? ' zero' : '') : ' empty'}${P.fl(p+':'+cid)}">${has ? (cid==='yb' ? (x?'+'+x*100:'0') : x) : '–'}</td>`; };
   const row = c => `<tr><td class="cat">${c.label}</td>${ids.map(p=>v(p, c.id)).join('')}</tr>`;
   const sum = (label, key, cls='sum') => `<tr class="${cls}"><td class="cat">${label}</td>${ids.map((p,i)=>`<td class="${me(p).trim()}">${T[i][key]}</td>`).join('')}</tr>`;
   const sorted = ids.map((p,i)=>({p, t:T[i].total})).sort((a,b)=>b.t-a.t);
-  return `${ids.length>1 ? `<div class="pstrip">${sorted.map(x=>`<span class="pchip static">${P.dot(x.p)}${P.nm(x.p)} <b>${x.t}</b></span>`).join('')}</div>` : ''}
+  return `${ids.length>1 ? `<div class="pstrip">${sorted.map(x=>`<span class="pchip static">${P.dot(x.p)}${P.nm(x.p)} <b data-ck="wyc:${x.p}" data-n="${x.t}">${x.t}</b></span>`).join('')}</div>` : ''}
   <div class="sheet-wrap glass dense"><table class="sheet wsheet">
     <thead><tr><th class="cat"></th>${ids.map((p,i)=>`<th class="${me(p).trim()}">${P.av(p)}${P.nm(p)}${i===turn?`<div class="hint">${P.mine(p)?'ton tour':'son tour'}</div>`:''}</th>`).join('')}</tr></thead>
     <tbody>
@@ -2122,8 +2293,8 @@ function watch421(L, P){
   const st = run421(L), RU = rulesOf(L);
   const rank = id => { const i = st.out.indexOf(id); return i<0 ? '' : (i===0?'1er':(i+1)+'e')+' sorti'; };
   const players = L.order.map(id => { const out = st.out.includes(id), t = st.tokens[id];
-    return `<div class="item${out?' out':''}">${P.av(id)}<div class="grow"><div class="name">${P.nm(id)}${P.mine(id)?' <span class="hint">· toi</span>':''}</div><div class="meta">${out ? rank(id) : ''}</div>
-      <div class="bar"><i style="width:${Math.round(t/POT*100)}%"></i></div></div><div class="tok">${t}<small>jeton${t>1?'s':''}</small></div></div>`; }).join('');
+    return `<div class="item${out?' out':''}${P.fl(id)}">${P.av(id)}<div class="grow"><div class="name">${P.nm(id)}${P.mine(id)?' <span class="hint">· toi</span>':''}</div><div class="meta">${out ? rank(id) : ''}</div>
+      <div class="bar"><i data-bk="wqb:${id}" data-w="${Math.round(t/POT*100)}" style="width:${Math.round(t/POT*100)}%"></i></div></div><div class="tok"><span data-ck="wq:${id}" data-n="${t}">${t}</span><small>jeton${t>1?'s':''}</small></div></div>`; }).join('');
   const last = st.log.slice(-5).reverse();
   return `<p class="sub" style="margin-top:-6px">${st.phase==='charge' ? `Charge · ${plural(st.pot,'jeton')} au pot` : 'Décharge · pot vide'}</p>
   <div class="glass" style="padding:8px 16px"><div class="list">${potRow(st)}${players}</div></div>
@@ -2133,9 +2304,9 @@ function watchSky(L, P){
   const st = runSky(L), order = [...L.order].sort((a,b)=>st.tot[a]-st.tot[b]);
   const maxT = Math.max(SKY_END, ...L.order.map(id=>st.tot[id]));
   const standings = order.map((id,i) => { const t = st.tot[id];
-    return `<div class="item">${P.av(id)}<div class="grow"><div class="name">${P.nm(id)}${P.mine(id)?' <span class="hint">· toi</span>':''}</div>
+    return `<div class="item${P.fl(id)}">${P.av(id)}<div class="grow"><div class="name">${P.nm(id)}${P.mine(id)?' <span class="hint">· toi</span>':''}</div>
       <div class="meta">${i===0 && st.log.length ? 'En tête' : t>=SKY_END-20 ? 'Reste '+Math.max(0,SKY_END-t)+' avant '+SKY_END : ''}</div>
-      <div class="bar"><i style="width:${Math.max(0,Math.round(t/maxT*100))}%"></i></div></div><div class="tok">${t}<small>pts</small></div></div>`; }).join('');
+      <div class="bar"><i data-bk="wsb:${id}" data-w="${Math.max(0,Math.round(t/maxT*100))}" style="width:${Math.max(0,Math.round(t/maxT*100))}%"></i></div></div><div class="tok"><span data-ck="ws:${id}" data-n="${t}">${t}</span><small>pts</small></div></div>`; }).join('');
   const rows = st.log.map((r,i)=>`<tr><td style="text-align:left" class="meta">M${i+1}</td>${L.order.map(id=>`<td>${r.fin[id]}${r.closer===id?(r.dbl?' <span class="meta">×2</span>':' <span class="meta">•</span>'):''}</td>`).join('')}</tr>`).reverse().join('');
   return `<p class="sub" style="margin-top:-6px">Manche ${st.log.length+1} · le plus petit total gagne.</p>
   <div class="glass" style="padding:8px 16px"><div class="list">${standings}</div></div>
@@ -2149,7 +2320,8 @@ function watchSky(L, P){
    et bascule de l'une à l'autre en tournant. Rien si « Réduire les animations » est activé. */
 const CONF_TONES = [['#F7D45C','#C99417'],['#EDBE36','#A87A12'],['#FBE38A','#DDA628']];
 let confRun = 0;
-function celebrate(){
+function celebrate(o){
+  o = o || {};
   try{ if(matchMedia('(prefers-reduced-motion: reduce)').matches || document.hidden) return; }catch(e){ return; }
   const run = ++confRun, old = document.getElementById('confetti'); if(old) old.remove();
   const cv = document.createElement('canvas'); cv.id = 'confetti'; cv.setAttribute('aria-hidden','true');
@@ -2157,16 +2329,16 @@ function celebrate(){
   document.body.appendChild(cv);
   const dpr = Math.min(2, window.devicePixelRatio||1), W = innerWidth, H = innerHeight;
   cv.width = W*dpr; cv.height = H*dpr; const c = cv.getContext('2d'); c.scale(dpr, dpr);
-  const P = [], N = Math.round(Math.min(150, Math.max(90, W/3.2)));
+  const P = [], N = o.small ? 46 : Math.round(Math.min(150, Math.max(90, W/3.2)));
   const burst = (x, y, n, power) => { for(let i=0;i<n;i++){
     const a = -Math.PI/2 + (Math.random()-.5)*Math.PI*1.25, v = power*(.45+Math.random()*.75);
     const t = CONF_TONES[(Math.random()*CONF_TONES.length)|0], r = Math.random();
     P.push({x, y, vx:Math.cos(a)*v, vy:Math.sin(a)*v, w: r<.2 ? 7 : 6+Math.random()*4, h: r<.2 ? 7 : 11+Math.random()*7,
       round: r<.2, rot:Math.random()*6.28, vr:(Math.random()-.5)*.35, flip:Math.random()*6.28, vf:.12+Math.random()*.2, t, drift:Math.random()*6.28}); } };
-  const ox = W/2, oy = Math.min(H*.24, 200), pw = Math.min(17, 9 + W/60);
-  burst(ox, oy, Math.round(N*.65), pw);
-  let t0 = null, second = false;
-  const life = 2900, fade = 700;
+  const ox = W/2, oy = o.small ? H*.38 : Math.min(H*.24, 200), pw = o.small ? Math.min(12, 7 + W/80) : Math.min(17, 9 + W/60);
+  burst(ox, oy, o.small ? N : Math.round(N*.65), pw);
+  let t0 = null, second = !!o.small;
+  const life = o.small ? 1700 : 2900, fade = o.small ? 500 : 700;
   const frame = ts => { if(run!==confRun) return; if(t0===null) t0 = ts; const el = ts - t0;
     if(!second && el>170){ second = true; burst(ox - W*.18, oy + 30, Math.round(N*.18), pw*.8); burst(ox + W*.18, oy + 30, Math.round(N*.17), pw*.8); }
     c.clearRect(0, 0, W, H); const alpha = el > life-fade ? Math.max(0, (life-el)/fade) : 1;
@@ -2188,7 +2360,7 @@ async function finishGame(k){
   if(finishing || !S.live[k]) return; finishing = true; S.confirm = null;
   try{ const live0 = JSON.parse(JSON.stringify(S.live[k]));
     const g = await saveFinished(k); const id = await store.addGame(g); watchDone(k, live0, {...g, id}); await store.setLive(k, null);
-    S.yzUndo = null; S.result = {g:{...g, id}, from:'end', live:live0}; S.sgame = k; go('result'); celebrate();
+    S.yzUndo = null; S.sgame = k; openResult({g:{...g, id}, from:'end', live:live0});
     if(!db){ const saved = S.games.find(x=>x.id===id); shareGame(saved); }
     if(!db) driveAuto(); }
   catch(err){ toast("La partie n'a pas pu être enregistrée. Réessaie."); render(); }
@@ -2221,8 +2393,10 @@ async function replay(){
 /* Fiche de score complète d'une partie terminée (g.sheet, depuis la v16). Colonnes dans l'ordre de jeu. */
 /* Courbe des totaux cumulés par manche (Skyjo), une ligne par joueur dans sa couleur.
    Même couleur (ou sans couleur) pour plusieurs joueurs : la 2e, 3e… ligne est en pointillés différents. */
-function skyChart(ids, st, nmOf){
+function skyChart(ids, st, nmOf, el){
   const n = st.log.length; if(!n) return '';
+  /* v29 : la courbe se dessine à l'ouverture (0,9 s). el = temps écoulé depuis l'ouverture de l'écran. */
+  const anim = typeof el==='number' && el < 1500 && !reduceMotion(), D0 = 120 - (el||0), dl = ms => anim ? ` style="animation-delay:${Math.round(ms)}ms"` : '';
   const cum = {}; ids.forEach(id => { let t = 0; cum[id] = [0, ...st.log.map(r => (t += (r.fin[id]||0)))]; });
   const all = ids.flatMap(id=>cum[id]); let lo = Math.min(0, ...all), hi = Math.max(SKY_END, ...all);
   const span = hi - lo, step = [10,20,25,50,100,200].find(s => span/s <= 5) || 500;
@@ -2235,16 +2409,18 @@ function skyChart(ids, st, nmOf){
   let grid = ''; for(let v = lo; v <= hi; v += step) grid += `<line class="ax" x1="${L}" x2="${W-R}" y1="${f(Y(v))}" y2="${f(Y(v))}"${v===0?'':' stroke-opacity=".5"'}/><text x="${L-6}" y="${f(Y(v))+3.5}" text-anchor="end">${v}</text>`;
   const every = Math.ceil(n/10); let xl = '';
   for(let i = 0; i <= n; i++) if(i===n || i % every === 0) xl += `<text x="${f(X(i))}" y="${H-6}" text-anchor="middle">${i}</text>`;
-  const lines = ids.map((id,j) => { const s = style[j], pts = cum[id].map((v,i)=>`${f(X(i))},${f(Y(v))}`).join(' ');
-    return `<polyline points="${pts}" fill="none" stroke="${s.c}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"${s.d?` stroke-dasharray="${s.d}"`:''}/>`
-      + (n <= 15 ? cum[id].slice(1).map((v,i)=>`<circle cx="${f(X(i+1))}" cy="${f(Y(v))}" r="2.6" fill="${s.c}"/>`).join('') : ''); }).join('');
+  const lines = ids.map((id,j) => { const s = style[j], P = cum[id].map((v,i)=>[f(X(i)), f(Y(v))]);
+    /* Trait plein : un path avec pathLength=1 qui se trace. Pointillés : un simple fondu (le tracé casserait les pointillés). */
+    const line = s.d || !anim ? `<polyline points="${P.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${s.c}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"${s.d?` stroke-dasharray="${s.d}"`:''}${anim?` class="ln-f"${dl(D0)}`:''}/>`
+      : `<path d="M${P.map(p=>p.join(' ')).join('L')}" pathLength="1" class="ln" fill="none" stroke="${s.c}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"${dl(D0)}/>`;
+    return line + (n <= 15 ? cum[id].slice(1).map((v,i)=>`<circle cx="${f(X(i+1))}" cy="${f(Y(v))}" r="2.6" fill="${s.c}"${anim?` class="pt"${dl(D0 + (i+1)/n*900)}`:''}/>`).join('') : ''); }).join('');
   const end = hi >= SKY_END ? `<line class="end" x1="${L}" x2="${W-R}" y1="${f(Y(SKY_END))}" y2="${f(Y(SKY_END))}"/><text x="${L+4}" y="${f(Y(SKY_END))-4}">fin</text>` : '';
   const leg = ids.map((id,j) => { const s = style[j]; return `<span><svg width="20" height="8" aria-hidden="true"><line x1="1" x2="19" y1="4" y2="4" stroke="${s.c}" stroke-width="2.2" stroke-linecap="round"${s.d?` stroke-dasharray="${s.d}"`:''}/></svg>${nmOf(id)}</span>`; }).join('');
   return `<h2>Évolution</h2><div class="glass" style="padding:14px 14px 10px" id="sky-chart">
     <svg class="sky-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Points cumulés par manche">${grid}${end}${xl}${lines}</svg>
     <div class="sky-leg">${leg}</div><p class="hint" style="margin:4px 2px 0">Points cumulés, manche après manche.</p></div>`;
 }
-function viewSheet(g){
+function viewSheet(g, el){
   const k = kindOf(g), sh = g.sheet, ids = (g.results||[]).map(r=>r.id);
   const nmOf = id => { const r = (g.results||[]).find(x=>x.id===id); return esc(pname(id, r ? r.name : '')); };
   const title = k==='yahtzee' ? 'Fiche de score' : 'Manches';
@@ -2263,7 +2439,7 @@ function viewSheet(g){
   if(k==='skyjo'){
     const st = runSky({order:ids, rounds:sh.rounds||[]});
     const rows = st.log.map((r,i)=>`<tr><td class="meta">M${i+1}</td>${ids.map(id=>`<td>${r.fin[id]}${r.closer===id?(r.dbl?' <span class="meta">×2</span>':' <span class="meta">•</span>'):''}</td>`).join('')}</tr>`).join('');
-    return `${skyChart(ids, st, nmOf)}<h2>${title}</h2><div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats sheet-h${ids.length>3?' wide':''}">${head}<tbody>${rows}
+    return `${skyChart(ids, st, nmOf, el)}<h2>${title}</h2><div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats sheet-h${ids.length>3?' wide':''}">${head}<tbody>${rows}
       <tr class="sh-tot"><td><b>Total</b></td>${ids.map(id=>`<td><b>${st.tot[id]}</b></td>`).join('')}</tr></tbody></table>
       <p class="hint" style="margin:8px 0">• a fini la manche · ×2 points doublés</p></div>`;
   }
@@ -2303,14 +2479,17 @@ function viewResult(){
   const extra = k==='yahtzee' ? '' : `${g.rounds||0} manches`;
   const canFix = R.from==='end' && R.live && !S.live[k];
   const spect = R.from==='watch';
+  /* Révélation (v29) : du dernier au premier, le titre (le gagnant) en dernier. Délais négatifs = animation déjà commencée. */
+  const el = Date.now() - (R.at0||0), n = rows.length, rvOn = revealMs(R) > 0 && el < revealMs(R) + 700 && !reduceMotion();
+  const rv = d => rvOn ? ` rv" style="animation-delay:${d - el}ms` : '';
   return `<button class="back" data-a="res-back">← ${R.from==='history'?'Parties':'Jeux'}</button>
   <div class="label">${GAMES[k].name} · ${when}${extra?' · '+extra:''}</div>
-  <h1>${head}</h1>
+  <h1 class="${rv((n-1)*RV_STEP + 60)}">${head}</h1>
   <p class="sub">${R.from==='end' ? 'Partie enregistrée dans l\'historique.' : spect ? `Partie de ${esc(R.owner||'ton ami')} terminée.${myPid() ? ' Elle va arriver dans ton historique.' : ''}` : 'Classement final.'}</p>
-  <div class="glass" style="padding:8px 16px"><div class="list res-list">${rows.map(x=>`<div class="item${x.win?' win':''}"><span class="rk">${x.rk}</span>${spect ? wav((g.cols||{})[x.r.id], x.r.name) : av(x.r.id, pname(x.r.id,x.r.name))}<div class="grow"><div class="name">${nm(x.r)}</div>${x.meta?`<div class="meta">${x.meta}</div>`:''}</div>${x.big?`<div class="tok">${x.big}</div>`:''}</div>`).join('')}</div></div>
+  <div class="glass" style="padding:8px 16px"><div class="list res-list">${rows.map((x,i)=>`<div class="item${x.win?' win':''}${rv((n-1-i)*RV_STEP)}"><span class="rk">${x.rk}</span>${spect ? wav((g.cols||{})[x.r.id], x.r.name) : av(x.r.id, pname(x.r.id,x.r.name))}<div class="grow"><div class="name">${nm(x.r)}</div>${x.meta?`<div class="meta">${x.meta}</div>`:''}</div>${x.big?`<div class="tok">${x.big}</div>`:''}</div>`).join('')}</div></div>
   ${g.src ? `<p class="hint">Reçue de ${esc(g.src.name)}</p>` : ''}
   ${R.from==='end' && !db && S.drive.on ? viewResDrive() : ''}
-  ${viewSheet(g)}
+  ${viewSheet(g, el)}
   <div class="stack" style="margin-top:18px">
     ${spect ? '' : `<button class="btn block" data-a="res-again" id="res-again">Rejouer avec les mêmes</button>`}
     <button class="btn ghost block" data-a="res-back" id="res-back">Retour</button>
@@ -2328,9 +2507,14 @@ function render(){
      et de la page, pour ne pas revenir au début à chaque mise à jour. */
   const keep = v===lastView ? [...$app.querySelectorAll('.sheet-wrap,.tbl-wrap')].map(el => [el.scrollLeft, el.scrollTop]) : null;
   const keepY = v===lastView && v==='watch' ? window.scrollY : null;
+  const same = v===lastView;
+  if(!same && lastView!==null) VT = {at:performance.now(), dir:vtDir(lastView, v)};
   lastView = v;
   $app.innerHTML = v==='players'?viewPlayers():v==='settings'?viewSettings():v==='friends'?viewFriends():v==='friend'?viewFriend():v==='account'?viewAccountPage():v==='backup'?viewBackup():v==='look'?viewLook():v==='feedback'?viewFeedback():v==='fbadmin'?viewFbAdmin():v==='player'?viewPlayer():v==='stats'?viewStats():v==='history'?viewHistory():v==='yahtzee'?viewYahtzee():v==='421'?view421():v==='skyjo'?viewSky():v==='result'?viewResult():v==='watch'?viewWatch():viewHome();
-  const tabv = v==='watch' ? 'home' : v==='result' ? (S.result && S.result.from==='history' ? 'history' : 'home') : GAMES[v] ? 'home' : ['player','settings','account','backup','look','friends','friend','feedback','fbadmin'].includes(v) ? 'players' : v;
+  { const t = VT ? performance.now() - VT.at : 1e9;
+    if(t < 300 && !reduceMotion()){ $app.dataset.vt = VT.dir; $app.style.setProperty('--vt-off', -Math.round(t)+'ms'); }
+    else { delete $app.dataset.vt; VT = null; } }
+  const tabv = v==='watch' ? 'home' : v==='result' ? (S.result && S.result.from==='history' ? 'history' : 'home') : GAMES[v] ? 'home' : SET_VIEWS.includes(v) ? (TAB_NAMES[S.setFrom] ? S.setFrom : 'players') : ['player','friends','friend'].includes(v) ? 'players' : v;
   if(keep){ const els = $app.querySelectorAll('.sheet-wrap,.tbl-wrap');
     if(els.length===keep.length) els.forEach((el,i) => { el.scrollLeft = keep[i][0]; el.scrollTop = keep[i][1]; });
     if(keepY!==null && Math.abs(window.scrollY-keepY)>1) window.scrollTo(0, keepY); }
@@ -2338,6 +2522,7 @@ function render(){
   meCheck();
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.v===tabv));
   placeInd();
+  afterRender(same);
   const f = document.getElementById('addp');
   if(f) f.onsubmit = async e => { e.preventDefault(); const i=document.getElementById('pname'); const n=i.value.trim(); if(!n) return;
     if(Object.values(S.players).some(p=>p.name.toLowerCase()===n.toLowerCase())){ toast(n+' est déjà dans la liste.'); return; }
@@ -2346,8 +2531,79 @@ function render(){
   { const g = document.getElementById('fr-form'); if(g) g.onsubmit = e => { e.preventDefault(); frAdd(); }; }
   ['acct-form','acct-rename-form','acct-fix-form','acct-del-form'].forEach(id => { const g = document.getElementById(id); if(g) g.onsubmit = e => { e.preventDefault(); acctForm(id); }; });
 }
-function go(v){ if(!['settings','account','backup','look','feedback','fbadmin'].includes(S.view)) S.fbFrom = S.view; if(v==='feedback' && S.view!=='feedback'){ S.fbk.sent = false; S.fbk.err = null; } if(v==='settings' || v==='fbadmin') fbkLoad(true);
-  S.view=v; S.confirm=null; S.edit=null; if(v==='friends'){ S.fr.err=S.fr.info=null; } render(); window.scrollTo(0,0); if(['players','friends','friend'].includes(v)) frLoad(v!=='players'); if(['players','history'].includes(v)) checkInbox(); if(v==='home') watchCheck(); }
+function go(v){ if(!SET_VIEWS.includes(S.view)) S.fbFrom = S.view;
+  if(SET_VIEWS.includes(v) && !SET_VIEWS.includes(S.view)) S.setFrom = TAB_NAMES[S.view] ? S.view : 'players';
+  if(v==='feedback' && S.view!=='feedback'){ S.fbk.sent = false; S.fbk.err = null; } if(v==='settings' || v==='fbadmin') fbkLoad(true);
+  S.view=v; S.confirm=null; S.edit=null; if(v==='friends'){ S.fr.err=S.fr.info=null; } render(); window.scrollTo(0,0);
+  if(['home','players','friends','friend'].includes(v)) frLoad(!['home','players'].includes(v)); if(['players','history'].includes(v)) checkInbox(); if(v==='home') watchCheck();
+  if(v==='home' || v==='players') linkNext(); }
+/* ================= animations (v29) =================
+   Règle commune : rien ne retarde la saisie (pas d'attente avant de pouvoir toucher), tout est court, et tout est coupé
+   quand « Réduire les animations » est activé sur le téléphone. */
+const reduceMotion = () => { try{ return matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ return true; } };
+let VT = null;
+/* Sens d'arrivée du contenu : onglet de droite → de la droite ; écran plus profond → de la droite ; retour → de la gauche. */
+const TAB_ORDER = ['home','stats','history','players'];
+const DEPTH = {settings:1, player:1, friends:1, yahtzee:1, '421':1, skyjo:1, watch:1, account:2, backup:2, look:2, feedback:2, fbadmin:2, friend:2, result:2};
+function vtDir(a, b){
+  const ia = TAB_ORDER.indexOf(a), ib = TAB_ORDER.indexOf(b);
+  if(ia>=0 && ib>=0) return ib>ia ? 'r' : 'l';
+  const da = DEPTH[a]||0, dz = DEPTH[b]||0;
+  return dz>da ? 'r' : dz<da ? 'l' : 'u';
+}
+/* Chiffres qui défilent jusqu'à la nouvelle valeur et barres qui glissent, d'un rendu à l'autre du même écran.
+   Repère : data-ck (clé stable, ex. joueur) + data-n (valeur) ; data-bk + data-w (% de barre). */
+const NUMS = new Map(), BARS = new Map();
+const numTxt = n => String(n);
+function tweenNum(el, from, to){
+  const t0 = performance.now(), d = 280, ease = x => 1 - Math.pow(1-x, 3);
+  const step = now => { const p = Math.min(1, (now-t0)/d); el.textContent = numTxt(Math.round(from + (to-from)*ease(p)));
+    if(p<1 && el.isConnected) requestAnimationFrame(step); else el.textContent = numTxt(to); };
+  requestAnimationFrame(step);
+}
+function afterRender(same){
+  const rm = reduceMotion();
+  $app.querySelectorAll('[data-ck]').forEach(el => { const k = el.dataset.ck, to = Number(el.dataset.n), from = NUMS.get(k); NUMS.set(k, to);
+    if(same && !rm && from!==undefined && from!==to && isFinite(from)) tweenNum(el, from, to); });
+  const bars = [...$app.querySelectorAll('[data-bk]')].map(el => { const k = el.dataset.bk, to = Number(el.dataset.w), from = BARS.get(k); BARS.set(k, to);
+    return same && !rm && from!==undefined && from!==to ? [el, from, to] : null; }).filter(Boolean);
+  if(bars.length){ bars.forEach(([el, from]) => { el.style.transition = 'none'; el.style.width = from+'%'; });
+    void $app.offsetWidth;
+    bars.forEach(([el, , to]) => { el.style.transition = 'width .4s cubic-bezier(.2,.8,.3,1)'; el.style.width = to+'%'; }); }
+  if(S.fly){ const f = S.fly; S.fly = null; if(!rm && S.view==='421') flyTokens(f); }
+}
+/* Moments forts : grande carte au centre ~1 s, sans bloquer les touchers. gold = petite salve de confettis en plus. */
+function moment(big, small, gold){
+  if(reduceMotion() || document.hidden) return;
+  const old = document.getElementById('moment'); if(old) old.remove();
+  const d = document.createElement('div'); d.id = 'moment'; d.className = 'moment'; d.setAttribute('aria-hidden', 'true');
+  d.innerHTML = `<span class="m-ring"></span><div class="m-card glass"><b>${big}</b>${small?`<small>${small}</small>`:''}</div>`;
+  document.body.appendChild(d); setTimeout(() => d.remove(), 1200);
+  if(gold) celebrate({small:true});
+}
+/* 421 : les jetons passent du pot (charge) ou du meilleur (décharge) vers le plus faible. from = rectangle mesuré avant la manche. */
+function flyTokens(f){
+  const to = document.querySelector(`[data-row="${f.to}"] .avatar`); if(!to || !f.from) return;
+  const b = to.getBoundingClientRect(), x0 = f.from.left + f.from.width/2, y0 = f.from.top + f.from.height/2, x1 = b.left + b.width/2, y1 = b.top + b.height/2;
+  /* Seulement si le départ et l'arrivée sont à l'écran : des jetons qui filent hors du cadre n'apportent rien. */
+  const seen = y => y > 0 && y < innerHeight - 70; if(!seen(y0) || !seen(y1)) return;
+  const n = Math.max(1, Math.min(5, f.n||1));
+  for(let i=0;i<n;i++){ const t = document.createElement('span'); t.className = 'fly-tok'; t.setAttribute('aria-hidden','true'); document.body.appendChild(t);
+    const lift = Math.min(60, Math.abs(y1-y0)*.35 + 24);
+    const a = t.animate([{transform:`translate(${x0}px,${y0}px) scale(.6)`, opacity:0},
+      {transform:`translate(${(x0+x1)/2}px,${Math.min(y0,y1)-lift}px) scale(1)`, opacity:1, offset:.45},
+      {transform:`translate(${x1}px,${y1}px) scale(.7)`, opacity:.9}], {duration:520, delay:i*70, easing:'cubic-bezier(.4,0,.2,1)', fill:'backwards'});
+    a.onfinish = () => t.remove(); a.oncancel = () => t.remove(); }
+}
+/* Écran de résultat : on révèle le classement du dernier au premier, puis les confettis.
+   Le temps est compté depuis l'ouverture (R.at0) : un nouveau rendu pendant la révélation la reprend là où elle en était. */
+const RV_STEP = 260;
+const revealMs = R => R && (R.from==='end' || R.from==='watch') ? Math.max(0, ((R.g.results||[]).length-1))*RV_STEP + 120 : 0;
+function openResult(R){
+  R.at0 = Date.now(); S.result = R; go('result');
+  if(R.from!=='end' && R.from!=='watch') return;
+  setTimeout(() => { if(S.view==='result' && S.result===R) celebrate(); }, reduceMotion() ? 0 : revealMs(R) + 180);
+}
 /* Pastille de l'onglet actif (v20) : glisse d'un onglet à l'autre. Pas d'animation au premier placement. */
 function placeInd(){ const ind = document.getElementById('tab-ind'), on = document.querySelector('.tab.on'); if(!ind) return;
   if(!on || !on.offsetWidth){ ind.style.width = '0'; return; }
@@ -2374,13 +2630,14 @@ async function saveFinished(k){
   return {game:'421', date:Date.now(), startedAt:L.startedAt, results, loser:st.loser, firstOut:st.out[0]||null, rounds:st.log.length, sheet:{rounds:JSON.parse(JSON.stringify(L.rounds||[])), rules:rulesOf(L)}};
 }
 
+$app.addEventListener('toggle', e => { if(e.target && e.target.id==='privacy') S.privOpen = e.target.open; }, true);
 $app.addEventListener('input', e => { if(e.target && e.target.id==='fb-text'){ S.fbk.draft = e.target.value; if(S.fbk.err){ S.fbk.err = null; const x = document.getElementById('fb-err'); if(x) x.remove(); } } });
 $app.addEventListener('click', async e => {
-  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-mg],[data-mg-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-me],[data-share],[data-frsend],[data-wshare],[data-watch],[data-game],[data-sgrp],[data-look],td.cell,tr.rt'); if(!el) return;
-  if(el.matches('[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-me],[data-share],[data-wshare],[data-frsend],[data-a=fr-rm]') && await frClick(el)) return;
+  const el = e.target.closest('[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-mg],[data-mg-yes],[data-rg],[data-rg-yes],[data-seg],[data-rule],[data-r],[data-closer],[data-player],[data-color],[data-yzp],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-lkopen],[data-me],[data-share],[data-frsend],[data-wshare],[data-watch],[data-game],[data-sgrp],[data-look],td.cell,tr.rt'); if(!el) return;
+  if(el.matches('[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-lkopen],[data-me],[data-share],[data-wshare],[data-frsend],[data-a=fr-rm]') && await frClick(el)) return;
   if(el.matches('td.cell,tr.rt')){ const tr = el.closest('tr'); if(tr){ tr.classList.add('tapped'); setTimeout(()=>tr.classList.remove('tapped'), 220); } openCell(el.dataset.p, el.dataset.c); return; }
   if(el.dataset.watch){ watchOpen(el.dataset.watch); return; }
-  if(el.dataset.game){ const g = S.games.find(x=>x.id===el.dataset.game); if(g){ S.result = {g, from:'history'}; go('result'); } return; }
+  if(el.dataset.game){ const g = S.games.find(x=>x.id===el.dataset.game); if(g) openResult({g, from:'history'}); return; }
   if(el.matches('[data-look]')){ lookSet(el.dataset.look || null); return; }
   if(el.dataset.go){ go(el.dataset.go); return; }
   if(el.dataset.yzp){ const i=Number(el.dataset.yzp); if(i!==S.yzp){ S.yzAnim = i>S.yzp?'l':'r'; S.yzp=i; render(); } return; }
@@ -2418,7 +2675,8 @@ $app.addEventListener('click', async e => {
       onClear:()=>{ const sc={...S.sky.scores}; delete sc[id]; S.sky.scores=sc; render(); }}); }
   else if(a==='sky-round'){ const L=S.live.skyjo, R=S.sky; if(!R.closer || !L.order.every(id=>R.scores[id]!==undefined)) return;
     L.rounds=[...(L.rounds||[]), {scores:{...R.scores}, closer:R.closer}]; S.sky={scores:{},closer:null}; saveLiveSoon('skyjo');
-    if(runSky(L).done){ finishGame('skyjo'); return; } window.scrollTo({top:0,behavior:'smooth'}); }
+    const st=runSky(L); if(st.done){ finishGame('skyjo'); return; } window.scrollTo({top:0,behavior:'smooth'});
+    const lr=st.log[st.log.length-1]; if(lr && lr.dbl) moment('×2', esc(pname(lr.closer,L.names[lr.closer]))+' doublé · '+lr.fin[lr.closer]+' pts'); }
   else if(a==='sky-undo'){ const L=S.live.skyjo; L.rounds=(L.rounds||[]).slice(0,-1); saveLiveSoon('skyjo'); }
   else if(a==='yz-prev'){ yzMove(-1); }
   else if(a==='yz-next'){ yzMove(1); }
@@ -2441,17 +2699,25 @@ $app.addEventListener('click', async e => {
     try{ await store.updatePlayer(E.id, {name:n, color:E.color, photo:E.photo||null}); S.edit=null; cropSrc=null; toast('Profil enregistré'); render(); }catch(err){ toast("Le profil n'a pas pu être enregistré."); } }
   else if(a==='nen'){ S.r421.nen=!S.r421.nen; render(); }
   else if(a==='round'){ const R=S.r421, L=S.live['421']; if(!R.w||!R.l) return;
-    L.rounds = [...(L.rounds||[]), {c:R.c, w:R.w, l:R.l, nen:R.nen}];
-    S.r421 = {c:'421', w:null, l:null, nen:false}; saveLiveSoon('421');
-    if(run421(L).done) finishGame('421'); }
+    const st0 = run421(L), RU = rulesOf(L), want = combo(R.c,RU).v + (R.nen?RU.nen:0), ch = st0.phase==='charge';
+    const n = Math.min(want, ch ? st0.pot : st0.tokens[R.w]), nm = id => esc(pname(id, L.names[id]));
+    const src = ch ? document.querySelector('#pot-row .avatar') : document.querySelector(`[data-row="${R.w}"] .avatar`);
+    const from = src ? src.getBoundingClientRect() : null, round = {c:R.c, w:R.w, l:R.l, nen:R.nen};
+    L.rounds = [...(L.rounds||[]), round];
+    S.r421 = {c:'421', w:null, l:null, nen:false};
+    const done = run421(L).done;
+    if(!done){ S.fly = {from, to:round.l, n};
+      if(round.c==='421') moment('421', ch ? nm(round.l)+' prend '+n : nm(round.w)+' donne '+n);
+      else if(round.nen) moment('Nénette', '+'+RU.nen+' pour '+nm(round.l)); }
+    saveLiveSoon('421');
+    if(done) finishGame('421'); }
   else if(a==='undo'){ const L=S.live['421']; L.rounds = (L.rounds||[]).slice(0,-1); saveLiveSoon('421'); }
   else if(a==='end'){ S.confirm='end'; render(); }
   else if(a==='abandon'){ S.confirm='abandon'; render(); }
   else if(a==='pause'){ pauseGame(k); }
   else if(a==='resume'){ resumeGame(el.dataset.id); }
   else if(a==='resync'){ resyncAll(true); }
-  else if(a==='hsync'){ if(S.syncing) return; S.syncing = true; render(); resyncAll(true);
-    setTimeout(()=>{ S.syncing = false; render(); }, 1200); }
+  else if(a==='sync-all' || a==='hsync'){ syncAll(); }
   else if(a==='resync-on' || a==='resync-off'){ lsSet(RESYNC_KEY, {...resyncState(), off:a==='resync-off'}); render(); toast(a==='resync-on' ? 'Resynchronisation chaque semaine' : 'Plus de resynchronisation automatique'); }
   else if(a==='abandon-yes'){ S.confirm=null; await store.setLive(k, null); }
   else if(a==='end-yes'){ S.confirm=null; finishGame(k); }
@@ -2480,7 +2746,7 @@ function cropPanel(){
   const W = src.cv.width, H = src.cv.height, F = Math.min(280, window.innerWidth - 96);
   const s0 = F / Math.min(W, H), sMax = s0 * 5;
   let v = src.view ? {...src.view} : {s:s0, x:(F - W*s0)/2, y:(F - H*s0)/2};
-  $ov.innerHTML = `<div class="scrim" data-close></div><div class="panel glass" role="dialog" aria-label="Cadrer la photo">
+  $ov.innerHTML = `<div class="scrim fade" data-close></div><div class="panel glass pop" role="dialog" aria-label="Cadrer la photo">
     <h3>Cadrer la photo</h3><div class="meta">Glisse pour déplacer, pince ou utilise le curseur pour zoomer.</div>
     <div class="crop" id="crop" style="width:${F}px;height:${F}px"><img id="crop-img" src="${src.url}" alt="" draggable="false" style="width:${W}px;height:${H}px"><div class="crop-ring" aria-hidden="true"></div></div>
     <input type="range" id="crop-zoom" class="crop-zoom" min="0" max="1000" value="0" aria-label="Zoom">
@@ -2547,7 +2813,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '28';
+window.APP_VERSION = '29';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

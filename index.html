@@ -370,6 +370,14 @@ h1.rv{animation:rv-in .4s cubic-bezier(.2,.8,.3,1) backwards}
 @keyframes flash{0%{background-color:color-mix(in srgb,var(--ink) 16%,transparent)}100%{background-color:transparent}}
 .wsheet td.v.flash,.item.flash{animation:flash 1.6s ease-out both}
 .item.flash{border-radius:14px}
+/* 421 (v30) : bandeau des jetons collé en haut quand la liste des joueurs sort de l'écran */
+.q-float{position:fixed;z-index:15;left:50%;top:calc(8px + env(safe-area-inset-top,0px));width:min(600px,calc(100% - 24px));display:flex;flex-wrap:wrap;gap:6px;padding:8px;border-radius:24px;
+  transform:translate(-50%,-10px);opacity:0;pointer-events:none;transition:opacity .2s ease,transform .25s cubic-bezier(.2,.8,.3,1)}
+.q-float.on{opacity:1;transform:translate(-50%,0)}
+.q-float.glass{background:var(--glass-solid)}
+.q-float .pchip{padding:7px 11px}
+.q-float .pchip.out{opacity:.45}
+main[data-vt]>.q-float{animation:none}
 /* 421 : jetons qui passent du pot (ou du meilleur) au plus faible */
 .fly-tok{position:fixed;left:0;top:0;z-index:34;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;pointer-events:none;background:var(--inv-bg);box-shadow:0 0 0 2px var(--bg),0 2px 6px rgba(0,0,0,.25)}
 </style>
@@ -781,7 +789,8 @@ function view421(){
   <div class="label">${st.done ? 'Partie terminée' : st.phase==='charge' ? `Charge · ${plural(st.pot,'jeton')} au pot` : 'Décharge · pot vide'}</div>
   <h1>Le <em>421</em></h1>
   <p class="sub">${st.done ? `${nm(st.loser)} est le dernier avec des jetons.` : st.phase==='charge' ? 'Le plus faible de la manche prend des jetons dans le pot.' : 'Le meilleur donne ses jetons au plus faible. À 0, tu sors.'}</p>
-  <div class="glass" style="padding:8px 16px"><div class="list">${potRow(st)}${players}</div></div>
+  <div class="glass" style="padding:8px 16px" id="q-list"><div class="list">${potRow(st)}${players}</div></div>
+  ${st.done ? '' : `<div class="q-float glass${qOn?' on':''}" id="q-float" aria-hidden="${!qOn}">${st.phase==='charge' && st.pot>0 ? `<span class="pchip static" data-qs="pot" style="color:var(--mute)">Pot <b style="color:var(--ink)" data-ck="qs:pot" data-n="${st.pot}">${st.pot}</b></span>` : ''}${L.order.map(id=>`<span class="pchip static${st.out.includes(id)?' out':''}" data-qs="${id}">${dot(id)}${nm(id)} <b data-ck="qs:${id}" data-n="${st.tokens[id]}">${st.tokens[id]}</b></span>`).join('')}</div>`}
   ${st.done ? '' : `<div class="glass" style="padding:6px 18px 18px;margin-top:14px">
     <div class="field"><span class="label">Meilleure combinaison</span>
       <button class="pickbtn" data-a="combo" id="combo-btn"><span class="c">${C.t}</span><span class="meta">${C.n} · ${plural(C.v,'jeton')}</span></button>
@@ -2570,6 +2579,7 @@ function afterRender(same){
   if(bars.length){ bars.forEach(([el, from]) => { el.style.transition = 'none'; el.style.width = from+'%'; });
     void $app.offsetWidth;
     bars.forEach(([el, , to]) => { el.style.transition = 'width .4s cubic-bezier(.2,.8,.3,1)'; el.style.width = to+'%'; }); }
+  qFloat();
   if(S.fly){ const f = S.fly; S.fly = null; if(!rm && S.view==='421') flyTokens(f); }
 }
 /* Moments forts : grande carte au centre ~1 s, sans bloquer les touchers. gold = petite salve de confettis en plus. */
@@ -2581,9 +2591,20 @@ function moment(big, small, gold){
   document.body.appendChild(d); setTimeout(() => d.remove(), 1200);
   if(gold) celebrate({small:true});
 }
+/* 421 (v30) : bandeau collé en haut dès que le haut de la grande liste (pot, premiers joueurs) est sorti de l'écran. */
+let qOn = false;
+function qFloat(){ const l = document.getElementById('q-list'), f = document.getElementById('q-float'); if(!l || !f){ qOn = false; return; }
+  const on = qOn = l.getBoundingClientRect().top < -40; if(f.classList.contains('on')!==on){ f.classList.toggle('on', on); f.setAttribute('aria-hidden', String(!on)); } }
+addEventListener('scroll', qFloat, {passive:true});
+/* Où faire partir / arriver les jetons : la ligne de la grande liste si elle est à l'écran, sinon la pastille du bandeau. */
+function qTarget(id){
+  const row = document.querySelector(id==='pot' ? '#pot-row .avatar' : `[data-row="${id}"] .avatar`);
+  if(row){ const r = row.getBoundingClientRect(); if(r.bottom > 70 && r.top < innerHeight - 90) return row; }
+  const f = document.getElementById('q-float'); return f && f.classList.contains('on') ? f.querySelector(`[data-qs="${id}"]`) : null;
+}
 /* 421 : les jetons passent du pot (charge) ou du meilleur (décharge) vers le plus faible. from = rectangle mesuré avant la manche. */
 function flyTokens(f){
-  const to = document.querySelector(`[data-row="${f.to}"] .avatar`); if(!to || !f.from) return;
+  const to = qTarget(f.to); if(!to || !f.from) return;
   const b = to.getBoundingClientRect(), x0 = f.from.left + f.from.width/2, y0 = f.from.top + f.from.height/2, x1 = b.left + b.width/2, y1 = b.top + b.height/2;
   /* Seulement si le départ et l'arrivée sont à l'écran : des jetons qui filent hors du cadre n'apportent rien. */
   const seen = y => y > 0 && y < innerHeight - 70; if(!seen(y0) || !seen(y1)) return;
@@ -2701,7 +2722,7 @@ $app.addEventListener('click', async e => {
   else if(a==='round'){ const R=S.r421, L=S.live['421']; if(!R.w||!R.l) return;
     const st0 = run421(L), RU = rulesOf(L), want = combo(R.c,RU).v + (R.nen?RU.nen:0), ch = st0.phase==='charge';
     const n = Math.min(want, ch ? st0.pot : st0.tokens[R.w]), nm = id => esc(pname(id, L.names[id]));
-    const src = ch ? document.querySelector('#pot-row .avatar') : document.querySelector(`[data-row="${R.w}"] .avatar`);
+    const src = qTarget(ch ? 'pot' : R.w);
     const from = src ? src.getBoundingClientRect() : null, round = {c:R.c, w:R.w, l:R.l, nen:R.nen};
     L.rounds = [...(L.rounds||[]), round];
     S.r421 = {c:'421', w:null, l:null, nen:false};
@@ -2813,7 +2834,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '29';
+window.APP_VERSION = '30';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

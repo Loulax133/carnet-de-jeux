@@ -74,7 +74,7 @@ h2{font-family:var(--serif);font-weight:400;font-size:26px;margin:28px 0 10px}
   background:linear-gradient(135deg,var(--rim-hi) 0%,var(--rim-lo) 22%,transparent 45%,transparent 62%,var(--rim-lo) 82%,var(--rim-hi) 100%);
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
 .glass::after{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;background:radial-gradient(120% 70% at 20% -10%,var(--sheen),transparent 55%);opacity:.7}
-.glass.tbl-wrap::before,.glass.tbl-wrap::after,.sheet-wrap::before,.sheet-wrap::after{content:none}
+.glass.tbl-wrap::before,.glass.tbl-wrap::after,.wyz-head::before,.wyz-head::after,.sheet-wrap::before,.sheet-wrap::after{content:none}
 .panel.glass,.toast.glass{background:var(--glass-solid)}
 .gamecard,.wcard,.gcard[data-game],.item.tap{transition:transform .25s cubic-bezier(.3,1.4,.5,1)}
 .gamecard:active,.wcard:active,.gcard[data-game]:active{transform:scale(.975)}
@@ -306,6 +306,24 @@ details.rules b{color:var(--ink);font-weight:600}
 .wsheet td.v.zero{color:var(--mute);text-decoration:line-through}
 .wsheet .me{background:color-mix(in srgb,var(--chip) 70%,transparent)}
 .wsheet thead th .hint{font-weight:500;text-transform:none;letter-spacing:0}
+/* v34 : direct Yahtzee, en-tête collé en haut, médaille et rangs */
+.wyz{position:relative}
+.wyz-head{position:sticky;z-index:5;top:calc(env(safe-area-inset-top,0px) - 44px);margin-bottom:6px;border-radius:24px;overflow-x:auto;scrollbar-width:none;background:color-mix(in srgb,var(--cat-bg) 90%,transparent)}
+.wyz-head::-webkit-scrollbar{display:none}
+.wyz table.sheet,.wyz-head table.sheet{table-layout:fixed}
+.wyz col.c-cat{width:136px}
+.wyz .sheet th.cat,.wyz .sheet td.cat{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.wyz-head .sheet th.cat{background:color-mix(in srgb,var(--cat-bg) 96%,transparent)}
+.wyz-head .sheet thead th{border-bottom:0;padding:8px 4px 10px;vertical-align:top;min-width:0}
+.wyz-head .wph{height:40px;opacity:var(--ph,1);transform:translateY(calc((1 - var(--ph,1)) * -8px)) scale(calc(.7 + var(--ph,1) * .3));transform-origin:50% 100%;will-change:opacity,transform}
+.wyz-head .sheet thead th .avatar{margin:0 auto 6px}
+.wyz-head .wnm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.25}
+.wyz-head .wbadge{height:28px;display:flex;justify-content:center;align-items:flex-start;margin-top:2px}
+.wmedal{display:block;line-height:0;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.18))}
+.wmedal.pop{animation:wmpop .5s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes wmpop{0%{transform:scale(.3) rotate(-25deg);opacity:0}100%{transform:none;opacity:1}}
+.wrk{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:999px;border:1px solid var(--line);font-size:11.5px;font-weight:600;color:var(--mute);margin-top:1px}
+.wsheet td.need{color:var(--mute);font-weight:600}
 .pchip.static{cursor:default}
 .field{display:flex;flex-direction:column;gap:8px;padding:14px 0;border-bottom:1px solid var(--line)}
 .field:last-of-type{border-bottom:0}
@@ -1170,28 +1188,59 @@ function sheetYz(g, sh, ids, nmOf, head, el, title){
     ${LOWER.map(row).join('')}<tr><td>Yahtzee bonus</td>${ids.map(id=>`<td>${sc(id).yb ? '+'+sc(id).yb*100 : '<span class="meta">–</span>'}</td>`).join('')}</tr>
     ${sum('Section basse', x=>x.low)}${sum('Total', x=>x.total, true)}</tbody></table></div>`;
 }
+/* v34 : direct Yahtzee. Les noms restent collés en haut (tableau d'en-tête séparé, même colonnes, défilement horizontal
+   synchronisé) ; les photos sortent par le haut de l'écran en se fondant. Médaille d'or au premier, rang sous les autres.
+   Prime : ce qu'il reste à faire pour la prime, en négatif. */
+const MEDAL_SVG = `<svg viewBox="0 0 22 28" width="21" height="27" aria-hidden="true"><path d="M4.6 0h4.6l3.1 9.4-3.7 2.3z" fill="var(--ink)"/><path d="M17.4 0h-4.6l-3.1 9.4 3.7 2.3z" fill="var(--mute)"/><circle cx="11" cy="18.6" r="8.6" fill="#EDBE36"/><circle cx="11" cy="18.6" r="8.6" fill="none" stroke="#C99417" stroke-width="1.2"/><circle cx="11" cy="18.6" r="6.2" fill="none" stroke="#FBE38A" stroke-width=".9"/><text x="11" y="22.3" text-anchor="middle" font-size="10" font-weight="700" fill="#6B4A06" font-family="-apple-system,system-ui,sans-serif">1</text></svg>`;
+let wyzLead = null, wyzPh = 1;
 function watchYz(L, P){
-  const ids = L.order, T = ids.map(p => totals(L.scores[p]||{})), f = ids.map(p => filled(L.scores[p]));
-  const turn = ids.length>1 && Math.min(...f) < ALL.length ? f.indexOf(Math.min(...f)) : -1;
+  const ids = L.order, n = ids.length, T = ids.map(p => totals(L.scores[p]||{})), f = ids.map(p => filled(L.scores[p]));
+  const turn = n>1 && Math.min(...f) < ALL.length ? f.indexOf(Math.min(...f)) : -1;
   const me = p => P.mine(p) ? ' me' : '';
   const v = (p, cid) => { const x = (L.scores[p]||{})[cid]; const has = x!==undefined && x!==null;
     return `<td class="v${me(p)}${has ? (x===0 && cid!=='yb' ? ' zero' : '') : ' empty'}${P.fl(p+':'+cid)}">${has ? (cid==='yb' ? (x?'+'+x*100:'0') : x) : '–'}</td>`; };
   const row = c => `<tr><td class="cat">${c.label}</td>${ids.map(p=>v(p, c.id)).join('')}</tr>`;
   const sum = (label, key, cls='sum') => `<tr class="${cls}"><td class="cat">${label}</td>${ids.map((p,i)=>`<td class="${me(p).trim()}">${T[i][key]}</td>`).join('')}</tr>`;
-  const sorted = ids.map((p,i)=>({p, t:T[i].total})).sort((a,b)=>b.t-a.t);
-  return `${ids.length>1 ? `<div class="pstrip">${sorted.map(x=>`<span class="pchip static">${P.dot(x.p)}${P.nm(x.p)} <b data-ck="wyc:${x.p}" data-n="${x.t}">${x.t}</b></span>`).join('')}</div>` : ''}
-  <div class="sheet-wrap glass dense"><table class="sheet wsheet">
-    <thead><tr><th class="cat"></th>${ids.map((p,i)=>`<th class="${me(p).trim()}">${P.av(p)}${P.nm(p)}${i===turn?`<div class="hint">${P.mine(p)?'ton tour':'son tour'}</div>`:''}</th>`).join('')}</tr></thead>
+  /* Prime : 35 si gagnée, 0 si la section haute est remplie sans l'atteindre, sinon −(63 − sous-total). */
+  const prime = `<tr class="sum"><td class="cat">Prime</td>${ids.map((p,i) => { const t = T[i], sc = L.scores[p]||{};
+    const upDone = UPPER.every(c => sc[c.id]!==undefined && sc[c.id]!==null);
+    return t.bonus ? `<td class="${me(p).trim()}">${t.bonus}</td>` : upDone ? `<td class="${me(p).trim()} need">0</td>` : `<td class="${me(p).trim()} need">−${BONUS_AT - t.up}</td>`; }).join('')}</tr>`;
+  /* Rang : ex æquo = même rang ; rien tant que personne n'a marqué. */
+  const rk = T.map(t => 1 + T.filter(u => u.total > t.total).length), showRk = n>1 && T.some(t => t.total>0);
+  const lead = showRk ? ids.filter((p,i) => rk[i]===1).join(',') : null, newLead = lead && wyzLead!==null && lead!==wyzLead; wyzLead = lead;
+  const badge = i => !showRk ? '' : rk[i]===1 ? `<span class="wmedal${newLead?' pop':''}" role="img" aria-label="Premier">${MEDAL_SVG}</span>` : `<span class="wrk" aria-label="${rk[i]}e">${rk[i]}</span>`;
+  const cols = `<colgroup><col class="c-cat">${ids.map(()=>'<col>').join('')}</colgroup>`, mw = `style="min-width:${136 + n*68}px"`;
+  return `<div class="wyz">
+  <div class="wyz-head glass" id="wyz-head" style="--ph:${wyzPh}"><table class="sheet wsheet" ${mw}>${cols}
+    <thead><tr><th class="cat"></th>${ids.map((p,i)=>`<th class="${me(p).trim()}"><div class="wph">${P.av(p)}</div><div class="wnm">${P.nm(p)}</div><div class="wbadge">${badge(i)}</div>${i===turn?`<div class="hint">${P.mine(p)?'ton tour':'son tour'}</div>`:''}</th>`).join('')}</tr></thead></table></div>
+  <div class="sheet-wrap glass dense" id="wyz-body"><table class="sheet wsheet" ${mw}>${cols}
     <tbody>
       <tr class="section"><td class="cat label">Section haute</td>${ids.map(()=>'<td></td>').join('')}</tr>
       ${UPPER.map(row).join('')}
-      ${sum('Sous-total','up')}${sum('Prime','bonus')}
+      ${sum('Sous-total','up')}${prime}
       <tr class="section"><td class="cat label">Section basse</td>${ids.map(()=>'<td></td>').join('')}</tr>
       ${LOWER.map(row).join('')}
       <tr><td class="cat">Yahtzee bonus</td>${ids.map(p=>v(p,'yb')).join('')}</tr>
       ${sum('Section basse','low')}${sum('Total','total','total')}
-    </tbody></table></div>`;
+    </tbody></table></div>
+  </div>`;
 }
+/* Après chaque rendu du direct : en-tête et tableau défilent ensemble à l'horizontale ; photos en fondu selon la position. */
+function wyzAfter(){
+  const h = document.getElementById('wyz-head'), b = document.getElementById('wyz-body'); if(!h || !b) return;
+  h.scrollLeft = b.scrollLeft;
+  const sync = (from, to) => () => { if(Math.abs(to.scrollLeft - from.scrollLeft) > .5) to.scrollLeft = from.scrollLeft; };
+  b.addEventListener('scroll', sync(b, h), {passive:true}); h.addEventListener('scroll', sync(h, b), {passive:true});
+  wyzStick();
+}
+/* Photo pleine tant que l'en-tête est sous le haut de l'écran, puis fondu pendant qu'elle passe dessous (44 px). */
+function wyzStick(){
+  const h = document.getElementById('wyz-head'); if(!h) return;
+  const stickTop = parseFloat(getComputedStyle(h).top) || 0;
+  const val = Math.round(Math.max(0, Math.min(1, (h.getBoundingClientRect().top - stickTop) / 44))*100)/100;
+  if(val!==wyzPh){ wyzPh = val; h.style.setProperty('--ph', val); }
+}
+addEventListener('scroll', wyzStick, {passive:true});
 
 /* ---- Yahtzee virtuel (v32) : 5 dés, 3 lancers, on touche la case ; Yahtzee bonus et joker selon les règles officielles ---- */
 const yzCnt = d => { const c = [0,0,0,0,0,0,0]; d.forEach(v => c[v]++); return c; };
@@ -3528,6 +3577,7 @@ function afterRender(same){
   /* v32 : le jeu choisi reste visible dans le sélecteur qui défile (5 jeux). */
   $app.querySelectorAll('.gseg').forEach(sg => { const on = sg.querySelector('.on'); if(on && sg.scrollWidth > sg.clientWidth) sg.scrollLeft = Math.max(0, on.offsetLeft - (sg.clientWidth - on.offsetWidth)/2); });
   { const G = GAMES[S.view]; if(G && G.after) G.after(rm); }
+  if(S.view==='watch') wyzAfter();
 }
 /* Moments forts : grande carte au centre ~1 s, sans bloquer les touchers. gold = petite salve de confettis en plus. */
 function moment(big, small, gold){
@@ -3728,7 +3778,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '33';
+window.APP_VERSION = '34';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

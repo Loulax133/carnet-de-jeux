@@ -171,6 +171,9 @@ nav.tabs{position:fixed;z-index:20;left:50%;transform:translateX(-50%);bottom:ca
 .sheet-h th,.sheet-h td{padding:9px 8px}
 .sheet-h.wide td:first-child,.sheet-h.wide th:first-child{position:sticky;left:0;background:var(--cat-bg);z-index:1}
 .sheet-h tr.sh-tot td{border-bottom:0;font-size:15px}
+.stats tr.sky-row{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.stats tr.sky-row:active td{background:var(--line)}
+.stats tr.sky-row.on td{background:var(--line);font-weight:600}
 table.stats{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14px}
 .stats th,.stats td{padding:12px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
 .stats th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-weight:600}
@@ -1588,7 +1591,10 @@ const rulesSky = (open) => `<details class="rules glass"${open?' open':''}><summ
 function viewSky(){
   const L = S.live.skyjo;
   if(!L) return viewSetup('skyjo');
-  const st = runSky(L); const R = S.sky; const nm = id => esc(pname(id, L.names[id]));
+  const st = runSky(L); const nm = id => esc(pname(id, L.names[id]));
+  /* v35 : correction d'une manche déjà validée. S.skyFix = {i, scores, closer} remplace le formulaire de la manche en cours. */
+  if(S.skyFix && !(L.rounds||[])[S.skyFix.i]) S.skyFix = null;
+  const F = S.skyFix, R = F || S.sky;
   const order = [...L.order].sort((a,b)=>st.tot[a]-st.tot[b]);
   const maxT = Math.max(SKY_END, ...L.order.map(id=>st.tot[id]));
   const standings = order.map((id,i) => { const t = st.tot[id];
@@ -1601,23 +1607,26 @@ function viewSky(){
     const beaten = L.order.some(id => id!==c && R.scores[id] <= v);
     preview = v>0 && beaten ? `${nm(c)} n'a pas le plus petit score seul : ses ${v} points passent à ${v*2}.` : `${nm(c)} a le plus petit score seul : pas de pénalité.`;
     if(v<=0 && beaten) preview = `${nm(c)} n'a pas le plus petit score, mais son score n'est pas positif : pas de doublement.`; }
-  const rows = st.log.map((r,i)=>`<tr><td style="text-align:left" class="meta">M${i+1}</td>${L.order.map(id=>`<td>${r.fin[id]}${r.closer===id?(r.dbl?' <span class="meta">×2</span>':' <span class="meta">•</span>'):''}</td>`).join('')}</tr>`).reverse().join('');
+  const rows = st.log.map((r,i)=>`<tr class="sky-row${F&&F.i===i?' on':''}" data-a="sky-fix" data-i="${i}"><td style="text-align:left" class="meta">M${i+1}</td>${L.order.map(id=>`<td>${r.fin[id]}${r.closer===id?(r.dbl?' <span class="meta">×2</span>':' <span class="meta">•</span>'):''}</td>`).join('')}</tr>`).reverse().join('');
   return `<button class="back" data-go="home">← Jeux</button>
   <div class="label">${st.done ? 'Partie terminée' : 'Manche '+(st.log.length+1)}</div>
   <h1>Le <em>Skyjo</em></h1>
   <p class="sub">${st.done ? `${st.winners.map(nm).join(' & ')} gagne avec ${st.lead} points.` : `Le plus petit total gagne. Fin de partie dès qu'un joueur atteint ${SKY_END}.`}</p>
   <div class="glass" style="padding:8px 16px"><div class="list">${standings}</div></div>
-  ${st.done ? '' : `<div class="glass" style="padding:6px 18px 18px;margin-top:14px">
+  ${st.done ? '' : `<div class="glass" id="sky-form" style="padding:6px 18px 18px;margin-top:14px">
+    ${F ? `<div class="field" style="margin-bottom:0"><span class="label">Correction · manche ${F.i+1}</span></div>` : ''}
     <div class="field"><span class="label">Points de la manche</span><span class="hint">Additionne les cartes encore devant chaque joueur. Les colonnes de 3 cartes identiques ne comptent pas.</span>
       <div class="stack" style="gap:8px">${L.order.map(id=>`<button class="pickbtn" data-a="sky-score" data-id="${id}"><span>${dot(id)}${nm(id)}</span><span class="c">${R.scores[id]===undefined?'–':R.scores[id]}</span></button>`).join('')}</div></div>
     <div class="field"><span class="label">Qui a fini la manche ?</span><div class="chips">${L.order.map(id=>`<button class="chip${R.closer===id?' on':''}" data-closer="${id}">${dot(id)}${nm(id)}</button>`).join('')}</div>
       <span class="hint">Celui qui a retourné toutes ses cartes en premier. S'il n'a pas le plus petit score seul, ses points positifs sont doublés.</span></div>
     ${preview ? `<p class="hint" style="font-size:13.5px;margin:4px 0 12px">${preview}</p>` : ''}
-    <button class="btn block" data-a="sky-round" id="sky-round" ${all&&R.closer?'':'disabled'}>Valider la manche</button>
+    ${F ? `<button class="btn block" data-a="sky-fix-ok" id="sky-fix-ok" ${all&&R.closer?'':'disabled'}>Enregistrer la correction</button>
+    <button class="link" data-a="sky-fix-no" style="display:block;margin:12px auto 0">Annuler</button>`
+    : `<button class="btn block" data-a="sky-round" id="sky-round" ${all&&R.closer?'':'disabled'}>Valider la manche</button>`}
   </div>`}
   ${st.log.length ? `<h2>Manches</h2><div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats">
     <thead><tr><th></th>${L.order.map(id=>`<th>${dot(id)}${nm(id)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
-    <p class="hint" style="margin:8px 0">• a fini la manche · ×2 points doublés</p>
+    <p class="hint" style="margin:8px 0">• a fini la manche · ×2 points doublés · touche une manche pour la corriger</p>
     <button class="link" data-a="sky-undo" id="sky-undo">Annuler la dernière manche</button></div>` : ''}
   ${endControls('skyjo', st.done, `Enregistrer la victoire de ${st.winners.map(nm).join(' & ')} dans l'historique ?`)}
   ${rulesSky(false)}`;
@@ -1705,17 +1714,26 @@ function watchSky(L, P){
     <p class="hint" style="margin:8px 0">• a fini la manche · ×2 points doublés</p></div>` : ''}`;
 }
 function clickSky(el, a){
-  if(el.dataset.closer){ S.sky.closer = S.sky.closer===el.dataset.closer ? null : el.dataset.closer; render(); return true; }
-  if(a==='sky-score'){ const id=el.dataset.id, L=S.live.skyjo; const cur=S.sky.scores[id];
+  const R0 = S.skyFix || S.sky;
+  if(el.dataset.closer){ R0.closer = R0.closer===el.dataset.closer ? null : el.dataset.closer; render(); return true; }
+  if(a==='sky-fix'){ const L=S.live.skyjo, i=+el.dataset.i, r=(L.rounds||[])[i]; if(!r || runSky(L).done) return true;
+    if(S.skyFix && S.skyFix.i===i){ S.skyFix=null; render(); return true; }
+    S.skyFix={i, scores:{...r.scores}, closer:r.closer}; render();
+    const f=document.getElementById('sky-form'); if(f) f.scrollIntoView({behavior:reduceMotion()?'auto':'smooth', block:'start'}); return true; }
+  if(a==='sky-fix-no'){ S.skyFix=null; render(); return true; }
+  if(a==='sky-fix-ok'){ const L=S.live.skyjo, F=S.skyFix; if(!F || !(L.rounds||[])[F.i] || !F.closer || !L.order.every(id=>F.scores[id]!==undefined)) return true;
+    const rounds=[...L.rounds]; rounds[F.i]={scores:{...F.scores}, closer:F.closer}; L.rounds=rounds; S.skyFix=null; saveLiveSoon('skyjo');
+    toast('Manche '+(F.i+1)+' corrigée'); if(runSky(L).done){ finishGame('skyjo'); return true; } return true; }
+  if(a==='sky-score'){ const id=el.dataset.id, L=S.live.skyjo; const cur=R0.scores[id];
     const opts=[]; for(let v=-24; v<=144; v++) opts.push({v, t:v<0?'−'+(-v):String(v)});
     wheel({who:pname(id,L.names[id]), whoId:id, title:'Points de la manche', meta:'Somme des cartes restantes, de −2 à 12 chacune. Une colonne de 3 cartes identiques ne compte pas.',
-      opts, start: opts.findIndex(o=>o.v===(cur===undefined?0:cur)), onOk:o=>{ S.sky.scores={...S.sky.scores,[id]:o.v}; render(); },
-      onClear:()=>{ const sc={...S.sky.scores}; delete sc[id]; S.sky.scores=sc; render(); }}); return true; }
-  if(a==='sky-round'){ const L=S.live.skyjo, R=S.sky; if(!R.closer || !L.order.every(id=>R.scores[id]!==undefined)) return true;
+      opts, start: opts.findIndex(o=>o.v===(cur===undefined?0:cur)), onOk:o=>{ R0.scores={...R0.scores,[id]:o.v}; render(); },
+      onClear:()=>{ const sc={...R0.scores}; delete sc[id]; R0.scores=sc; render(); }}); return true; }
+  if(a==='sky-round'){ if(S.skyFix) return true; const L=S.live.skyjo, R=S.sky; if(!R.closer || !L.order.every(id=>R.scores[id]!==undefined)) return true;
     L.rounds=[...(L.rounds||[]), {scores:{...R.scores}, closer:R.closer}]; S.sky={scores:{},closer:null}; saveLiveSoon('skyjo');
     const st=runSky(L); if(st.done){ finishGame('skyjo'); return true; } window.scrollTo({top:0,behavior:'smooth'});
     const lr=st.log[st.log.length-1]; if(lr && lr.dbl) moment('×2', esc(pname(lr.closer,L.names[lr.closer]))+' doublé · '+lr.fin[lr.closer]+' pts'); return true; }
-  if(a==='sky-undo'){ const L=S.live.skyjo; L.rounds=(L.rounds||[]).slice(0,-1); saveLiveSoon('skyjo'); return true; }
+  if(a==='sky-undo'){ const L=S.live.skyjo; L.rounds=(L.rounds||[]).slice(0,-1); S.skyFix=null; saveLiveSoon('skyjo'); return true; }
   return false;
 }
 defGame('skyjo', {
@@ -1726,7 +1744,7 @@ defGame('skyjo', {
   newLive: (order, names) => ({order, names, rounds:[], startedAt:Date.now()}),
   summary: L => { const r = runSky(L); const n = (L.rounds||[]).length; return n ? plural(n,'manche')+' · '+L.order.map(id=>r.tot[id]).join(' / ') : 'pas encore de manche'; },
   view: viewSky,
-  resetUi(){ S.sky = {scores:{},closer:null}; },
+  resetUi(){ S.sky = {scores:{},closer:null}; S.skyFix = null; },
   reopen(L){ if((L.rounds||[]).length){ const r = L.rounds.pop(); S.sky = {scores:{...r.scores}, closer:r.closer}; } },
   record(L){ const st=runSky(L);
     const results = L.order.map(id=>({id, name:pname(id,L.names[id]), total:st.tot[id], closed:st.closed[id], doubled:st.doubled[id], bestRound:st.bestRound[id]}));
@@ -3778,7 +3796,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '34';
+window.APP_VERSION = '35';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

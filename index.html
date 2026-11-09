@@ -19,8 +19,14 @@
 </head>
 <body>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Figtree:wght@400;500;600;700&display=swap">
+<!-- Polices servies par le site (v36) : plus rien ne part chez Google au chargement, l'app s'affiche aussi vite hors ligne. Licence OFL. -->
+<link rel="preload" href="figtree.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="instrument-serif.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face{font-family:"Figtree";font-style:normal;font-weight:300 900;font-display:swap;src:url(figtree.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Instrument Serif";font-style:normal;font-weight:400;font-display:swap;src:url(instrument-serif.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Instrument Serif";font-style:italic;font-weight:400;font-display:swap;src:url(instrument-serif-italic.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+</style>
 <style>
 /* Layout: one-column phone app, glass tab bar at the bottom, serif headlines over quiet sans data */
 :root{
@@ -409,7 +415,7 @@ main[data-vt]>.q-float{animation:none}
 .vt-foot .hint{flex:1;min-width:0}
 .vt-foot .btn{flex:none;padding:12px 22px}
 .rolls{display:flex;gap:5px}.rolls i{width:8px;height:8px;border-radius:50%;background:var(--inv-bg)}.rolls i.used{background:var(--line)}
-.vd3{position:relative;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;cursor:pointer;margin:0 -12px}
+.vd3{position:relative;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;cursor:pointer;margin:0 -12px}
 .vd3-cv{position:absolute;left:0;top:0;display:block}
 .vd3-keep{position:absolute;left:12px;right:12px;top:0;border-bottom:1px dashed var(--line);pointer-events:none}
 .vd3-keep .label{position:absolute;right:6px;top:4px}
@@ -831,10 +837,45 @@ const VD3 = (() => {
     const screen = (x, y, z) => ({x, y: L.top + z*SIN - y*COS});
     const support = q => { const d = qrot([q[0],-q[1],-q[2],-q[3]], [0,-1,0]); return L.A*((1-RND)*(Math.abs(d[0])+Math.abs(d[1])+Math.abs(d[2])) + RND); };
     /* Places de la bande « gardés » et du tapis au repos. */
-    const keepSlot = (i, m) => { const g = L.A*2.35, x0 = L.W/2 - (m-1)*g/2; return {x: x0 + i*g, z: L.zk}; };
+    const keepSlot = (i, m) => { const g = Math.min(L.A*2.8, (L.W - L.A*3)/Math.max(1, m-1)), x0 = L.W/2 - (m-1)*g/2; return {x: x0 + i*g, z: L.zk}; };
     const freeSpots = () => { const zs = [L.keep + (L.Dz-L.keep)*.35, L.keep + (L.Dz-L.keep)*.65]; return zs; };
 
     function placeKept(){ const kept = dice.filter(d=>d.held); kept.forEach((d,i) => { const s = keepSlot(i, kept.length); d.x = s.x; d.z = s.z; }); }
+
+    /* ---------- jamais deux dés l'un sur l'autre (v36) ----------
+       Un dé posé fait ~2,5 A de large et ~2,8 A de haut à l'écran. Deux dés se gênent si leurs cadres (plus une petite marge)
+       se recouvrent : on les écarte sur l'axe le plus court, dans les limites du tapis. Si ça ne suffit pas, on les range
+       sur une grille. mov = dés à placer (x, z modifiés), fix = dés qui ne bougent pas. */
+    const GAP_X = 2.68, GAP_Y = 2.98;
+    const clash = (a, b) => Math.abs(a.x - b.x) < L.A*GAP_X - .01 && Math.abs(a.z - b.z)*SIN < L.A*GAP_Y - .01;
+    function bounds(){ const A = L.A, held = dice.some(d=>d.held && d.shown);
+      return {x0: A*1.35, x1: L.W - A*1.35, z0: held ? L.keep : A*1.25, z1: L.Dz - A*.6}; }
+    function relax(mov, fix){
+      if(!mov.length) return;
+      const A = L.A, b = bounds(), sw = A*GAP_X, sh = A*GAP_Y/SIN, all = mov.concat(fix || []);
+      const clamp = p => { p.x = Math.max(b.x0, Math.min(b.x1, p.x)); p.z = Math.max(b.z0, Math.min(b.z1, p.z)); };
+      mov.forEach(clamp);
+      for(let it = 0; it < 240; it++){ let any = false;
+        for(let i = 0; i < all.length; i++) for(let j = i+1; j < all.length; j++){ const p = all[i], o = all[j], pm = i < mov.length, om = j < mov.length;
+          if(!pm && !om) continue;
+          const dx = o.x - p.x, dz = o.z - p.z, px = sw - Math.abs(dx), pz = sh - Math.abs(dz);
+          if(px <= 0 || pz <= 0) continue; any = true;
+          const sx = dx ? Math.sign(dx) : (i%2 ? 1 : -1), sz = dz ? Math.sign(dz) : (j%2 ? 1 : -1);
+          const share = pm && om ? .5 : 1, e = 1.02;
+          if(px/sw < pz/sh){ if(pm) p.x -= sx*px*share*e; if(om) o.x += sx*px*share*e; }
+          else { if(pm) p.z -= sz*pz*share*e; if(om) o.z += sz*pz*share*e; }
+          if(pm) clamp(p); if(om) clamp(o); }
+        if(!any) return; }
+      /* repli : une grille de places libres, chaque dé prend la plus proche */
+      const cols = Math.max(1, Math.floor((b.x1 - b.x0)/sw) + 1), rows = Math.max(1, Math.floor((b.z1 - b.z0)/sh) + 1), slots = [];
+      for(let r = 0; r < rows; r++) for(let c = 0; c < cols; c++){
+        const s = {x: cols > 1 ? b.x0 + c*(b.x1 - b.x0)/(cols-1) : (b.x0+b.x1)/2, z: rows > 1 ? b.z0 + r*(b.z1 - b.z0)/(rows-1) : (b.z0+b.z1)/2};
+        if(!(fix || []).some(o => clash(s, o))) slots.push(s); }
+      mov.forEach(p => { let bi = -1, bd = 1e9; slots.forEach((s,k) => { const d = Math.hypot(s.x-p.x, (s.z-p.z)*SIN); if(d < bd){ bd = d; bi = k; } });
+        if(bi >= 0){ p.x = slots[bi].x; p.z = slots[bi].z; slots.splice(bi, 1); } });
+    }
+    /* dés du tapis (pas gardés) remis à l'écart les uns des autres */
+    function spread(){ relax(dice.filter(d => d.shown && !d.held), []); }
 
     /* ---------- dessin ---------- */
     let draw = function(frame){
@@ -919,6 +960,12 @@ const VD3 = (() => {
           return {i:b.i, x:b.x, z:b.z, y, q}; })); }
         if(B.every(b => b.rest >= 0 && t - b.rest > .22)) break;
       }
+      /* écart final garanti, glissé en douceur sur la fin du roulement */
+      const fin = B.map(b => ({x:b.x, z:b.z}));
+      relax(fin, dice.filter((d,j) => d.shown && !ids.includes(j)).map(d => ({x:d.x, z:d.z})));
+      const K = Math.min(16, frames.length);
+      for(let k = 0; k < K; k++){ const fr = frames[frames.length - K + k], u = (k+1)/K, e = u*u*(3-2*u);
+        fr.forEach((p, m) => { const b = B[m]; p.x += (fin[m].x - b.x)*e; p.z += (fin[m].z - b.z)*e; }); }
       return {B, frames};
     }
 
@@ -933,7 +980,7 @@ const VD3 = (() => {
         if(!s.v){ d.shown = false; }
         d.v = s.v; d.held = !!s.held; });
       if(n0 !== list.length) layout();
-      if(!moving){ placeKept(); draw(); } keepEl.hidden = !dice.some(d=>d.held);
+      if(!moving){ placeKept(); spread(); draw(); } keepEl.hidden = !dice.some(d=>d.held);
     }
     function roll(vals, dir){
       /* vals : nouvelles valeurs pour les dés non gardés (dans l'ordre des dés), les gardés gardent la leur. */
@@ -945,7 +992,7 @@ const VD3 = (() => {
           const zs = freeSpots();
           ids.forEach((i,k) => { const d = dice[i]; d.v = vals[k]; d.lab = labelFor(2, d.v); d.q = restQ(2, rnd(-.2,.2)); d.shown = true;
             d.x = L.W*(.5 + (k - (ids.length-1)/2)*.17) + rnd(-6,6); d.z = zs[k%2] + rnd(-6,6); });
-          draw(); res(); return; }
+          spread(); draw(); res(); return; }
         const sim = simulate(ids, dir);
         sim.B.forEach((b,k) => { const d = dice[b.i]; d.v = vals[k]; d.lab = labelFor(b.up, d.v); d.shown = true; });
         const fr = sim.frames.map(f => { const o = []; f.forEach(p => o[p.i] = p); return dice.map((d,i) => o[i] || d); });
@@ -964,12 +1011,19 @@ const VD3 = (() => {
       const from = {x:d.x, z:d.z}; d.held = !!on;
       if(!on){ /* retour sur le tapis : une place libre près du centre */
         const zs = freeSpots(); let best = null;
-        for(let t=0;t<40 && !best;t++){ const x = L.W*rnd(.2,.8), z = rnd(zs[0]-L.A, zs[1]+L.A);
-          if(dice.every((o,j) => j===i || o.held || !o.shown || Math.hypot(o.x-x, o.z-z) > L.A*2.3)) best = {x, z}; }
+        for(let t=0;t<60 && !best;t++){ const c = {x: L.W*rnd(.2,.8), z: rnd(zs[0]-L.A, zs[1]+L.A)};
+          if(dice.every((o,j) => j===i || o.held || !o.shown || !clash(o, c))) best = c; }
         d.back = best || {x:L.W/2, z:zs[1]}; }
       const kept = dice.filter(x=>x.held), slots = new Map(kept.map((x,k)=>[x, keepSlot(k, kept.length)]));
-      const moves = dice.map(x => { if(!x.shown) return null; const to = x.held ? slots.get(x) : (x===d ? d.back : {x:x.x, z: x.z < L.keep && kept.length ? L.keep + rnd(0, L.A*.8) : x.z});
+      /* dés du tapis restés sous la bande « Gardés » : une place libre sur le tapis, pas tous collés contre le trait */
+      const spot = new Map(), zs2 = freeSpots(), taken = dice.filter(x => x.shown && !x.held && x!==d && !(x.z < L.keep && kept.length)).map(x => ({x:x.x, z:x.z}));
+      if(!on) taken.push(d.back);
+      dice.forEach(x => { if(!x.shown || x.held || x===d || !(x.z < L.keep && kept.length)) return; let c = null;
+        for(let t=0;t<60 && !c;t++){ const q = {x: L.W*rnd(.18,.82), z: rnd(zs2[0]-L.A, zs2[1]+L.A)}; if(!taken.some(o => clash(o, q))) c = q; }
+        c = c || {x:x.x, z:L.keep + L.A*.4}; taken.push(c); spot.set(x, c); });
+      const moves = dice.map(x => { if(!x.shown) return null; const to = x.held ? slots.get(x) : (x===d ? d.back : (spot.get(x) || {x:x.x, z:x.z}));
         return {d:x, fx:x.x, fz:x.z, tx:to.x, tz:to.z}; }).filter(Boolean);
+      { const free = moves.filter(m => !m.d.held), pts = free.map(m => ({x:m.tx, z:m.tz})); relax(pts, []); free.forEach((m,k) => { m.tx = pts[k].x; m.tz = pts[k].z; }); }
       keepEl.hidden = !kept.length;
       if(reduce() || !ok){ moves.forEach(m => { m.d.x = m.tx; m.d.z = m.tz; }); draw(); return; }
       const t0 = performance.now(), D = 240; cancelAnimationFrame(raf); moving = true;
@@ -980,18 +1034,33 @@ const VD3 = (() => {
         if(u < 1) raf = requestAnimationFrame(tick); else { moves.forEach(m => { m.d.x = m.tx; m.d.z = m.tz; }); moving = false; draw(); } };
       raf = requestAnimationFrame(tick);
     }
-    let pick = function(px, py){ let best = -1, bd = 1e9;
-      dice.forEach((d,i) => { if(!d.shown) return; const s = screen(d.x, L.A, d.z), dd = Math.hypot(px - s.x, py - s.y); if(dd < L.A*1.45 && dd < bd){ bd = dd; best = i; } });
+    /* dé sous le doigt : dans son cadre à l'écran (+ marge m, en A), le plus proche du centre */
+    let pick = function(px, py, e, m){ let best = -1, bd = 1e9; const A = L.A, mg = (m == null ? .25 : m)*A;
+      dice.forEach((d,i) => { if(!d.shown) return; const s = screen(d.x, A, d.z), ax = Math.abs(px - s.x), ay = Math.abs(py - s.y);
+        if(ax < A*1.27 + mg && ay < A*1.42 + mg){ const dd = Math.hypot(ax, ay); if(dd < bd){ bd = dd; best = i; } } });
       return best; };
 
-    /* ---------- toucher : taper un dé = le garder ; taper ailleurs ou glisser = lancer ---------- */
-    let p0 = null;
-    el.addEventListener('pointerdown', e => { if(anim) return; const r = el.getBoundingClientRect(); p0 = {x:e.clientX - r.left, y:e.clientY - r.top, t:performance.now()}; });
-    el.addEventListener('pointerup', e => { if(!p0 || anim) return; const r = el.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-      const dx = x - p0.x, dy = y - p0.y, dtm = Math.max(30, performance.now() - p0.t), dist = Math.hypot(dx, dy), s0 = p0; p0 = null;
-      if(dist > 28 && dy < 0){ const v = dist/dtm; opts.onThrow && opts.onThrow({x: dx/dist, s: .7 + v*.6, x0: s0.x}); return; }
-      if(dist > 28) return;
-      const i = pick(x, y, e); if(i >= 0 && opts.onTap){ opts.onTap(i); return; }
+    /* ---------- toucher (v36) ----------
+       Le plateau laisse défiler la page (touch-action: pan-y) : glisser sur le tapis fait défiler, ne lance plus.
+       Taper un dé = le garder. Lancer = bouton, toucher le tapis loin des dés, ou attraper un dé du tapis et le lancer vers le haut.
+       Rien ne part si la page bougeait (défilement, élan en cours) ni dans la bande « Gardés ». */
+    let p0 = null, lastScroll = 0;
+    addEventListener('scroll', () => { lastScroll = performance.now(); }, {passive:true, capture:true});
+    const rel = (cx, cy) => { const r = el.getBoundingClientRect(); return {x: cx - r.left, y: cy - r.top, top: r.top}; };
+    const grab = (x, y, e) => { const i = pick(x, y, e, .1); return i >= 0 && !dice[i].held ? i : -1; };
+    el.addEventListener('touchstart', e => { if(anim || e.touches.length !== 1 || !opts.onThrow) return;
+      const t = e.touches[0], p = rel(t.clientX, t.clientY);
+      if(performance.now() - lastScroll > 120 && grab(p.x, p.y, e) >= 0) e.preventDefault();   // on tient un dé : la page ne défile pas
+    }, {passive:false});
+    el.addEventListener('pointerdown', e => { if(anim || !e.isPrimary) return; const p = rel(e.clientX, e.clientY);
+      p0 = {x:p.x, y:p.y, top:p.top, t:performance.now(), die: grab(p.x, p.y, e), still: performance.now() - lastScroll > 350}; });
+    el.addEventListener('pointerup', e => { if(!p0 || anim || !e.isPrimary) return; const s0 = p0; p0 = null; const p = rel(e.clientX, e.clientY);
+      if(!s0.still || Math.abs(p.top - s0.top) > 3 || lastScroll > s0.t) return;               // la page bougeait : pas un geste sur les dés
+      const dx = p.x - s0.x, dy = p.y - s0.y, dtm = Math.max(30, performance.now() - s0.t), dist = Math.hypot(dx, dy);
+      if(dist > 28){ if(dy < 0 && s0.die >= 0 && opts.onThrow){ const v = dist/dtm; opts.onThrow({x: dx/dist, s: .7 + v*.6, x0: s0.x}); } return; }
+      if(performance.now() - s0.t > 600) return;                                               // appui long : rien
+      const i = pick(p.x, p.y, e); if(i >= 0){ opts.onTap && opts.onTap(i); return; }
+      if(ok && (pick(p.x, p.y, e, .9) >= 0 || (!keepEl.hidden && p.y < L.line + 6))) return;    // tout près d'un dé ou dans « Gardés » : rien
       opts.onThrow && opts.onThrow(null); });
     el.addEventListener('pointercancel', () => { p0 = null; });
 
@@ -1001,7 +1070,7 @@ const VD3 = (() => {
       draw = () => { row.innerHTML = dice.map((d,i) => d.shown ? `<span class="vd3-d${d.held?' held':''}" data-i="${i}">${face(d.v)}</span>` : '').join(''); };
       pick = (px, py, e) => { const t = e && e.target.closest && e.target.closest('.vd3-d'); return t ? Number(t.dataset.i) : -1; }; }
     const ro = window.ResizeObserver ? new ResizeObserver(() => { const w = el.clientWidth; if(w && Math.abs(w - L.W) > 1){ const k = w / L.W;
-      dice.forEach(d => { d.x *= k; }); layout(); placeKept(); draw(); } }) : null;
+      dice.forEach(d => { d.x *= k; }); layout(); placeKept(); if(!moving) spread(); draw(); } }) : null;
     if(ro) ro.observe(el);
     layout();
     return {el, sync, roll, hold, hint(t){ hintEl.textContent = t||''; }, label(t){ keepEl.querySelector('.label').textContent = t; }, busy: () => moving, gl: () => ok,
@@ -1020,7 +1089,7 @@ function vdMount(dice, o){
   const t = vdTray(); VDS.onTap = o.onTap || null; VDS.onThrow = o.onThrow || null;
   if(t.el.parentNode !== slot) slot.appendChild(t.el);
   t.label(o.label || 'Gardés'); t.sync(dice); t.redraw();
-  if(!dice.some(d=>d.v)){ t.reset(); t.hint(o.hint || 'Touche ou glisse vers le haut pour lancer'); } else t.hint('');
+  if(!dice.some(d=>d.v)){ t.reset(); t.hint(o.hint || 'Touche le tapis pour lancer'); } else t.hint('');
 }
 /* Lance les dés non gardés : valeurs tirées tout de suite (la partie est juste), l'animation suit. */
 function vdRoll(vals, dir){ VDS.busy = true; return vdTray().roll(vals, dir).then(() => { VDS.busy = false; }); }
@@ -3796,7 +3865,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '35';
+window.APP_VERSION = '36';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

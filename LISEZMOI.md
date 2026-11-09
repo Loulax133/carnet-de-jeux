@@ -6,6 +6,7 @@ Compteur de points pour Yahtzee, 421, Skyjo, Shut the Box et Farkle. Fonctionne 
 - `index.html` — l'application
 - `sw.js` — garde l'app en mémoire pour le hors-ligne
 - `manifest.webmanifest` + `icon-*.png` — nom et icône sur l'écran d'accueil
+- `figtree.woff2`, `instrument-serif.woff2`, `instrument-serif-italic.woff2` — les polices (licence OFL), servies par le site depuis la version 36 pour que l'app s'ouvre aussi vite hors ligne
 
 ## Mettre à jour
 Remplacer les fichiers sur GitHub (Add file → Upload files, puis Commit changes).
@@ -43,3 +44,8 @@ Les données de jeu sont stockées dans chaque téléphone, à part : une mise �
 - « Jeu virtuel » au lancement (Yahtzee, Shut the Box, Farkle) : dés en 3D sur le téléphone, score inscrit tout seul. L'état du tour est gardé dans la partie (pause, rechargement, Drive).
 - Option « Jeu virtuel » décochée par défaut à chaque nouvelle partie (version 33). Marche hors ligne.
 - Version 33 : partie en direct aussi pour Shut the Box et Farkle → `firestore.rules` change (règle `watch`). La couronne ne compte que les parties à plusieurs.
+
+
+## Hors ligne et dés (version 36)
+- Plus aucun appel à Google Fonts au démarrage : les trois polices sont dans le dépôt et dans le cache du service worker. Avant, sans réseau ou avec un réseau qui traîne, l'affichage attendait la feuille de style de Google.
+- Dés virtuels : deux dés ne se recouvrent plus jamais (tapis et bande « Gardés »). Glisser sur le tapis fait défiler la page ; on lance avec le bouton, en touchant le tapis loin des dés, ou en attrapant un dé et en le lançant vers le haut.

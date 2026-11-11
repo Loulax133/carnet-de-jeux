@@ -281,6 +281,13 @@ nav.tabs{bottom:calc(8px + env(safe-area-inset-bottom,0px));padding:4px;width:mi
 .pl-t{font-weight:500;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
 .pl-cover{display:block;width:100%;aspect-ratio:16/9;border-radius:16px;object-fit:cover;background:var(--chip)}
 .pl-song{gap:12px}
+.pl-mystery{text-align:center;padding:26px 18px 22px}
+.pl-disc{width:84px;height:84px;margin:0 auto;border-radius:50%;display:grid;place-items:center;background:var(--inv-bg);color:var(--inv-ink);box-shadow:0 0 0 8px var(--chip)}
+.pl-disc svg{width:34px;height:34px}
+.pl-of{font-size:20px;color:var(--mute)}
+.pl-big{font-size:18px;font-weight:600;margin-top:12px;-webkit-line-clamp:3}
+.pl-reveal .pl-cover{animation:plIn .45s ease}
+@keyframes plIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
 a.btn{text-decoration:none}
 .pl-res{margin-top:10px;border-top:1px solid var(--line)}
 .pl-play{position:relative;flex:none;display:block;width:60px;height:45px;border-radius:10px;background:var(--chip);color:#fff;text-decoration:none}
@@ -2333,7 +2340,7 @@ async function plMakeYt(){
       catch(e){ if(e.message!=='missing') throw e; L.yt.miss = (L.yt.miss||0) + 1; }
       L.yt.n = i + 1; local.save(); plRender(); }
     S.plYt = {busy:false, err:null}; render();
-  }catch(e){ S.plYt = {busy:false, err: e.message==='quota' ? 'Limite YouTube du jour atteinte. Utilise « Écouter ce morceau » pour chaque titre.'
+  }catch(e){ S.plYt = {busy:false, err: e.message==='quota' ? 'Limite YouTube du jour atteinte. Utilise « Lancer ce morceau » pour chaque titre.'
       : e.message==='token' ? 'Autorisation Google expirée : touche le bouton pour reprendre.'
       : e.message.startsWith('forbidden') ? 'YouTube refuse l’accès. L’API YouTube est-elle activée dans la console Google ?' : 'La playlist n’a pas pu être créée en entier. Touche le bouton pour reprendre.'}; render(); }
 }
@@ -2423,9 +2430,9 @@ function plPublic(L){
   return {order:L.order, names:L.names, cols, per:L.per, B:st.B, phase:L.phase, startedAt:L.startedAt,
     ready: Object.fromEntries(L.order.map(p => [p, !!(L.ready||{})[p]])),
     counts: Object.fromEntries(L.order.map(p => [p, ((L.songs||{})[p]||[]).length])),
-    n:(L.tracks||[]).length, idx:L.idx||0, cur: cur ? {v:cur.v, t:cur.t} : null,
+    n:(L.tracks||[]).length, idx:L.idx||0, cur: cur ? {v:cur.v} : null,
     voted: cur ? Object.keys((L.votes||{})[L.idx]||{}) : [], dup: L.phase==='collect' ? plDups(L) : {},
-    log: st.log.map(x => ({i:x.i, t:x.t, by:x.by, ok:x.ok, bonus:x.bonus})), tot:st.tot, done:!!L.over};
+    log: st.log.map(x => ({i:x.i, t:x.t, v:x.v, by:x.by, ok:x.ok, bonus:x.bonus})), tot:st.tot, done:!!L.over};
 }
 async function plPush(){
   const L = S.live.playlist; if(!L || db || !online() || !navigator.onLine) return;
@@ -2662,13 +2669,12 @@ function plPlayView(L){
     : me===t.by && !shown ? `<div class="glass pl-box"><b>C'est ton morceau.</b> <span class="meta">Garde ton sérieux, tu ne votes pas.</span></div>` : '';
   const status = voters.map(p => { const remote = !!R[p], self = p===me;
     return `<div class="item">${avf(p)}<div class="grow"><div class="name">${nm(p)}${self?' <span class="hint">· toi</span>':''}</div><div class="meta">${shown ? (vs[p] ? (vs[p]===t.by ? '<b style="color:var(--ink)">Trouvé</b>' : 'A voté '+nm(vs[p])) : 'Pas de vote') : vs[p] ? '<b style="color:var(--ink)">A voté</b>' : remote ? 'Vote sur son téléphone…' : 'Pas encore voté'}</div></div>${!shown && !remote && !self ? `<button class="btn ghost" style="padding:9px 14px;font-size:13px;flex:none" data-a="pl-vfor" data-p="${p}">${vs[p]?'Changer':'Voter'}</button>` : ''}</div>`; }).join('');
-  const reveal = shown && entry ? `<div class="glass pl-box pl-reveal"><div class="label">Réponse</div><div class="pl-h">C'était <em>${nm(t.by)}</em></div>
+  const reveal = shown && entry ? `<div class="glass pl-box pl-reveal">${plTrackShow(t.v, t.t)}<div class="label" style="margin-top:14px">Mis par</div><div class="pl-h">${nm(t.by)}</div>
       <p class="meta" style="margin:0">${entry.bonus ? `Personne n'a trouvé : <b style="color:var(--ink)">+${plural(st.B,'point')}</b> pour ${nm(t.by)}.` : entry.ok.length ? `Trouvé par ${andList(entry.ok.map(nm))} : +1 chacun.` : 'Personne n’a voté.'}</p></div>` : '';
-  return `${plHead(L, 'morceau '+(i+1)+' sur '+L.tracks.length)}<h1>Qui a mis <em>ce morceau</em> ?</h1>
+  return `${plHead(L, 'morceau '+(i+1)+' sur '+L.tracks.length)}<h1>${shown ? 'La <em>réponse</em>' : 'Qui a mis <em>ce morceau</em> ?'}</h1>
     ${plNetBar(Object.keys(R).length>0)}
     ${plYtCard(L, i===0 && !shown)}
-    <div class="glass pl-box pl-now">${plThumb(t.v) ? `<img class="pl-cover" src="${plThumb(t.v)}" alt="" onerror="this.remove()">` : ''}<div class="pl-t" style="margin-top:12px">${esc(t.t)}</div>
-      <div class="row" style="margin-top:12px"><a class="btn ghost" style="padding:10px 16px;font-size:14px" href="${plOne(t.v)}" target="_blank" rel="noopener">Écouter ce morceau</a></div></div>
+    ${shown ? '' : plMystery(i, L.tracks.length, plOne(t.v))}
     ${myVote}${reveal}
     <h2>${shown ? 'Les votes' : 'Votes · '+nv+' sur '+voters.length}</h2><div class="glass" style="padding:4px 16px"><div class="list">${status}</div></div>
     <div class="stack" style="margin-top:18px">${!shown ? `<button class="btn block" data-a="pl-reveal" id="pl-reveal">${nv<voters.length ? `Révéler (${nv} sur ${voters.length} ont voté)` : 'Révéler'}</button>`
@@ -2676,23 +2682,27 @@ function plPlayView(L){
     ${plScores(L, st.tot, nm, avf)}
     ${endControls('playlist', false, '')}`;
 }
+/* Secret (v37d) : avant la révélation, aucune info sur le morceau (ni pochette, ni titre), sur aucun téléphone.
+   La révélation montre à tous la pochette, le titre et l'artiste, avec qui l'a mis. */
+const plMystery = (i, n, link) => `<div class="glass pl-box pl-mystery"><div class="pl-disc" aria-hidden="true">${PL_IC}</div><div class="pl-h" style="margin:10px 0 2px">Morceau ${i+1} <span class="pl-of">sur ${n}</span></div><p class="meta" style="margin:0">Titre et pochette restent cachés jusqu’à la révélation.</p>${link ? `<a class="btn ghost" style="margin-top:14px;padding:10px 16px;font-size:14px" href="${link}" target="_blank" rel="noopener">Lancer ce morceau</a>` : ''}</div>`;
+const plTrackShow = (v, t) => `<div class="pl-show">${plThumb(v) ? `<img class="pl-cover" src="${plThumb(v)}" alt="" onerror="this.remove()">` : ''}<div class="pl-t pl-big">${esc(t||'')}</div></div>`;
 /* Carte de lecture : grande au premier morceau, réduite ensuite. */
 function plYtCard(L, big){
   const n = L.tracks.length, Y = L.yt, ready = Y && Y.n >= n, B = S.plYt;
   if(ready){ const keep = `<div class="seg" style="margin:12px 0 0"><button class="${L.ytKeep?'':'on'}" data-a="pl-ytkeep" data-v="0">Supprimer à la fin</button><button class="${L.ytKeep?'on':''}" data-a="pl-ytkeep" data-v="1">La garder</button></div>`;
-    return big ? `<div class="glass pl-box"><b>Ta playlist est prête</b>${Y.title ? ` · ${esc(Y.title)}` : ''}<p class="meta" style="margin:4px 0 12px">Non répertoriée, dans ton YouTube Music, dans l’ordre de l’app. Laisse la lecture aléatoire coupée : c’est déjà mélangé.${Y.miss ? ' '+plM(Y.miss)+' indisponible'+(Y.miss>1?'s':'')+' sur YouTube Music : écoute-le'+(Y.miss>1?'s':'')+' avec « Écouter ce morceau ».' : ''}</p><a class="btn block" href="${ytListUrl(Y.id)}" target="_blank" rel="noopener">Ouvrir dans YouTube Music</a>${keep}</div>`
+    return big ? `<div class="glass pl-box"><b>Ta playlist est prête</b>${Y.title ? ` · ${esc(Y.title)}` : ''}<p class="meta" style="margin:4px 0 12px">Non répertoriée, dans ton YouTube Music, dans l’ordre de l’app. Laisse la lecture aléatoire coupée : c’est déjà mélangé.${Y.miss ? ' '+plM(Y.miss)+' indisponible'+(Y.miss>1?'s':'')+' sur YouTube Music : écoute-le'+(Y.miss>1?'s':'')+' avec « Lancer ce morceau ».' : ''}</p><a class="btn block" href="${ytListUrl(Y.id)}" target="_blank" rel="noopener">Ouvrir dans YouTube Music</a>${keep}</div>`
       : `<p class="note" style="margin:0 0 12px"><a class="link" href="${ytListUrl(Y.id)}" target="_blank" rel="noopener">Rouvrir la playlist dans YouTube Music</a></p>`; }
   const btn = `<button class="btn block" data-a="pl-yt" id="pl-yt" ${B.busy?'disabled':''}>${B.busy ? `Ajout des morceaux… ${Y ? Y.n : 0} sur ${n}` : Y ? 'Reprendre la création' : 'Créer la playlist dans YouTube Music'}</button>`;
   if(!big && !Y && !B.err) return `<p class="note" style="margin:0 0 12px"><button class="link" data-a="pl-yt">Créer la playlist dans YouTube Music</button> · <a class="link" href="${plAll(L)}" target="_blank" rel="noopener">Ouvrir dans YouTube</a></p>`;
   return `<div class="glass pl-box"><b>Lance la musique</b><p class="meta" style="margin:4px 0 12px">L’app crée une playlist non répertoriée sur ton compte YouTube Music (connexion Google demandée la première fois), puis l’ouvre. Elle est supprimée à la fin de la partie.</p>${btn}
     ${B.err ? `<p class="hint pl-err">${esc(B.err)}</p>` : ''}
-    <p class="hint" style="margin:10px 0 0">Ou <a class="link" href="${plAll(L)}" target="_blank" rel="noopener">ouvrir dans YouTube</a> (avec pubs sans YouTube Premium), ou morceau par morceau avec « Écouter ce morceau ».</p></div>`;
+    <p class="hint" style="margin:10px 0 0">Ou <a class="link" href="${plAll(L)}" target="_blank" rel="noopener">ouvrir dans YouTube</a> (avec pubs sans YouTube Premium), ou morceau par morceau avec « Lancer ce morceau ».</p></div>`;
 }
 function plVotePanel(p){
   const L = S.live.playlist, t = L && L.tracks[L.idx]; if(!t || p===t.by) return;
   const cur = ((L.votes||{})[L.idx]||{})[p];
   $ov.innerHTML = `<div class="scrim fade" data-close></div><div class="panel glass pop" role="dialog" aria-label="Vote">
-    <div class="label">Vote de ${esc(pname(p, L.names[p]))}</div><h3>Qui a mis ce morceau ?</h3><div class="meta">${esc(t.t)}</div>
+    <div class="label">Vote de ${esc(pname(p, L.names[p]))}</div><h3>Qui a mis ce morceau ?</h3><div class="meta">Morceau ${L.idx+1} sur ${L.tracks.length}</div>
     <div class="chips" style="margin-top:6px">${L.order.filter(x => x!==p).map(x => `<button class="chip${cur===x?' on':''}" data-pv="${x}">${esc(pname(x, L.names[x]))}</button>`).join('')}</div>
     <div class="foot"><button class="btn ghost" data-close>Fermer</button></div></div>`;
   $ov.onclick = e => { const b = e.target.closest('[data-pv]'); if(b){ closePanel(); plVote(p, b.dataset.pv); return; } if(e.target.closest('[data-close]')) closePanel(); };
@@ -2724,12 +2734,12 @@ function viewPLGuest(){
   const vote = entry ? '' : mineT ? `<div class="glass pl-box"><b>C'est ton morceau.</b> <span class="meta">Garde ton sérieux, tu ne votes pas.</span></div>`
     : `<h2>Qui l’a mis ?</h2><div class="chips">${st.order.filter(p => p!==J.pid).map(p => `<button class="chip${v===p?' on':''}" data-a="plg-vote" data-g="${p}">${nm(p)}</button>`).join('')}</div>
        <p class="hint" style="margin-top:10px">${v ? 'Vote envoyé. Tu peux changer d’avis jusqu’à la révélation.' : 'Touche un nom pour voter.'} · ${st.voted.length} sur ${voters} ont voté.</p>`;
-  const reveal = entry ? `<div class="glass pl-box pl-reveal"><div class="label">Réponse</div><div class="pl-h">C'était <em>${entry.by===J.pid ? 'toi' : nm(entry.by)}</em></div>
+  const reveal = entry ? `<div class="glass pl-box pl-reveal">${plTrackShow(entry.v, entry.t)}<div class="label" style="margin-top:14px">Mis par</div><div class="pl-h">${entry.by===J.pid ? 'Toi' : nm(entry.by)}</div>
       <p class="meta" style="margin:0">${entry.bonus ? `Personne n'a trouvé : +${plural(st.B,'point')} pour ${entry.by===J.pid ? 'toi' : nm(entry.by)}.` : entry.ok.length ? `Trouvé par ${andList(entry.ok.map(p => p===J.pid ? 'toi' : nm(p)))}.` : 'Personne n’a voté.'}</p>
       ${!mineT && v ? `<p style="margin:8px 0 0"><b>${v===entry.by ? 'Bien joué, +1 !' : 'Raté pour ce coup-ci.'}</b></p>` : ''}
       <p class="hint" style="margin:8px 0 0">En attente du morceau suivant…</p></div>` : '';
-  return `${top}<h1>Morceau <em>${i+1}</em> sur ${st.n}</h1>
-    <div class="glass pl-box pl-now">${plThumb(cur.v) ? `<img class="pl-cover" src="${plThumb(cur.v)}" alt="" onerror="this.remove()">` : ''}<div class="pl-t" style="margin-top:12px">${esc(cur.t||'')}</div></div>
+  return `${top}<h1>${entry ? 'La <em>réponse</em>' : 'Qui a mis <em>ce morceau</em> ?'}</h1>
+    ${entry ? '' : plMystery(i, st.n, null)}
     ${vote}${reveal}${plScores({order:st.order}, st.tot, nm, avf)}`;
 }
 
@@ -4511,7 +4521,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '38';
+window.APP_VERSION = '39';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

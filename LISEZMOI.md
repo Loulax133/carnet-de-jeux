@@ -60,3 +60,8 @@ Les données de jeu sont stockées dans chaque téléphone, à part : une mise �
 - Recherche par titre : `YT_KEY` dans `index.html` (clé API YouTube Data API v3, restreinte au référent `https://loulax133.github.io/*` et à cette API). Vide = mode lien collé. Quota gratuit ≈ 100 recherches par jour au total.
 - Playlist YouTube Music : l'hôte autorise son compte Google (même identifiant OAuth que Drive, autorisation `youtube` en plus). L'app crée une playlist non répertoriée dans l'ordre mélangé, l'ouvre dans YouTube Music, et la supprime à la fin sauf « La garder ». Clé locale : `yz-yt-tok` (jeton 1 h).
 - Confort : lancement bloqué sans internet, bandeau quand la connexion avec les autres téléphones est perdue, morceau choisi par deux joueurs signalé (la playlist attend qu'un des deux change), écran gardé allumé pendant la partie quand le téléphone le permet.
+
+## Accueil trié (version 38)
+- Les jeux de l'accueil sont triés pour chaque téléphone selon ses parties. Partie en cours d'abord, puis un score d'habitude : chaque partie des 90 derniers jours compte, d'autant plus qu'elle est récente (poids divisé par 2 tous les 30 jours). À égalité : le plus joué en tout, sinon l'ordre d'origine. Un jeu verrouillé (« Bientôt ») reste à la fin.
+- Jeu nouveau (première partie il y a moins de 14 jours) : remonté au moins au milieu de la liste. Ensuite il garde la place que lui donnent ses parties.
+- Rien de stocké : l'ordre est recalculé à chaque affichage (fonction `homeOrder()`, réglages `HOME_DAYS`, `HOME_HALF`, `HOME_NEW`). Les parties reçues d'amis comptent aussi.

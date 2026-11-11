@@ -49,3 +49,14 @@ Les données de jeu sont stockées dans chaque téléphone, à part : une mise �
 ## Hors ligne et dés (version 36)
 - Plus aucun appel à Google Fonts au démarrage : les trois polices sont dans le dépôt et dans le cache du service worker. Avant, sans réseau ou avec un réseau qui traîne, l'affichage attendait la feuille de style de Google.
 - Dés virtuels : deux dés ne se recouvrent plus jamais (tapis et bande « Gardés »). Glisser sur le tapis fait défiler la page ; on lance avec le bouton, en touchant le tapis loin des dés, ou en attrapant un dé et en le lançant vers le haut.
+
+## Jeu de la playlist (version 37)
+- Nouveau module `playlist` : chacun ajoute 2 à 4 morceaux YouTube (lien collé) en secret, la playlist est mélangée, chacun vote pour qui a mis le morceau. 1 point par bonne réponse ; morceau que personne n'a trouvé = bonus pour son auteur (Auto : (joueurs − 1) / 2 arrondi au supérieur, ou 1 à 3 au lancement). Au moins 3 joueurs.
+- Lecture : bouton « Ouvrir la playlist » (lien YouTube `watch_videos`, dans l'ordre de l'app) ou morceau par morceau dans YouTube Music.
+- Plusieurs téléphones : les amis reliés reçoivent l'invitation sur l'accueil. Base : `pl/{uid}_{début}` (état public, écrit par l'hôte) et `pl/{sid}/p/{uid}` (morceaux et votes d'un invité, lus seulement par lui et l'hôte). Sans compte : l'hôte saisit pour le joueur sur son téléphone.
+- Verrou de test : document `cfg/app` `{playlistOpen}`. Tant qu'il est faux, seul l'administrateur peut lancer une partie (carte grisée « Bientôt » pour les autres) ; un invité peut quand même rejoindre une partie où on l'a invité. L'interrupteur « Réservé à moi / Ouvert à tous » est sur l'écran de lancement du jeu, visible par l'administrateur seul.
+- `firestore.rules` change (blocs `cfg` et `pl`) : à recoller dans Firebase. **Remettre ton code ami à la place de `TON_CODE_AMI`** dans `isAdmin()` avant de publier.
+- Nouvelle clé locale (à ne pas renommer) : `yz-pl`.
+- Recherche par titre : `YT_KEY` dans `index.html` (clé API YouTube Data API v3, restreinte au référent `https://loulax133.github.io/*` et à cette API). Vide = mode lien collé. Quota gratuit ≈ 100 recherches par jour au total.
+- Playlist YouTube Music : l'hôte autorise son compte Google (même identifiant OAuth que Drive, autorisation `youtube` en plus). L'app crée une playlist non répertoriée dans l'ordre mélangé, l'ouvre dans YouTube Music, et la supprime à la fin sauf « La garder ». Clé locale : `yz-yt-tok` (jeton 1 h).
+- Confort : lancement bloqué sans internet, bandeau quand la connexion avec les autres téléphones est perdue, morceau choisi par deux joueurs signalé (la playlist attend qu'un des deux change), écran gardé allumé pendant la partie quand le téléphone le permet.

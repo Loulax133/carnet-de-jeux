@@ -1,5 +1,5 @@
 rules_version = '2';
-// Carnet de jeux — règles Firestore (comptes, codes, amis, résultats, parties partagées, partie en direct, bugs et idées).
+// Carnet de jeux — règles Firestore (comptes, codes, amis, résultats, parties partagées, partie en direct, bugs et idées, réglages, jeu de la playlist).
 // À coller dans Firebase > Firestore Database > Règles, puis « Publier ».
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -133,6 +133,53 @@ service cloud.firestore {
       allow update: if isAdmin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['done'])
         && request.resource.data.done is bool;
+    }
+
+    // Réglages de l'app (v37) : lisibles par tous, modifiables par l'administrateur seul.
+    // playlistOpen = le jeu de la playlist est ouvert à tous (sinon réservé à l'administrateur).
+    match /cfg/{id} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if isAdmin() && id == 'app'
+        && request.resource.data.keys().hasOnly(['playlistOpen', 'updatedAt'])
+        && request.resource.data.playlistOpen is bool
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // Jeu de la playlist (v37). pl/{uid hôte}_{début} : état public de la partie, écrit par l'hôte seul,
+    // lisible par l'hôte et les joueurs invités (viewers). Ne dit jamais qui a mis quel morceau avant la révélation.
+    match /pl/{sid} {
+      function hostOf() { return signedIn() && sid.matches(request.auth.uid + '_[0-9]+'); }
+      allow get: if signedIn() && (resource == null || resource.data.owner == request.auth.uid || request.auth.uid in resource.data.viewers);
+      allow list: if signedIn() && request.auth.uid in resource.data.viewers;
+      allow create, update: if hostOf()
+        && request.resource.data.keys().hasOnly(['owner', 'ownerName', 'viewers', 'uids', 'state', 'updatedAt'])
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.viewers is list && request.resource.data.viewers.size() <= 12
+        && request.resource.data.uids is map
+        && request.resource.data.state is string && request.resource.data.state.size() < 100000
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if hostOf();
+
+      // pl/{sid}/p/{uid} : morceaux, « prêt » et votes d'un invité. Lisible seulement par lui et par l'hôte.
+      match /p/{uid} {
+        function session() { return get(/databases/$(database)/documents/pl/$(sid)).data; }
+        function isHost() { return signedIn() && sid.matches(request.auth.uid + '_[0-9]+'); }
+        allow get: if signedIn() && (request.auth.uid == uid || isHost());
+        allow list: if isHost();
+        allow create, update: if signedIn() && request.auth.uid == uid
+          && exists(/databases/$(database)/documents/pl/$(sid))
+          && request.auth.uid in session().viewers
+          && request.resource.data.keys().hasOnly(['pid', 'name', 'songs', 'ready', 'votes', 'updatedAt'])
+          && request.resource.data.pid is string && request.resource.data.pid.size() <= 40
+          && request.resource.data.name is string && request.resource.data.name.size() <= 24
+          && request.resource.data.songs is list && request.resource.data.songs.size() <= 4
+          && request.resource.data.ready is bool
+          && request.resource.data.votes is map && request.resource.data.votes.size() <= 60
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if signedIn() && (request.auth.uid == uid || isHost());
+      }
     }
 
     // Tout le reste : fermé.

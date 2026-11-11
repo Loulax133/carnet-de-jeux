@@ -273,6 +273,25 @@ nav.tabs{bottom:calc(8px + env(safe-area-inset-bottom,0px));padding:4px;width:mi
 .games{display:flex;flex-direction:column;gap:12px}
 .gamecard{appearance:none;text-align:left;width:100%;color:var(--ink);font:inherit;cursor:pointer;padding:20px;display:flex;gap:16px;align-items:center}
 .gamecard .t{font-family:var(--serif);font-size:34px;line-height:1}
+.gamecard.locked{opacity:.42}
+.pl-ic{place-items:center;grid-template:1fr/1fr;color:var(--inv-ink)}
+.pl-box{padding:16px 18px;margin:6px 0 14px;border-radius:22px}
+.pl-h{font-family:var(--serif);font-size:30px;line-height:1.1;margin:2px 0 8px}
+.pl-th{width:60px;height:45px;border-radius:10px;object-fit:cover;flex:none;background:var(--chip)}
+.pl-t{font-weight:500;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.pl-cover{display:block;width:100%;aspect-ratio:16/9;border-radius:16px;object-fit:cover;background:var(--chip)}
+.pl-song{gap:12px}
+a.btn{text-decoration:none}
+.pl-res{margin-top:10px;border-top:1px solid var(--line)}
+.pl-play{position:relative;flex:none;display:block;width:60px;height:45px;border-radius:10px;background:var(--chip);color:#fff;text-decoration:none}
+.pl-play span{position:absolute;inset:0;display:grid;place-items:center;font-size:15px;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.pl-addb{padding:9px 14px;font-size:13px;flex:none}
+.pl-err{margin:10px 0 0;color:var(--ink)}
+.pl-warn{color:#c2410c}
+.pl-box input[type=search]{-webkit-appearance:none;appearance:none;width:100%;min-width:0;font:400 17px var(--sans);color:var(--ink);background:var(--chip);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.pl-box input[type=search]:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.pl-net{padding:10px 16px;margin:0 0 14px;border-radius:18px;font-size:14px;font-weight:600}
+
 .gamecard .dice{display:flex;gap:6px;flex:none}
 .die{width:30px;height:30px;border-radius:8px;background:var(--inv-bg);display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:5px}
 .die i{width:5px;height:5px;border-radius:50%;background:var(--inv-ink);place-self:center}
@@ -595,11 +614,12 @@ function viewHome(){
   const n = k => S.games.filter(g=>kindOf(g)===k).length;
   return `<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div><div class="label">Carnet de jeux</div><h1>On joue <em>à quoi</em> ?</h1></div>${setBtn('home-settings')}</div>
   <p class="sub">Choisis un jeu. Les parties en cours t'attendent là où tu les as laissées.</p>
+  ${plInviteCards()}
   ${S.watchList.map(d=>`<button class="wcard glass" data-watch="${d.id}"><span class="grow"><span class="label"><span class="live-dot"></span>En direct</span><b>${GAMES[d.k].name} de ${esc(d.ownerName)}</b><span class="hint">${watchWith(d)}</span></span><span class="pill">Suivre</span></button>`).join('')}
   ${homeAlert()}
   <div class="games">
     ${GAME_ORDER.map(k => { const G = GAMES[k], c = G.card(S.live[k]);
-      return `<button class="gamecard glass" data-go="${k}" id="g-${k}">
+      return `<button class="gamecard glass${G.locked && G.locked() ? ' locked' : ''}" data-go="${k}" id="g-${k}">
       <span class="dice">${c.dice}</span>
       <span class="grow"><span class="t">${G.name}</span><span class="hint">${c.hint}</span>
       ${c.pill ? `<span class="pill">${c.pill}</span>` : `<span class="pill soft">${plural(n(k),'partie')}</span>`}</span>
@@ -641,7 +661,7 @@ function viewSetup(k){
     <div class="glass empty"><div class="serif">Aucun joueur pour l'instant</div><p>Chaque joueur ajouté garde ses stats d'une partie à l'autre.</p>
     <button class="btn" data-go="players">Ajouter des joueurs</button></div>`;
   const cnt = id => S.games.filter(g=>kindOf(g)===k && (g.results||[]).some(r=>r.id===id)).length;
-  const ok = sel.size >= G.min;
+  const ok = sel.size >= G.min && (!G.needsNet || navigator.onLine);
   return `${back}
     <div class="label">${G.name} · nouvelle partie</div><h1>Qui <em>joue</em> ce soir ?</h1>
     <p class="sub">Sélectionne les joueurs dans l'ordre du tour.${G.setupNote||''}</p>
@@ -649,6 +669,7 @@ function viewSetup(k){
       const order = [...sel].indexOf(id);
       return `<div class="item" role="button" tabindex="0" data-pick="${id}" data-k="${k}" style="cursor:pointer"><span class="crowned">${photoOf(id) ? av(id,p.name) : `<div class="avatar" style="${order<0?'background:var(--chip);color:var(--ink)':avStyle(id)}">${initial(p.name)}</div>`}${order<0?'':`<span class="obadge">${order+1}</span>`}</span><div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">${plural(cnt(id),'partie')} de ${G.name}</div></div><span class="meta">${order<0?'':'Sélectionné'}</span></div>`;}).join('')}</div></div>
     ${G.virtual ? virtToggle(k) : ''}
+    ${G.setupExtra ? G.setupExtra() : ''}
     <div style="margin-top:18px"><button class="btn block" data-a="start" data-k="${k}" id="start-${k}" ${ok?'':'disabled'}>Lancer la partie${sel.size?' à '+sel.size:''}</button></div>
     <p class="note">Il manque quelqu'un ? <button class="link" data-go="players">Ajoute-le</button></p>
     ${G.setupRules()}`;
@@ -2196,6 +2217,608 @@ defGame('farkle', {
   click: clickFK
 });
 
+/* =====================================================================================
+   Module Playlist (v37). Le jeu de la playlist : chacun ajoute des morceaux YouTube en secret, on les écoute dans un
+   ordre mélangé et chacun devine qui a mis quel morceau. 1 point par bonne réponse. Un morceau que personne n'a trouvé
+   rapporte un bonus à celui qui l'a mis : « Auto » = (joueurs − 1) / 2 arrondi au supérieur (3-4 joueurs → 1 ou 2,
+   5-6 → 2 ou 3), ou 1 à 3 fixé au lancement. Il faut au moins un vote exprimé pour toucher le bonus.
+   Plusieurs téléphones : l'hôte publie pl/{uid}_{startedAt} (état public : jamais qui a mis quoi avant la révélation) ;
+   chaque invité écrit pl/{sid}/p/{son uid} (ses morceaux, prêt, ses votes), lisible seulement par lui et par l'hôte.
+   Un joueur sans compte (ou pas encore arrivé) : l'hôte saisit pour lui sur son téléphone, en le lui passant.
+   Lecture : un lien YouTube qui crée la playlist dans l'ordre de l'app (watch_videos), ou morceau par morceau.
+   Verrou (v37) : tant que cfg/app.playlistOpen n'est pas vrai, seul l'administrateur lance une partie (carte grisée
+   pour les autres). Un invité peut toujours rejoindre une partie où on l'a invité : sinon impossible de tester à plusieurs.
+   L = {order, names, startedAt, sid, per, bonus:'auto'|1|2|3, phase:'collect'|'play', songs:{pid:[{v,t}]}, ready:{pid:true},
+        local:{pid:true}, tracks:[{v,t,by}], idx, votes:{i:{votant:choix}}, shown:{i:true}, over?}
+   Clé locale (à ne pas renommer) : 'yz-pl' {admin:uid, open, sid, doneAt, joined}.
+   ===================================================================================== */
+const plM = n => n+' morceau'+(n>1?'x':'');
+const PL_KEY = 'yz-pl', PL_POLL = 3000, PL_MAX_AGE = 8*3600000, PL_KEEP = 10*60000;
+const plSt = () => lsGet(PL_KEY) || {};
+const plSet = o => lsSet(PL_KEY, {...plSt(), ...o});
+const plAdmin = () => !db && (S.fbk.admin || (!!myUid() && plSt().admin===myUid()));
+const plOpen = () => !!plSt().open;
+const plLocked = () => !!db || (!plAdmin() && !plOpen());
+const plYt = s => { s = String(s||'').trim();
+  const m = s.match(/(?:[?&]v=|youtu\.be\/|\/shorts\/|\/embed\/|\/live\/)([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/) || s.match(/^([A-Za-z0-9_-]{11})$/);
+  return m ? m[1] : null; };
+const plThumb = v => plYt(v) ? `https://i.ytimg.com/vi/${plYt(v)}/mqdefault.jpg` : '';
+const plOne = v => 'https://music.youtube.com/watch?v=' + v;
+const plAll = L => 'https://www.youtube.com/watch_videos?video_ids=' + (L.tracks||[]).map(t=>t.v).join(',');
+const plBonusFor = (n, b) => b==='auto' || !b ? Math.max(1, Math.ceil((n-1)/2)) : +b;
+const plBonus = L => plBonusFor(L.order.length, L.bonus);
+const plPerDefault = n => n>=7 ? 2 : n>=5 ? 3 : 4;
+const PL_IC = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>`;
+S.plInv = []; S.plSeen = new Set(); S.plj = null; S.plJoined = {}; S.plFor = null; S.plDraft = ''; S.plBusy = false; S.plSetup = {per:null, bonus:'auto'};
+
+/* Recherche par titre (v37) : YouTube Data API v3, clé publique restreinte au site (référent loulax133.github.io) et à cette API.
+   Quota gratuit : 10 000 unités par jour, une recherche en coûte 100 → environ 100 recherches par jour pour tout le monde.
+   On cherche seulement quand on valide (pas à chaque lettre) et on garde les résultats en mémoire. Sans clé ou quota épuisé : lien collé. */
+const YT_KEY = '';
+const PL_CACHE = {};
+const plDec = s => { const t = document.createElement('textarea'); t.innerHTML = String(s||''); return t.value; };
+async function plSearch(q){
+  if(!YT_KEY) throw new Error('nokey');
+  const k = q.toLowerCase(); if(PL_CACHE[k]) return PL_CACHE[k];
+  const url = 'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=6&q=' + encodeURIComponent(q)
+    + '&fields=' + encodeURIComponent('items(id/videoId,snippet(title,channelTitle))') + '&key=' + YT_KEY;
+  let r; try{ r = await fetch(url); }catch(e){ throw new Error('net'); }
+  const j = await r.json().catch(() => ({}));
+  if(!r.ok){ const why = ((((j.error||{}).errors)||[])[0]||{}).reason || ''; throw new Error(/quota|limit/i.test(why) ? 'quota' : 'api'); }
+  const items = (j.items||[]).map(x => { const v = x.id && x.id.videoId, t = plDec(x.snippet && x.snippet.title), c = plDec(x.snippet && x.snippet.channelTitle).replace(/ - Topic$/, '');
+    return {v, t: (c && !t.toLowerCase().includes(c.toLowerCase()) ? t + ' · ' + c : t).slice(0, 120), c}; }).filter(x => plYt(x.v));
+  PL_CACHE[k] = items; return items;
+}
+/* Playlist dans YouTube Music (v37) : l'hôte autorise son compte Google (même identifiant que Drive, autorisation YouTube en plus),
+   l'app crée une playlist NON RÉPERTORIÉE avec les morceaux dans l'ordre mélangé, puis l'ouvre dans YouTube Music
+   (abonnement YouTube Music = sans pub ; l'app YouTube classique, elle, affiche des pubs sans YouTube Premium).
+   Coût : 50 unités pour la playlist + 50 par morceau, sur le même quota que la recherche. Reprise possible si ça coupe (L.yt.n).
+   À la fin, la playlist est supprimée sauf si l'hôte choisit de la garder (L.ytKeep). Jeton : 'yz-yt-tok' (1 h). */
+const YT_SCOPE = 'https://www.googleapis.com/auth/youtube', YT_TOK = 'yz-yt-tok';
+let ytClient = null, ytWait = null;
+const ytNow = () => { const t = lsGet(YT_TOK); return t && t.exp > Date.now() + 60000 ? t.t : null; };
+function ytAsk(){
+  /* Depuis un toucher seulement, sinon Safari bloque la fenêtre Google. */
+  if(!window.google || !google.accounts || !google.accounts.oauth2){ loadGis().catch(()=>{}); return Promise.reject(new Error('gis-wait')); }
+  if(!ytClient) ytClient = google.accounts.oauth2.initTokenClient({client_id:DRIVE_CLIENT, scope:YT_SCOPE,
+    callback: r => { const w = ytWait; ytWait = null; if(!w) return;
+      if(r && r.access_token){ lsSet(YT_TOK, {t:r.access_token, exp:Date.now() + (Number(r.expires_in)||3600)*1000}); w.res(r.access_token); }
+      else w.rej(new Error((r && r.error) || 'denied')); },
+    error_callback: e => { const w = ytWait; ytWait = null; if(w) w.rej(new Error((e && e.type) || 'popup')); }});
+  return new Promise((res, rej) => { ytWait = {res, rej}; ytClient.requestAccessToken({prompt:''}); });
+}
+async function ytApi(path, opt={}){
+  const t = ytNow(); if(!t) throw new Error('token');
+  const r = await fetch('https://www.googleapis.com/youtube/v3/' + path, {...opt, headers:{...(opt.headers||{}), Authorization:'Bearer '+t, 'Content-Type':'application/json'}});
+  if(r.status===401){ lsSet(YT_TOK, null); throw new Error('token'); }
+  if(!r.ok){ let why = ''; try{ const j = await r.json(); why = ((((j.error||{}).errors)||[])[0]||{}).reason || ''; }catch(e){}
+    throw new Error(/quota|limit/i.test(why) ? 'quota' : r.status===404 || /notFound/i.test(why) ? 'missing' : r.status===403 ? 'forbidden:'+why : 'yt'); }
+  return r.status===204 ? null : r.json();
+}
+const ytListUrl = id => 'https://music.youtube.com/playlist?list=' + id;
+S.plYt = {busy:false, err:null};
+async function plMakeYt(){
+  const L = S.live.playlist; if(!L || L.phase!=='play' || S.plYt.busy) return;
+  if(!ytNow()){ try{ await ytAsk(); }catch(e){
+    S.plYt.err = e.message==='gis-wait' ? 'Connexion Google en cours de chargement : touche encore une fois.' : 'Autorisation Google refusée ou fenêtre fermée.'; render(); return; } }
+  S.plYt = {busy:true, err:null}; render();
+  try{
+    if(!L.yt){ const title = await plYtName();
+      const pl = await ytApi('playlists?part=snippet,status', {method:'POST', body:JSON.stringify({snippet:{title, description:'Créée par le Carnet de jeux. Se supprime à la fin de la partie, sauf si tu choisis de la garder.'}, status:{privacyStatus:'unlisted'}})});
+      L.yt = {id:pl.id, n:0, miss:0, title}; local.save(); }
+    for(let i = L.yt.n; i < L.tracks.length; i++){
+      try{ await ytApi('playlistItems?part=snippet', {method:'POST', body:JSON.stringify({snippet:{playlistId:L.yt.id, resourceId:{kind:'youtube#video', videoId:L.tracks[i].v}}})}); }
+      catch(e){ if(e.message!=='missing') throw e; L.yt.miss = (L.yt.miss||0) + 1; }
+      L.yt.n = i + 1; local.save(); plRender(); }
+    S.plYt = {busy:false, err:null}; render();
+  }catch(e){ S.plYt = {busy:false, err: e.message==='quota' ? 'Limite YouTube du jour atteinte. Utilise « Écouter ce morceau » pour chaque titre.'
+      : e.message==='token' ? 'Autorisation Google expirée : touche le bouton pour reprendre.'
+      : e.message.startsWith('forbidden') ? 'YouTube refuse l’accès. L’API YouTube est-elle activée dans la console Google ?' : 'La playlist n’a pas pu être créée en entier. Touche le bouton pour reprendre.'}; render(); }
+}
+/* Nom : AAMMJJ_LaPlaylist (date du jour), puis « #2 », « #3 »… (avec une espace) si ce nom existe déjà dans tes playlists. Lecture de la liste : 1 unité par page de 50. */
+async function plYtName(){
+  const d = new Date(), z = n => String(n).padStart(2, '0');
+  const base = z(d.getFullYear() % 100) + z(d.getMonth()+1) + z(d.getDate()) + '_LaPlaylist';
+  const taken = new Set(); let page = '';
+  try{ for(let k=0; k<6; k++){
+      const j = await ytApi('playlists?part=snippet&mine=true&maxResults=50&fields=' + encodeURIComponent('nextPageToken,items(snippet/title)') + (page ? '&pageToken='+page : ''));
+      (j.items||[]).forEach(x => { const t = (x.snippet||{}).title||''; if(t.startsWith(base)) taken.add(t); });
+      if(!j.nextPageToken) break; page = j.nextPageToken; } }
+  catch(e){ if(e.message==='token' || e.message==='quota') throw e; }
+  if(!taken.has(base)) return base;
+  let n = 2; while(taken.has(base + ' #' + n)) n++;
+  return base + ' #' + n;
+}
+async function plDropYt(L){
+  if(!L.yt || L.ytKeep) return;
+  if(!ytNow()){ toast('Pense à supprimer la playlist dans YouTube Music (autorisation Google expirée).'); return; }
+  try{ await ytApi('playlists?id=' + encodeURIComponent(L.yt.id), {method:'DELETE'}); }catch(e){ toast('Playlist YouTube Music pas supprimée : fais-le à la main.'); }
+}
+/* Titre du morceau : oEmbed YouTube, sinon noembed. Sans réseau ou refusé : titre générique. */
+async function plTitle(v){
+  const u = encodeURIComponent('https://www.youtube.com/watch?v=' + v);
+  for(const url of ['https://www.youtube.com/oembed?format=json&url=' + u, 'https://noembed.com/embed?url=' + u]){
+    try{ const r = await fetch(url); if(r.ok){ const j = await r.json(); if(j && j.title) return String(j.title).slice(0, 120); } }catch(e){}
+  }
+  return 'Morceau YouTube';
+}
+/* Mélange en évitant deux morceaux du même joueur à la suite, quand c'est possible. */
+function plShuffle(list){
+  let best = list, bad0 = 1e9;
+  for(let k=0; k<60; k++){ const a = [...list];
+    for(let i=a.length-1; i>0; i--){ const j = Math.floor(Math.random()*(i+1)); [a[i], a[j]] = [a[j], a[i]]; }
+    const bad = a.reduce((n, t, i) => n + (i && a[i-1].by===t.by ? 1 : 0), 0);
+    if(bad < bad0){ best = a; bad0 = bad; } if(!bad) break; }
+  return best;
+}
+function runPL(L){
+  const tot = {}, found = {}, opp = {}, fooled = {}; L.order.forEach(p => { tot[p]=0; found[p]=0; opp[p]=0; fooled[p]=0; });
+  const B = plBonus(L), log = [];
+  (L.tracks||[]).forEach((t, i) => {
+    if(!(L.shown||{})[i]) return;
+    const vs = (L.votes||{})[i] || {}, ok = []; let cast = 0;
+    L.order.forEach(p => { if(p===t.by) return; opp[p]++; const g = vs[p]; if(!g) return; cast++; if(g===t.by){ ok.push(p); found[p]++; tot[p]++; } });
+    const bonus = cast>0 && !ok.length;
+    if(bonus && tot[t.by]!==undefined){ tot[t.by] += B; fooled[t.by]++; }
+    log.push({i, t:t.t, v:t.v, by:t.by, ok, bonus});
+  });
+  const n = (L.tracks||[]).length, max = Math.max(...L.order.map(p=>tot[p]));
+  return {tot, found, opp, fooled, log, B, done: n>0 && log.length>=n, winners: L.order.filter(p=>tot[p]===max)};
+}
+/* Joueurs qui jouent sur leur propre téléphone : amis confirmés reliés à un compte, pas repris par l'hôte. */
+function plRemote(L){
+  if(db || !online()) return {};
+  const me = myUid(), ok = friendUids(), out = {};
+  L.order.forEach(p => { const u = (S.players[p]||{}).uid; if(u && u!==me && ok.has(u) && !(L.local||{})[p]) out[p] = u; });
+  return out;
+}
+const plMe = L => { const p = myPid(); return p && L.order.includes(p) ? p : null; };
+/* Même morceau choisi par deux joueurs : on le signale aux deux, la playlist attend qu'un des deux change. */
+function plDups(L){ const by = {}, out = {};
+  L.order.forEach(p => ((L.songs||{})[p]||[]).forEach(x => { (by[x.v] = by[x.v] || []).push(p); }));
+  Object.entries(by).forEach(([v, ps]) => { if(new Set(ps).size > 1) ps.forEach(p => { (out[p] = out[p] || []).push(v); }); });
+  return out; }
+/* Écran allumé pendant la partie (si le téléphone le permet). */
+let plLock = null;
+async function plWake(on){
+  try{ if(on && !plLock && navigator.wakeLock && !document.hidden){ plLock = await navigator.wakeLock.request('screen'); plLock.addEventListener('release', () => { plLock = null; }); }
+    else if(!on && plLock){ const l = plLock; plLock = null; await l.release(); } }catch(e){}
+}
+document.addEventListener('visibilitychange', () => { if(!document.hidden && S.view==='playlist'){ plLock = null; render(); } });
+addEventListener('online', () => { S.plNet = false; if(['home','playlist'].includes(S.view)) render(); });
+addEventListener('offline', () => { if(['home','playlist'].includes(S.view)) render(); });
+const plNetBar = need => !navigator.onLine || (need && S.plNet) ? `<div class="glass pl-net pl-warn" role="status">${navigator.onLine ? 'Connexion perdue avec les autres téléphones. On réessaie…' : 'Pas de connexion internet. Ce jeu en a besoin pour chercher, écouter et partager les morceaux.'}</div>` : '';
+/* Redessine sauf si on est en train de taper un lien (sinon le clavier se ferme). */
+function plRender(){ const a = document.activeElement; if(a && a.id==='pl-url'){ S.plDirty = true; return; } render(); }
+function plSave(){ if(db) return; local.save(); plRender(); plPushSoon(); }
+
+/* ---------- hôte : publication et lecture des invités ---------- */
+let plPushT = null;
+function plPushSoon(){ clearTimeout(plPushT); plPushT = setTimeout(() => plPush().catch(()=>{}), 450); }
+function plPublic(L){
+  const st = runPL(L), cur = L.phase==='play' ? (L.tracks||[])[L.idx] : null;
+  const cols = {}; L.order.forEach(p => { const c = (S.players[p]||{}).color; if(c) cols[p] = c; });
+  return {order:L.order, names:L.names, cols, per:L.per, B:st.B, phase:L.phase, startedAt:L.startedAt,
+    ready: Object.fromEntries(L.order.map(p => [p, !!(L.ready||{})[p]])),
+    counts: Object.fromEntries(L.order.map(p => [p, ((L.songs||{})[p]||[]).length])),
+    n:(L.tracks||[]).length, idx:L.idx||0, cur: cur ? {v:cur.v, t:cur.t} : null,
+    voted: cur ? Object.keys((L.votes||{})[L.idx]||{}) : [], dup: L.phase==='collect' ? plDups(L) : {},
+    log: st.log.map(x => ({i:x.i, t:x.t, by:x.by, ok:x.ok, bonus:x.bonus})), tot:st.tot, done:!!L.over};
+}
+async function plPush(){
+  const L = S.live.playlist; if(!L || db || !online() || !navigator.onLine) return;
+  const R = plRemote(L), viewers = [...new Set(Object.values(R))];
+  if(!viewers.length && plSt().sid!==L.sid) return;
+  const me = myUid(); if(!String(L.sid||'').startsWith(me+'_')){ L.sid = me+'_'+L.startedAt; local.save(); }
+  const {m, fs} = await fb();
+  await m.setDoc(m.doc(fs, 'pl', L.sid), {owner:me, ownerName:(S.acct.profile||{}).name||'Un ami', viewers, uids:R,
+    state:JSON.stringify(plPublic(L)), updatedAt:m.serverTimestamp()});
+  plSet({sid:L.sid, doneAt:L.over ? Date.now() : null});
+}
+async function plPull(){
+  const L = S.live.playlist; if(!L || !online() || !navigator.onLine || plSt().sid!==L.sid) return false;
+  const R = plRemote(L), byUid = Object.fromEntries(Object.entries(R).map(([p,u]) => [u,p]));
+  if(!Object.keys(R).length) return false;
+  const {m, fs} = await fb(); const snap = await m.getDocs(m.collection(fs, 'pl', L.sid, 'p'));
+  if(S.live.playlist!==L) return false;
+  let ch = false; const joined = {};
+  snap.docs.forEach(x => { const p = byUid[x.id], d = x.data(); if(!p) return; joined[p] = true;
+    if(L.phase==='collect'){
+      const songs = (Array.isArray(d.songs) ? d.songs : []).map(s => s && plYt(s.v) ? {v:plYt(s.v), t:String(s.t||'Morceau YouTube').slice(0,120)} : null).filter(Boolean).slice(0, L.per);
+      const rd = !!d.ready && songs.length>=L.per;
+      if(JSON.stringify(songs)!==JSON.stringify((L.songs||{})[p]||[]) || rd!==!!(L.ready||{})[p]){
+        L.songs = {...(L.songs||{}), [p]:songs}; L.ready = {...(L.ready||{}), [p]:rd}; ch = true; } }
+    if(L.phase==='play'){
+      Object.entries(d.votes||{}).forEach(([i, g]) => { i = +i; const t = (L.tracks||[])[i];
+        if(!t || (L.shown||{})[i] || t.by===p || g===p || !L.order.includes(g)) return;
+        if(((L.votes||{})[i]||{})[p]!==g){ L.votes = {...(L.votes||{}), [i]:{...((L.votes||{})[i]||{}), [p]:g}}; ch = true; } }); } });
+  if(JSON.stringify(joined)!==JSON.stringify(S.plJoined)){ S.plJoined = joined; if(!ch) plRender(); }
+  return ch;
+}
+let plT = null;
+function plLoop(){ clearTimeout(plT); if(S.view!=='playlist'){ plWake(false); return; }
+  plT = setTimeout(async () => { if(!document.hidden) await plTick(); plLoop(); }, PL_POLL); }
+async function plTick(){
+  const net0 = !!S.plNet;
+  try{
+    if(S.plj) await plGuestPoll();
+    else { const L = S.live.playlist; if(!L || L.over) return;
+      if(await plPull()) plSave();
+      if(S.plDirty && !(document.activeElement && document.activeElement.id==='pl-url')){ S.plDirty = false; render(); } }
+    S.plNet = false;
+  }catch(e){ S.plNet = true; }
+  if(net0!==S.plNet) plRender();
+}
+
+/* ---------- invités : invitations, rejoindre, envoyer ses morceaux et ses votes ---------- */
+let plCheckAt = 0;
+async function plCheck(force){
+  if(db || !online() || !navigator.onLine || document.hidden) return;
+  if(!force && Date.now()-plCheckAt < 10000) return; plCheckAt = Date.now();
+  try{ await fbkLoad(false); }catch(e){}
+  const me = myUid(); let ch = false;
+  if(S.fbk.admin && plSt().admin!==me){ plSet({admin:me}); ch = true; }
+  try{ const {m, fs} = await fb();
+    try{ const c = await m.getDoc(m.doc(fs, 'cfg', 'app')); const open = c.exists() && c.data().playlistOpen===true;
+      if(open!==plOpen()){ plSet({open}); ch = true; } }catch(e){}
+    const snap = await m.getDocs(m.query(m.collection(fs, 'pl'), m.where('viewers', 'array-contains', me)));
+    const now = Date.now(), before = JSON.stringify(S.plInv.map(d=>d.id));
+    S.plInv = snap.docs.map(x => ({id:x.id, ...x.data()})).filter(d => d.owner!==me && now - tsMs(d.updatedAt) < PL_MAX_AGE)
+      .map(d => { let st = null; try{ st = JSON.parse(d.state); }catch(e){} return {...d, st}; })
+      .filter(d => d.st && d.st.order && !d.st.done && Object.values(d.uids||{}).includes(me));
+    if(JSON.stringify(S.plInv.map(d=>d.id))!==before) ch = true;
+    const fresh = S.plInv.find(d => !S.plSeen.has(d.id) && plSt().joined!==d.id && !(S.plj && S.plj.sid===d.id));
+    if(fresh && !$ov.innerHTML && S.view==='home') plInvite(fresh);
+  }catch(e){}
+  if(ch && S.view==='home') render();
+  plCleanup();
+}
+function plInvite(d){
+  S.plInv.forEach(x => S.plSeen.add(x.id));
+  const others = d.st.order.filter(p => (d.uids||{})[p]!==myUid()).map(p => esc(d.st.names[p]||'Joueur'));
+  $ov.innerHTML = `<div class="scrim fade" data-close></div><div class="panel glass pop" role="dialog" aria-label="Invitation">
+    <div class="label">Jeu de la playlist</div><h3>${esc(d.ownerName)} t'invite à jouer</h3>
+    <div class="meta">Avec ${andList(others)}. Ajoute ${plM(d.st.per)} YouTube depuis ton téléphone, en secret.</div>
+    <div class="foot"><button class="btn ghost" data-close>Plus tard</button><button class="btn" data-pj>Rejoindre</button></div></div>`;
+  $ov.onclick = e => { if(e.target.closest('[data-pj]')){ closePanel(); plJoin(d.id); } else if(e.target.closest('[data-close]')) closePanel(); };
+}
+const plInviteCards = () => db ? '' : S.plInv.map(d => { const again = plSt().joined===d.id;
+  return `<button class="wcard glass" data-plj="${esc(d.id)}"><span class="grow"><span class="label"><span class="live-dot"></span>Jeu de la playlist</span><b>Partie de ${esc(d.ownerName)}</b><span class="hint">${d.st.phase==='collect' ? 'Ajout des morceaux' : 'Morceau '+(d.st.idx+1)+' sur '+d.st.n}</span></span><span class="pill">${again?'Reprendre':'Rejoindre'}</span></button>`; }).join('');
+async function plJoin(sid){
+  const d = S.plInv.find(x => x.id===sid); if(!d) return;
+  const me = myUid(), pid = Object.keys(d.uids||{}).find(p => d.uids[p]===me); if(!pid) return;
+  const J = {sid, d, pid, me:{songs:[], ready:false, votes:{}}, gone:false};
+  try{ const {m, fs} = await fb(); const s = await m.getDoc(m.doc(fs, 'pl', sid, 'p', me));
+    if(s.exists()){ const x = s.data(); J.me = {songs:Array.isArray(x.songs) ? x.songs : [], ready:!!x.ready, votes:x.votes||{}}; }
+    S.plj = J; if(!s.exists()) await plGuestSave(); }
+  catch(e){ S.plj = null; toast("Impossible de rejoindre la partie. Réessaie dans un instant."); return; }
+  plSet({joined:sid}); S.plDraft = ''; go('playlist');
+}
+async function plGuestSave(){
+  const J = S.plj; if(!J) return; const {m, fs} = await fb();
+  await m.setDoc(m.doc(fs, 'pl', J.sid, 'p', myUid()), {pid:J.pid, name:(S.acct.profile||{}).name||'', songs:J.me.songs,
+    ready:J.me.ready, votes:J.me.votes, updatedAt:m.serverTimestamp()});
+}
+const plGuestSend = () => plGuestSave().catch(() => toast("Pas envoyé : vérifie ta connexion et réessaie."));
+async function plGuestPoll(){
+  const J = S.plj; const {m, fs} = await fb(); const s = await m.getDoc(m.doc(fs, 'pl', J.sid));
+  if(S.plj!==J) return;
+  if(!s.exists()){ if(!J.gone){ J.gone = true; plRender(); } return; }
+  const d = s.data(); if(d.state===J.d.state) return;
+  let st = null; try{ st = JSON.parse(d.state); }catch(e){ return; }
+  J.d = {id:J.sid, ...d, st}; plRender();
+}
+/* Efface la partie publiée quand elle n'est plus en cours chez l'hôte (finie depuis 10 min, abandonnée). En pause : on garde. */
+async function plCleanup(){
+  const P = plSt(), sid = P.sid; if(!sid || !online() || !navigator.onLine) return;
+  const L = S.live.playlist; if(L && L.sid===sid) return;
+  if((S.paused||[]).some(x => x.k==='playlist' && x.live && x.live.sid===sid)) return;
+  if(P.doneAt && Date.now()-P.doneAt < PL_KEEP) return;
+  try{ const {m, fs} = await fb(); const snap = await m.getDocs(m.collection(fs, 'pl', sid, 'p'));
+    const b = m.writeBatch(fs); snap.docs.forEach(x => b.delete(x.ref)); b.delete(m.doc(fs, 'pl', sid)); await b.commit();
+    plSet({sid:null, doneAt:null}); }catch(e){}
+}
+async function plSetOpen(open){
+  try{ const {m, fs} = await fb(); await m.setDoc(m.doc(fs, 'cfg', 'app'), {playlistOpen:open, updatedAt:m.serverTimestamp()});
+    plSet({open}); render(); toast(open ? 'Le jeu de la playlist est ouvert à tous' : 'Le jeu de la playlist est réservé à toi'); }
+  catch(e){ toast("Réglage pas enregistré. Les nouvelles règles Firebase sont-elles publiées ?"); }
+}
+
+/* ---------- saisie des morceaux (hôte pour lui ou un joueur sans compte, invité pour lui) ---------- */
+function plSongList(list, rmFor, dup){
+  return list.length ? `<div class="list">${list.map((s,i) => `<div class="item pl-song">${plThumb(s.v) ? `<img class="pl-th" src="${plThumb(s.v)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<div class="grow"><div class="pl-t">${esc(s.t)}</div>${(dup||[]).includes(s.v) ? '<div class="meta pl-warn">Déjà choisi par un autre joueur : change-le</div>' : ''}</div>${rmFor ? `<button class="link" data-a="pl-rm" data-p="${esc(rmFor)}" data-i="${i}">Retirer</button>` : ''}</div>`).join('')}</div>` : '';
+}
+function plSongForm(list, per, target, title, note, dup){
+  const full = list.length >= per;
+  return `<div class="glass pl-box" id="pl-box">
+    <div class="label">${title}</div><div class="pl-h">${list.length} sur ${per}</div>
+    ${plSongList(list, target, dup)}
+    ${full ? '' : `<form id="pl-form" data-p="${esc(target)}" class="row" style="flex-wrap:nowrap;margin-top:12px"><input type="search" id="pl-url" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${YT_KEY ? 'Titre, artiste… ou lien YouTube' : 'Colle un lien YouTube'}" value="${esc(S.plDraft||'')}" aria-label="${YT_KEY ? 'Chercher un morceau' : 'Lien YouTube'}"><button class="btn" style="flex:none" ${S.plBusy?'disabled':''}>${S.plBusy?'…':YT_KEY?'Chercher':'Ajouter'}</button></form>
+      ${plResults(list, target)}
+      <p class="hint" style="margin:8px 0 0">${YT_KEY && !(S.plRes && S.plRes.err==='quota') ? 'Tape le titre et l’artiste, puis touche <b>Ajouter</b> à côté du bon résultat. ▶ pour écouter avant.' : 'Dans YouTube Music : <b>Partager → Copier le lien</b>, puis colle-le ici.'}</p>`}
+    <button class="btn block" style="margin-top:14px" data-a="pl-ready" data-p="${esc(target)}" ${full?'':'disabled'}>Valider</button>
+    ${note ? `<p class="hint" style="margin:8px 0 0">${note}</p>` : ''}</div>`;
+}
+function plResults(list, target){
+  const R = S.plRes; if(!R || R.target!==target) return '';
+  if(R.err) return `<p class="hint pl-err">${R.err==='quota' ? 'Plus de recherches possibles aujourd’hui (limite YouTube atteinte). Colle un lien YouTube à la place.' : R.err==='net' ? 'Pas de connexion. Vérifie ton réseau et réessaie.' : 'La recherche n’a pas marché. Réessaie, ou colle un lien YouTube.'}</p>`;
+  if(!R.items.length) return `<p class="hint pl-err">Aucun résultat pour « ${esc(R.q)} ». Essaie avec l’artiste en plus.</p>`;
+  return `<div class="list pl-res">${R.items.map(x => { const have = list.some(s => s.v===x.v);
+    return `<div class="item pl-song"><a class="pl-play" href="${plOne(x.v)}" target="_blank" rel="noopener" aria-label="Écouter ${esc(x.t)}"><img class="pl-th" src="${plThumb(x.v)}" alt="" loading="lazy" onerror="this.remove()"><span aria-hidden="true">▶</span></a><div class="grow"><div class="pl-t">${esc(x.t)}</div></div>${have ? '<span class="meta">Ajouté</span>' : `<button class="btn ghost pl-addb" data-a="pl-pick" data-p="${esc(target)}" data-v="${x.v}">Ajouter</button>`}</div>`; }).join('')}</div>`;
+}
+async function plFind(target){
+  const i = document.getElementById('pl-url'), raw = (i ? i.value : '').trim(); if(!raw) return;
+  if(plYt(raw) && (/[/.?=]/.test(raw) || !YT_KEY)) return plAdd(target, plYt(raw));
+  if(!YT_KEY){ toast('Ce lien ne ressemble pas à un lien YouTube.'); return; }
+  S.plBusy = true; S.plDraft = raw; if(i) i.blur(); render();
+  try{ S.plRes = {target, q:raw, items: await plSearch(raw)}; }
+  catch(e){ S.plRes = {target, q:raw, items:[], err:e.message}; }
+  S.plBusy = false; render();
+}
+async function plAdd(target, v, t0){
+  const guest = target==='guest', J = S.plj, L = S.live.playlist;
+  const list = guest ? (J ? J.me.songs : []) : (L ? (L.songs||{})[target]||[] : []);
+  if(list.some(s => s.v===v)){ toast('Ce morceau est déjà dans la liste.'); return; }
+  const i = document.getElementById('pl-url');
+  S.plBusy = true; if(!t0){ S.plDraft = ''; if(i) i.blur(); } render();
+  const t = t0 || await plTitle(v); S.plBusy = false;
+  if(list.length + 1 >= (guest ? (J ? J.d.st.per : 0) : (L ? L.per : 0))){ S.plRes = null; S.plDraft = ''; }
+  if(guest){ if(S.plj!==J || J.me.ready || J.me.songs.length >= J.d.st.per){ render(); return; }
+    J.me.songs = [...J.me.songs, {v, t}]; render(); plGuestSend(); return; }
+  const L2 = S.live.playlist; if(L2!==L || !L){ render(); return; }
+  const cur = (L.songs||{})[target]||[]; if(cur.length >= L.per){ render(); return; }
+  L.songs = {...(L.songs||{}), [target]:[...cur, {v, t}]}; plSave();
+}
+
+/* ---------- écrans ---------- */
+function plLockedView(){
+  return `<button class="back" data-go="home">← Jeux</button><div class="label">Jeu de la playlist</div><h1>Bientôt <em>là</em></h1>
+    <p class="sub">Le jeu est encore en test. Si un ami t'invite à une partie, l'invitation apparaît sur l'accueil et tu peux la rejoindre.</p>`;
+}
+function plAdminCard(){ const o = plOpen();
+  return `<div class="glass" style="padding:16px 18px;margin-top:14px"><div class="label">Admin · test</div>
+    <p style="margin:6px 0 12px">${o ? 'Le jeu est ouvert : tout le monde peut lancer une partie.' : 'Pour l’instant, toi seul peux lancer une partie. Les autres voient la carte en grisé, mais peuvent rejoindre une partie où tu les invites.'}</p>
+    <div class="seg" style="margin:0"><button class="${o?'':'on'}" data-a="pl-open" data-v="0">Réservé à moi</button><button class="${o?'on':''}" data-a="pl-open" data-v="1">Ouvert à tous</button></div></div>`;
+}
+function plSetupExtra(){
+  const P = S.plSetup, n = S.pick.playlist.size, per = P.per || plPerDefault(Math.max(3, n)), B = plBonusFor(Math.max(3, n), P.bonus);
+  return `${navigator.onLine ? '' : `<div class="glass pl-net pl-warn" style="margin-top:14px">Pas de connexion : ce jeu a besoin d’internet pour chercher et écouter les morceaux.</div>`}<div class="glass" style="padding:2px 18px;margin-top:14px">
+    <div class="field"><span class="label">Morceaux par joueur</span><div class="chips">${[2,3,4].map(v => `<button class="chip${per===v?' on':''}" data-a="pl-per" data-v="${v}">${v}</button>`).join('')}</div>
+      <span class="hint">${P.per ? '' : 'Choisi selon le nombre de joueurs. '}${n>=3 ? plM(n*per)+' au total.' : ''}</span></div>
+    <div class="field"><span class="label">Bonus morceau introuvable</span><div class="chips">${['auto',1,2,3].map(v => `<button class="chip${String(P.bonus)===String(v)?' on':''}" data-a="pl-bonus" data-v="${v}">${v==='auto'?'Auto':v}</button>`).join('')}</div>
+      <span class="hint">Si personne ne trouve ton morceau, tu gagnes ${plural(B,'point')}.${P.bonus==='auto' ? ' En auto, le bonus grandit avec le nombre de joueurs : plus on est, plus c’est dur de ne pas être trouvé.' : ''}</span></div></div>
+    ${plAdmin() ? plAdminCard() : ''}`;
+}
+const rulesPL = open => `<details class="rules glass dense"${open?' open':''}><summary>Règles en bref</summary><ul>
+  <li>Chacun ajoute ses morceaux en secret, <b>de 2 à 4</b> selon le nombre de joueurs. Il suffit de coller un lien YouTube.</li>
+  <li>La playlist est <b>mélangée</b>. À chaque morceau, chacun vote pour celui qui l'a mis, sauf l'auteur, qui garde le secret.</li>
+  <li><b>1 point</b> par bonne réponse.</li>
+  <li>Morceau que <b>personne</b> n'a trouvé : bonus pour celui qui l'a mis.</li>
+  <li>Le plus gros total gagne.</li></ul></details>`;
+function plHead(L, sub){
+  return `<button class="back" data-go="home">← Jeux</button><div class="label">Jeu de la playlist${sub?' · '+sub:''}</div>`;
+}
+function plScores(L, tot, nm, avf){
+  const order = [...L.order].sort((a,b) => tot[b]-tot[a]);
+  return `<h2>Scores</h2><div class="glass" style="padding:4px 16px"><div class="list">${order.map(p => `<div class="item">${avf(p)}<div class="grow"><div class="name">${nm(p)}</div></div><div class="tok"><span data-ck="pl:${p}" data-n="${tot[p]}">${tot[p]}</span><small>pts</small></div></div>`).join('')}</div></div>`;
+}
+function viewPL(){
+  if(S.plj) return viewPLGuest();
+  const L = S.live.playlist;
+  if(!L) return plLocked() ? plLockedView() : viewSetup('playlist');
+  return L.phase==='play' ? plPlayView(L) : plCollectView(L);
+}
+function plCollectView(L){
+  const R = plRemote(L), me = plMe(L), nm = p => esc(pname(p, L.names[p])), songs = p => (L.songs||{})[p]||[], rdy = p => !!(L.ready||{})[p];
+  const D = plDups(L), nd = Object.keys(D).length, allReady = L.order.every(rdy) && !nd, nr = L.order.filter(rdy).length;
+  if(S.plFor && (!L.order.includes(S.plFor) || rdy(S.plFor) || R[S.plFor])) S.plFor = null;
+  const who = S.plFor || (me && !rdy(me) && !R[me] ? me : null);
+  const rows = L.order.map(p => { const n = songs(p).length;
+    const meta = D[p] ? `<span class="pl-warn">Morceau en double avec un autre joueur</span>` : rdy(p) ? `<b style="color:var(--ink)">Prêt</b> · ${plM(n)}` : R[p] ? (S.plJoined[p] ? `Sur son téléphone · ${n} sur ${L.per}` : 'Invité · pas encore arrivé') : `${n} sur ${L.per}${p===me?'':' · à saisir ici'}`;
+    const act = rdy(p) ? (!R[p] ? `<button class="link" data-a="pl-edit" data-p="${p}">Modifier</button>` : '')
+      : R[p] ? `<button class="link" data-a="pl-take" data-p="${p}">Saisir ici</button>`
+      : p===who ? '' : `<button class="btn ghost" style="padding:9px 14px;font-size:13px;flex:none" data-a="pl-for" data-p="${p}">Saisir</button>`;
+    return `<div class="item">${av(p, pname(p, L.names[p]))}<div class="grow"><div class="name">${nm(p)}${p===me?' <span class="hint">· toi</span>':''}</div><div class="meta">${meta}</div></div>${act}</div>`; }).join('');
+  const form = who ? plSongForm(songs(who), L.per, who, who===me ? 'Tes morceaux' : 'Morceaux de '+nm(who),
+    who===me ? '' : `Passe le téléphone à ${nm(who)}. Une fois validés, ses morceaux sont masqués.`, D[who]) : '';
+  return `${plHead(L, 'ajout des morceaux')}<h1>Chacun <em>ses morceaux</em></h1>
+    <p class="sub">${plM(L.per)} par joueur · ${nr} sur ${L.order.length} prêt${nr>1?'s':''}.</p>
+    ${plNetBar(Object.keys(R).length>0)}
+    ${nd ? `<div class="glass pl-box"><b class="pl-warn">Même morceau choisi deux fois</b><p class="meta" style="margin:4px 0 0">${andList(Object.keys(D).map(nm))} ont choisi le même morceau. L’un des deux doit en changer (« Modifier »), sans dire lequel, pour garder le secret.</p></div>` : ''}
+    ${form}
+    <h2>Les joueurs</h2><div class="glass" style="padding:4px 16px"><div class="list">${rows}</div></div>
+    <p class="note">${Object.keys(R).length ? 'Tes amis reçoivent l’invitation sur l’accueil de leur Carnet. Pour les autres, saisis ici en leur passant le téléphone.' : 'Passe le téléphone à chacun pour qu’il ajoute ses morceaux en secret. Avec un compte et des amis reliés, chacun peut le faire sur son téléphone.'}</p>
+    <div style="margin-top:18px"><button class="btn block" data-a="pl-build" id="pl-build" ${allReady?'':'disabled'}>Créer la playlist${allReady?' · '+plM(L.order.length*L.per):''}</button></div>
+    ${endControls('playlist', false, '')}`;
+}
+function plPlayView(L){
+  const st = runPL(L), i = L.idx, t = L.tracks[i], shown = !!(L.shown||{})[i], me = plMe(L), R = plRemote(L);
+  const nm = p => esc(pname(p, L.names[p])), avf = p => av(p, pname(p, L.names[p]));
+  const vs = (L.votes||{})[i]||{}, voters = L.order.filter(p => p!==t.by), nv = voters.filter(p => vs[p]).length, last = i >= L.tracks.length-1;
+  const entry = st.log.find(x => x.i===i);
+  const myVote = me && me!==t.by && !shown ? `<h2>Ton vote</h2><div class="chips">${L.order.filter(p => p!==me).map(p => `<button class="chip${vs[me]===p?' on':''}" data-a="pl-vote" data-voter="${me}" data-g="${p}">${nm(p)}</button>`).join('')}</div>`
+    : me===t.by && !shown ? `<div class="glass pl-box"><b>C'est ton morceau.</b> <span class="meta">Garde ton sérieux, tu ne votes pas.</span></div>` : '';
+  const status = voters.map(p => { const remote = !!R[p], self = p===me;
+    return `<div class="item">${avf(p)}<div class="grow"><div class="name">${nm(p)}${self?' <span class="hint">· toi</span>':''}</div><div class="meta">${shown ? (vs[p] ? (vs[p]===t.by ? '<b style="color:var(--ink)">Trouvé</b>' : 'A voté '+nm(vs[p])) : 'Pas de vote') : vs[p] ? '<b style="color:var(--ink)">A voté</b>' : remote ? 'Vote sur son téléphone…' : 'Pas encore voté'}</div></div>${!shown && !remote && !self ? `<button class="btn ghost" style="padding:9px 14px;font-size:13px;flex:none" data-a="pl-vfor" data-p="${p}">${vs[p]?'Changer':'Voter'}</button>` : ''}</div>`; }).join('');
+  const reveal = shown && entry ? `<div class="glass pl-box pl-reveal"><div class="label">Réponse</div><div class="pl-h">C'était <em>${nm(t.by)}</em></div>
+      <p class="meta" style="margin:0">${entry.bonus ? `Personne n'a trouvé : <b style="color:var(--ink)">+${plural(st.B,'point')}</b> pour ${nm(t.by)}.` : entry.ok.length ? `Trouvé par ${andList(entry.ok.map(nm))} : +1 chacun.` : 'Personne n’a voté.'}</p></div>` : '';
+  return `${plHead(L, 'morceau '+(i+1)+' sur '+L.tracks.length)}<h1>Qui a mis <em>ce morceau</em> ?</h1>
+    ${plNetBar(Object.keys(R).length>0)}
+    ${plYtCard(L, i===0 && !shown)}
+    <div class="glass pl-box pl-now">${plThumb(t.v) ? `<img class="pl-cover" src="${plThumb(t.v)}" alt="" onerror="this.remove()">` : ''}<div class="pl-t" style="margin-top:12px">${esc(t.t)}</div>
+      <div class="row" style="margin-top:12px"><a class="btn ghost" style="padding:10px 16px;font-size:14px" href="${plOne(t.v)}" target="_blank" rel="noopener">Écouter ce morceau</a></div></div>
+    ${myVote}${reveal}
+    <h2>${shown ? 'Les votes' : 'Votes · '+nv+' sur '+voters.length}</h2><div class="glass" style="padding:4px 16px"><div class="list">${status}</div></div>
+    <div class="stack" style="margin-top:18px">${!shown ? `<button class="btn block" data-a="pl-reveal" id="pl-reveal">${nv<voters.length ? `Révéler (${nv} sur ${voters.length} ont voté)` : 'Révéler'}</button>`
+      : last ? `<button class="btn block" data-a="pl-finish" id="pl-finish">Voir les résultats</button>` : `<button class="btn block" data-a="pl-next" id="pl-next">Morceau suivant</button>`}</div>
+    ${plScores(L, st.tot, nm, avf)}
+    ${endControls('playlist', false, '')}`;
+}
+/* Carte de lecture : grande au premier morceau, réduite ensuite. */
+function plYtCard(L, big){
+  const n = L.tracks.length, Y = L.yt, ready = Y && Y.n >= n, B = S.plYt;
+  if(ready){ const keep = `<div class="seg" style="margin:12px 0 0"><button class="${L.ytKeep?'':'on'}" data-a="pl-ytkeep" data-v="0">Supprimer à la fin</button><button class="${L.ytKeep?'on':''}" data-a="pl-ytkeep" data-v="1">La garder</button></div>`;
+    return big ? `<div class="glass pl-box"><b>Ta playlist est prête</b>${Y.title ? ` · ${esc(Y.title)}` : ''}<p class="meta" style="margin:4px 0 12px">Non répertoriée, dans ton YouTube Music, dans l’ordre de l’app. Laisse la lecture aléatoire coupée : c’est déjà mélangé.${Y.miss ? ' '+plM(Y.miss)+' indisponible'+(Y.miss>1?'s':'')+' sur YouTube Music : écoute-le'+(Y.miss>1?'s':'')+' avec « Écouter ce morceau ».' : ''}</p><a class="btn block" href="${ytListUrl(Y.id)}" target="_blank" rel="noopener">Ouvrir dans YouTube Music</a>${keep}</div>`
+      : `<p class="note" style="margin:0 0 12px"><a class="link" href="${ytListUrl(Y.id)}" target="_blank" rel="noopener">Rouvrir la playlist dans YouTube Music</a></p>`; }
+  const btn = `<button class="btn block" data-a="pl-yt" id="pl-yt" ${B.busy?'disabled':''}>${B.busy ? `Ajout des morceaux… ${Y ? Y.n : 0} sur ${n}` : Y ? 'Reprendre la création' : 'Créer la playlist dans YouTube Music'}</button>`;
+  if(!big && !Y && !B.err) return `<p class="note" style="margin:0 0 12px"><button class="link" data-a="pl-yt">Créer la playlist dans YouTube Music</button> · <a class="link" href="${plAll(L)}" target="_blank" rel="noopener">Ouvrir dans YouTube</a></p>`;
+  return `<div class="glass pl-box"><b>Lance la musique</b><p class="meta" style="margin:4px 0 12px">L’app crée une playlist non répertoriée sur ton compte YouTube Music (connexion Google demandée la première fois), puis l’ouvre. Elle est supprimée à la fin de la partie.</p>${btn}
+    ${B.err ? `<p class="hint pl-err">${esc(B.err)}</p>` : ''}
+    <p class="hint" style="margin:10px 0 0">Ou <a class="link" href="${plAll(L)}" target="_blank" rel="noopener">ouvrir dans YouTube</a> (avec pubs sans YouTube Premium), ou morceau par morceau avec « Écouter ce morceau ».</p></div>`;
+}
+function plVotePanel(p){
+  const L = S.live.playlist, t = L && L.tracks[L.idx]; if(!t || p===t.by) return;
+  const cur = ((L.votes||{})[L.idx]||{})[p];
+  $ov.innerHTML = `<div class="scrim fade" data-close></div><div class="panel glass pop" role="dialog" aria-label="Vote">
+    <div class="label">Vote de ${esc(pname(p, L.names[p]))}</div><h3>Qui a mis ce morceau ?</h3><div class="meta">${esc(t.t)}</div>
+    <div class="chips" style="margin-top:6px">${L.order.filter(x => x!==p).map(x => `<button class="chip${cur===x?' on':''}" data-pv="${x}">${esc(pname(x, L.names[x]))}</button>`).join('')}</div>
+    <div class="foot"><button class="btn ghost" data-close>Fermer</button></div></div>`;
+  $ov.onclick = e => { const b = e.target.closest('[data-pv]'); if(b){ closePanel(); plVote(p, b.dataset.pv); return; } if(e.target.closest('[data-close]')) closePanel(); };
+}
+function plVote(voter, g){
+  const L = S.live.playlist; if(!L || L.phase!=='play') return; const i = L.idx, t = L.tracks[i];
+  if(!t || (L.shown||{})[i] || voter===t.by || voter===g || !L.order.includes(g)) return;
+  L.votes = {...(L.votes||{}), [i]:{...((L.votes||{})[i]||{}), [voter]:g}}; plSave();
+}
+function viewPLGuest(){
+  const J = S.plj, d = J.d, st = d.st, nm = p => esc(st.names[p]||'Joueur'), avf = p => wavLocal({...d, st}, p, (st.cols||{})[p], st.names[p]||'?');
+  const top = `<button class="back" data-a="plg-back">← Jeux</button><div class="label">Jeu de la playlist · partie de ${esc(d.ownerName)}</div>${st.done || J.gone ? '' : plNetBar(true)}`;
+  const back = `<div style="margin-top:18px"><button class="btn ghost block" data-a="plg-quit">Retour à l’accueil</button></div>`;
+  if(st.done){ const order = [...st.order].sort((a,b) => st.tot[b]-st.tot[a]), max = st.tot[order[0]];
+    return `${top}<h1>${andList(order.filter(p => st.tot[p]===max).map(nm))} <em>gagne</em></h1><p class="sub">Partie terminée.${myPid() ? ' Elle va arriver dans ton historique.' : ''}</p>
+      <div class="glass" style="padding:4px 16px"><div class="list">${order.map((p,i) => `<div class="item"><span class="rk">${1+order.filter(x => st.tot[x]>st.tot[p]).length}</span>${avf(p)}<div class="grow"><div class="name">${nm(p)}${p===J.pid?' <span class="hint">· toi</span>':''}</div></div><div class="tok">${st.tot[p]}<small>pts</small></div></div>`).join('')}</div></div>${back}`; }
+  if(J.gone) return `${top}<h1>Partie <em>arrêtée</em></h1><p class="sub">${esc(d.ownerName)} a arrêté ou mis en pause la partie.</p>${back}`;
+  if(st.phase==='collect'){
+    const myDup = ((st.dup||{})[J.pid]||[]).filter(v => J.me.songs.some(x => x.v===v));
+    const players = st.order.map(p => `<div class="item">${avf(p)}<div class="grow"><div class="name">${nm(p)}${p===J.pid?' <span class="hint">· toi</span>':''}</div><div class="meta">${st.ready[p] ? '<b style="color:var(--ink)">Prêt</b>' : (st.counts[p]||0)+' sur '+st.per}</div></div></div>`).join('');
+    const mine = J.me.ready
+      ? `<div class="glass pl-box"><div class="label">Tes morceaux</div><div class="pl-h">${myDup.length ? 'Un morceau <em>à changer</em>' : 'C\'est <em>envoyé</em>'}</div>${plSongList(J.me.songs, null, myDup)}<button class="${myDup.length?'btn block':'link'}" data-a="plg-unready">Modifier mes morceaux</button></div>`
+      : plSongForm(J.me.songs, st.per, 'guest', 'Tes morceaux', `Personne d’autre que ${esc(d.ownerName)} (l’hôte) ne voit tes morceaux.`, myDup);
+    return `${top}<h1>Tes <em>morceaux</em></h1><p class="sub">${plM(st.per)} chacun. La playlist sera lancée quand tout le monde sera prêt.</p>
+      ${mine}<h2>Les joueurs</h2><div class="glass" style="padding:4px 16px"><div class="list">${players}</div></div>`;
+  }
+  const i = st.idx, cur = st.cur || {}, entry = st.log.find(x => x.i===i), mineT = J.me.songs.some(s => s.v===cur.v), v = J.me.votes[i];
+  const voters = st.order.length - 1;
+  const vote = entry ? '' : mineT ? `<div class="glass pl-box"><b>C'est ton morceau.</b> <span class="meta">Garde ton sérieux, tu ne votes pas.</span></div>`
+    : `<h2>Qui l’a mis ?</h2><div class="chips">${st.order.filter(p => p!==J.pid).map(p => `<button class="chip${v===p?' on':''}" data-a="plg-vote" data-g="${p}">${nm(p)}</button>`).join('')}</div>
+       <p class="hint" style="margin-top:10px">${v ? 'Vote envoyé. Tu peux changer d’avis jusqu’à la révélation.' : 'Touche un nom pour voter.'} · ${st.voted.length} sur ${voters} ont voté.</p>`;
+  const reveal = entry ? `<div class="glass pl-box pl-reveal"><div class="label">Réponse</div><div class="pl-h">C'était <em>${entry.by===J.pid ? 'toi' : nm(entry.by)}</em></div>
+      <p class="meta" style="margin:0">${entry.bonus ? `Personne n'a trouvé : +${plural(st.B,'point')} pour ${entry.by===J.pid ? 'toi' : nm(entry.by)}.` : entry.ok.length ? `Trouvé par ${andList(entry.ok.map(p => p===J.pid ? 'toi' : nm(p)))}.` : 'Personne n’a voté.'}</p>
+      ${!mineT && v ? `<p style="margin:8px 0 0"><b>${v===entry.by ? 'Bien joué, +1 !' : 'Raté pour ce coup-ci.'}</b></p>` : ''}
+      <p class="hint" style="margin:8px 0 0">En attente du morceau suivant…</p></div>` : '';
+  return `${top}<h1>Morceau <em>${i+1}</em> sur ${st.n}</h1>
+    <div class="glass pl-box pl-now">${plThumb(cur.v) ? `<img class="pl-cover" src="${plThumb(cur.v)}" alt="" onerror="this.remove()">` : ''}<div class="pl-t" style="margin-top:12px">${esc(cur.t||'')}</div></div>
+    ${vote}${reveal}${plScores({order:st.order}, st.tot, nm, avf)}`;
+}
+
+/* ---------- actions ---------- */
+function clickPL(el, a){
+  if(!a || !(a.startsWith('pl-') || a.startsWith('plg-'))) return false;
+  const L = S.live.playlist, p = el.dataset.p;
+  if(a==='pl-per'){ S.plSetup.per = +el.dataset.v; render(); return true; }
+  if(a==='pl-pick'){ const x = ((S.plRes||{}).items||[]).find(r => r.v===el.dataset.v); if(x) plAdd(p, x.v, x.t); return true; }
+  if(a==='pl-bonus'){ const v = el.dataset.v; S.plSetup.bonus = v==='auto' ? 'auto' : +v; render(); return true; }
+  if(a==='pl-open'){ plSetOpen(el.dataset.v==='1'); return true; }
+  if(a==='plg-back'){ clearTimeout(plT); S.plj = null; go('home'); return true; }
+  if(a==='plg-quit'){ clearTimeout(plT); S.plj = null; plSet({joined:null}); go('home'); return true; }
+  if(a==='pl-rm' && p==='guest'){ const J = S.plj; if(!J || J.me.ready) return true; J.me.songs = J.me.songs.filter((s,i) => i!==+el.dataset.i); render(); plGuestSend(); return true; }
+  if(a==='pl-ready' && p==='guest'){ const J = S.plj; if(!J || J.me.songs.length < J.d.st.per) return true; J.me.ready = true; render(); plGuestSend(); return true; }
+  if(a==='plg-unready'){ const J = S.plj; if(!J || J.d.st.phase!=='collect') return true; J.me.ready = false; render(); plGuestSend(); return true; }
+  if(a==='plg-vote'){ const J = S.plj, st = J && J.d.st; if(!st || st.phase!=='play' || st.log.some(x => x.i===st.idx) || el.dataset.g===J.pid) return true;
+    J.me.votes = {...J.me.votes, [st.idx]:el.dataset.g}; render(); plGuestSend(); return true; }
+  if(!L) return true;
+  if(a==='pl-rm'){ const cur = (L.songs||{})[p]||[]; if((L.ready||{})[p]) return true; L.songs = {...(L.songs||{}), [p]:cur.filter((s,i) => i!==+el.dataset.i)}; plSave(); return true; }
+  if(a==='pl-ready'){ if(((L.songs||{})[p]||[]).length < L.per) return true; L.ready = {...(L.ready||{}), [p]:true}; if(S.plFor===p) S.plFor = null; S.plDraft = ''; S.plRes = null; plSave(); return true; }
+  if(a==='pl-edit'){ L.ready = {...(L.ready||{}), [p]:false}; S.plFor = p; plSave(); return true; }
+  if(a==='pl-take'){ L.local = {...(L.local||{}), [p]:true}; S.plFor = p; plSave(); toast('Saisie sur ce téléphone pour '+pname(p, L.names[p])); return true; }
+  if(a==='pl-for'){ S.plFor = p; S.plDraft = ''; S.plRes = null; render(); const b = document.getElementById('pl-box'); if(b) b.scrollIntoView({behavior:reduceMotion()?'auto':'smooth', block:'start'}); return true; }
+  if(a==='pl-build'){ if(L.phase!=='collect' || !L.order.every(x => (L.ready||{})[x]) || Object.keys(plDups(L)).length) return true;
+    const all = []; L.order.forEach(x => ((L.songs||{})[x]||[]).forEach(s => all.push({v:s.v, t:s.t, by:x})));
+    L.tracks = plShuffle(all); L.phase = 'play'; L.idx = 0; L.votes = {}; L.shown = {}; S.plFor = null; window.scrollTo(0,0); plSave();
+    moment(plM(L.tracks.length), 'Playlist créée'); return true; }
+  if(a==='pl-vote'){ plVote(el.dataset.voter, el.dataset.g); return true; }
+  if(a==='pl-yt'){ plMakeYt(); return true; }
+  if(a==='pl-ytkeep'){ L.ytKeep = el.dataset.v==='1'; local.save(); render(); return true; }
+  if(a==='pl-vfor'){ plVotePanel(p); return true; }
+  if(a==='pl-reveal'){ if(L.phase!=='play') return true; L.shown = {...(L.shown||{}), [L.idx]:true}; plSave();
+    const x = runPL(L).log.find(e => e.i===L.idx); if(x && x.bonus) moment('+'+runPL(L).B, 'Personne n’a trouvé'); return true; }
+  if(a==='pl-next'){ if(!(L.shown||{})[L.idx] || L.idx >= L.tracks.length-1) return true; L.idx++; window.scrollTo(0,0); plSave(); return true; }
+  if(a==='pl-finish'){ if(!runPL(L).done) return true; L.over = true; local.save();
+    plDropYt(L); plPush().catch(()=>{}).finally(() => { plSet({doneAt:Date.now()}); finishGame('playlist'); }); return true; }
+  return true;
+}
+function afterPL(){
+  const f = document.getElementById('pl-form');
+  if(f){ f.onsubmit = e => { e.preventDefault(); plFind(f.dataset.p); };
+    const i = document.getElementById('pl-url'); if(i) i.oninput = () => { S.plDraft = i.value; }; }
+  const L = S.live.playlist;
+  if(!S.plj && L && !L.over && S.plPushed!==L.sid+':'+L.phase){ S.plPushed = L.sid+':'+L.phase; plPushSoon(); }
+  if(!S.plj && L && L.phase==='play' && !L.over && !(L.yt && L.yt.n >= L.tracks.length)) loadGis().catch(()=>{});
+  plWake(!!((S.plj && !S.plj.gone && !S.plj.d.st.done) || (L && L.phase==='play' && !L.over)));
+  if(S.plj || (L && !L.over)) plLoop();
+}
+function statsPL(id, pool){
+  const st = {played:0, wins:0, sum:0, best:null, found:0, opp:0, fooled:0};
+  (pool||S.games).filter(g => kindOf(g)==='playlist').forEach(g => { const r = (g.results||[]).find(r => r.id===id); if(!r) return;
+    st.played++; st.sum += r.total; st.best = st.best===null ? r.total : Math.max(st.best, r.total);
+    st.found += r.found||0; st.opp += r.opp||0; st.fooled += r.fooled||0; if((g.winners||[]).includes(id)) st.wins++; });
+  st.avg = st.played ? Math.round(st.sum/st.played*10)/10 : 0; st.rate = st.played ? st.wins/st.played : 0; st.acc = st.opp ? st.found/st.opp : 0;
+  return st;
+}
+const plNum = x => String(x).replace('.', ',');
+function statsPLView(top, ids, nameOf, pool){
+  const rows = [...ids].map(id => ({id, name:nameOf(id), ...statsPL(id, pool)})).filter(r => r.played);
+  if(!rows.length) return top;
+  rows.sort((a,b) => b.wins-a.wins || b.rate-a.rate || b.avg-a.avg);
+  const hi = f => [...rows].sort((a,b) => b[f]-a[f])[0], w = rows[0], acc = hi('acc'), fo = hi('fooled'), most = hi('played');
+  return top + `<div class="podium">
+    ${award('Le meilleur', w, plural(w.wins,'victoire'), pct(w.rate)+' de victoires', true)}
+    ${acc.opp ? award('Meilleure oreille', acc, pct(acc.acc), 'des morceaux trouvés') : ''}
+    ${fo.fooled ? award('Le plus mystérieux', fo, plM(fo.fooled), 'que personne n’a trouvé') : ''}
+    ${award('Le plus assidu', most, plural(most.played,'partie'), '')}
+  </div>
+  <h2>Classement</h2>
+  <div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats">
+    <thead><tr><th></th><th>Joueur</th><th>V.</th><th>Parties</th><th>Moy.</th><th>Trouvés</th><th>Introuv.</th></tr></thead>
+    <tbody>${rows.map((r,i) => `<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px">${dot(r.id)}<b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round(r.rate*100)}%${barC(r.id)}"></i></div></td><td>${r.wins}</td><td>${r.played}</td><td>${plNum(r.avg)}</td><td>${pct(r.acc)}</td><td>${r.fooled}</td></tr>`).join('')}</tbody>
+  </table></div>
+  <p class="note">Classement par victoires, puis taux de victoire, puis moyenne. « Trouvés » : part des morceaux des autres que le joueur a trouvés. « Introuv. » : ses morceaux que personne n’a trouvés.</p>`;
+}
+defGame('playlist', {
+  name:'Playlist', doc:'gpl', min:3, needsNet:true,
+  locked: plLocked,
+  card: L => ({dice:`<span class="die pl-ic">${PL_IC}</span>`,
+    hint: 'Morceaux YouTube · devine qui a mis quoi' + (navigator.onLine ? '' : ' · internet nécessaire') + (plAdmin() && !plOpen() ? ' · en test, visible par toi seul' : ''),
+    pill: L ? (L.phase==='play' ? `En cours · morceau ${(L.idx||0)+1} sur ${(L.tracks||[]).length}` : 'En cours · ajout des morceaux') : plLocked() ? 'Bientôt' : ''}),
+  setupNote:' Au moins trois joueurs.', setupRules: () => rulesPL(true), setupExtra: plSetupExtra,
+  newLive: (order, names) => { const P = S.plSetup, startedAt = Date.now();
+    return {order, names, startedAt, sid:(myUid()||'local')+'_'+startedAt, per:P.per || plPerDefault(order.length), bonus:P.bonus||'auto',
+      phase:'collect', songs:{}, ready:{}, local:{}, tracks:[], idx:0, votes:{}, shown:{}}; },
+  summary: L => L.phase==='play' ? `morceau ${(L.idx||0)+1} sur ${(L.tracks||[]).length}` : `ajout des morceaux · ${L.order.filter(p => (L.ready||{})[p]).length} sur ${L.order.length} prêts`,
+  view: viewPL,
+  resetUi(){ S.plFor = null; S.plDraft = ''; S.plBusy = false; S.plPushed = null; S.plRes = null; },
+  reopen(L){ L.over = false; const n = (L.tracks||[]).length; if(n){ const sh = {...(L.shown||{})}; delete sh[n-1]; L.shown = sh; L.idx = n-1; } },
+  record(L){ const st = runPL(L), nmx = p => pname(p, L.names[p]);
+    const results = L.order.map(p => ({id:p, name:nmx(p), total:st.tot[p], found:st.found[p], opp:st.opp[p], fooled:st.fooled[p]}));
+    return {game:'playlist', date:Date.now(), startedAt:L.startedAt, results, winners:st.winners, tracks:(L.tracks||[]).length, bonus:st.B,
+      sheet:{tracks: st.log.map(x => ({t:x.t, v:x.v, by:nmx(x.by), ok:x.ok.map(nmx), bonus:x.bonus}))}}; },
+  stats: statsPL, statsView: statsPLView,
+  player: id => { const s = statsPL(id); return psection('Playlist', s.played, stile('Victoires', s.wins, pct(s.rate)) + stile('Parties', s.played) + stile('Moyenne', plNum(s.avg), 'pts par partie') + stile('Oreille', pct(s.acc), 'des morceaux trouvés') + stile('Introuvables', s.fooled, 'morceaux que personne n’a trouvés')); },
+  outcome: (g, id) => outcomePts(g, id, false),
+  win: (g, id) => (g.winners||[]).includes(id) ? 1 : 0,
+  duel: (g, r) => -r.total,
+  mine: (g, r, pid) => ({k:'playlist', d:g.date, w: (g.winners||[]).includes(pid) ? 1 : 0, p: r.total}),
+  val: r => r.total,
+  friendTiles: (s, tile, pct) => tile('Victoires', s.w, pct(s.rate)) + tile('Parties', s.n) + tile('Moyenne', s.avg ?? '–', 'pts') + tile('Record', s.best ?? '–', 'pts'),
+  extra: g => plM(g.tracks||0),
+  hist: (g, nm) => histByTotal(g, nm, false, `<span><b>${g.tracks||0}</b> morceaux</span>`),
+  result: (g, nm) => resultByTotal(g, nm, false, r => [plM(r.found||0)+' trouvé'+((r.found||0)>1?'s':''), r.fooled ? plural(r.fooled,'introuvable') : ''].filter(Boolean).join(' · ')),
+  sheetTitle:'Morceaux',
+  sheet: (g, sh, ids, nmOf, head, el, title) => `<h2>${title}</h2><div class="glass" style="padding:4px 16px"><div class="list">${(sh.tracks||[]).map(t => `<div class="item pl-song">${plThumb(t.v) ? `<img class="pl-th" src="${plThumb(t.v)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<div class="grow"><div class="pl-t">${esc(t.t)}</div><div class="meta">Mis par <b style="color:var(--ink)">${esc(t.by)}</b> · ${t.bonus ? 'personne n’a trouvé' : (t.ok||[]).length ? 'trouvé par '+andList(t.ok.map(esc)) : 'pas de vote'}</div></div></div>`).join('')}</div></div>`,
+  after: afterPL,
+  click: clickPL, sel:'[data-plj]'
+});
+
 /* ================= players ================= */
 const tagOf = p => !p.uid || db ? '' : p.uid===myUid() ? '<b style="color:var(--ink)">Toi</b> · ' : friendUids().has(p.uid) ? '<b style="color:var(--ink)">Ami</b> · ' : '';
 function viewPlayers(){
@@ -2645,7 +3268,7 @@ async function onUser(u){
   render();
   if(S.acct.creating) return;
   try{ const {m, fs} = FB; const snap = await m.getDoc(m.doc(fs, 'users', u.uid));
-    if(snap.exists()){ const d = snap.data(); setProfile({name:d.name, code:d.code}); frLoad(true).then(()=>{ checkInbox(); flushSoon(); watchSync(); watchCheck(true); resyncAuto(); fbkLoad(true); }); pubSoon(); }
+    if(snap.exists()){ const d = snap.data(); setProfile({name:d.name, code:d.code}); frLoad(true).then(()=>{ checkInbox(); flushSoon(); watchSync(); watchCheck(true); resyncAuto(); fbkLoad(true).then(() => plCheck(true)); }); pubSoon(); }
     else if(!S.acct.profile) S.acct.needsProfile = true;
   }catch(e){ /* hors ligne : on garde le profil en cache */ }
   render();
@@ -3624,7 +4247,7 @@ function go(v){ if(!SET_VIEWS.includes(S.view)) S.fbFrom = S.view;
   if(SET_VIEWS.includes(v) && !SET_VIEWS.includes(S.view)) S.setFrom = TAB_NAMES[S.view] ? S.view : 'players';
   if(v==='feedback' && S.view!=='feedback'){ S.fbk.sent = false; S.fbk.err = null; } if(v==='settings' || v==='fbadmin') fbkLoad(true);
   S.view=v; S.confirm=null; S.edit=null; if(v==='friends'){ S.fr.err=S.fr.info=null; } render(); window.scrollTo(0,0);
-  if(['home','players','friends','friend'].includes(v)) frLoad(!['home','players'].includes(v)); if(['players','history'].includes(v)) checkInbox(); if(v==='home') watchCheck();
+  if(['home','players','friends','friend'].includes(v)) frLoad(!['home','players'].includes(v)); if(['players','history'].includes(v)) checkInbox(); if(v==='home'){ watchCheck(); plCheck(); }
   if(v==='home' || v==='players') linkNext(); }
 /* ================= animations (v29) =================
    Règle commune : rien ne retarde la saisie (pas d'attente avant de pouvoir toucher), tout est court, et tout est coupé
@@ -3729,6 +4352,7 @@ $app.addEventListener('click', async e => {
   if(el.matches('[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-lkopen],[data-me],[data-share],[data-wshare],[data-frsend],[data-a=fr-rm]') && await frClick(el)) return;
   { const G = GAMES[S.view]; if(G && G.click && G.click(el, el.dataset.a)) return; }
   if(el.dataset.watch){ watchOpen(el.dataset.watch); return; }
+  if(el.dataset.plj){ plJoin(el.dataset.plj); return; }
   if(el.dataset.game){ const g = S.games.find(x=>x.id===el.dataset.game); if(g) openResult({g, from:'history'}); return; }
   if(el.matches('[data-look]')){ lookSet(el.dataset.look || null); return; }
   if(el.dataset.go){ go(el.dataset.go); return; }
@@ -3865,7 +4489,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '36';
+window.APP_VERSION = '37';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

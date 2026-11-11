@@ -2254,7 +2254,7 @@ S.plInv = []; S.plSeen = new Set(); S.plj = null; S.plJoined = {}; S.plFor = nul
 /* Recherche par titre (v37) : YouTube Data API v3, clé publique restreinte au site (référent loulax133.github.io) et à cette API.
    Quota gratuit : 10 000 unités par jour, une recherche en coûte 100 → environ 100 recherches par jour pour tout le monde.
    On cherche seulement quand on valide (pas à chaque lettre) et on garde les résultats en mémoire. Sans clé ou quota épuisé : lien collé. */
-const YT_KEY = '';
+const YT_KEY = 'AIzaSyCv7b1wdwVgZAWSPDLbzPoSCXJaHizkHw0';
 const PL_CACHE = {};
 const plDec = s => { const t = document.createElement('textarea'); t.innerHTML = String(s||''); return t.value; };
 async function plSearch(q){

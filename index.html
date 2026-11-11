@@ -3449,7 +3449,8 @@ const tokNow = () => { const t = lsGet(DRIVE_TOK); return t && t.exp > Date.now(
 function askToken(){
   /* Doit être appelé directement depuis un toucher, sinon le navigateur bloque la fenêtre Google. */
   if(!window.google || !google.accounts || !google.accounts.oauth2){ loadGis().catch(()=>{}); return Promise.reject(new Error('gis-wait')); }
-  if(!tokClient) tokClient = google.accounts.oauth2.initTokenClient({client_id:DRIVE_CLIENT, scope:DRIVE_SCOPE,
+  /* include_granted_scopes:false : sans ça, Google ajoute l'accès YouTube déjà accordé (jeu de la playlist) à la demande Drive, et refuse le mélange (erreur 400 invalid_request). */
+  if(!tokClient) tokClient = google.accounts.oauth2.initTokenClient({client_id:DRIVE_CLIENT, scope:DRIVE_SCOPE, include_granted_scopes:false,
     callback: r => { const w = tokWait; tokWait = null; if(!w) return;
       if(r && r.access_token){ lsSet(DRIVE_TOK, {t:r.access_token, exp:Date.now() + (Number(r.expires_in)||3600)*1000}); w.res(r.access_token); }
       else w.rej(new Error((r && r.error) || 'denied')); },
@@ -4521,7 +4522,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '39';
+window.APP_VERSION = '39b';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

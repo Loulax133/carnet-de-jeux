@@ -1,5 +1,5 @@
 /* Carnet de jeux — service worker. VERSION changes on every release. Only Cache Storage is managed here; localStorage (game data) is never touched. */
-const VERSION = 'v39';
+const VERSION = 'v39b';
 const APP = 'carnet-app-' + VERSION, FONTS = 'carnet-fonts';
 /* v36 : les polices sont servies par le site et mises en cache avec l'app (plus d'appel à Google au démarrage). */
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png', './firebase-13.1.0.js',

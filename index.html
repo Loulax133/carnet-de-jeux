@@ -2280,7 +2280,8 @@ const ytNow = () => { const t = lsGet(YT_TOK); return t && t.exp > Date.now() + 
 function ytAsk(){
   /* Depuis un toucher seulement, sinon Safari bloque la fenêtre Google. */
   if(!window.google || !google.accounts || !google.accounts.oauth2){ loadGis().catch(()=>{}); return Promise.reject(new Error('gis-wait')); }
-  if(!ytClient) ytClient = google.accounts.oauth2.initTokenClient({client_id:DRIVE_CLIENT, scope:YT_SCOPE,
+  /* include_granted_scopes:false : sans ça, Google ajoute l'accès Drive déjà accordé à la demande, et refuse le mélange YouTube + Drive (erreur 400 invalid_request). */
+  if(!ytClient) ytClient = google.accounts.oauth2.initTokenClient({client_id:DRIVE_CLIENT, scope:YT_SCOPE, include_granted_scopes:false,
     callback: r => { const w = ytWait; ytWait = null; if(!w) return;
       if(r && r.access_token){ lsSet(YT_TOK, {t:r.access_token, exp:Date.now() + (Number(r.expires_in)||3600)*1000}); w.res(r.access_token); }
       else w.rej(new Error((r && r.error) || 'denied')); },

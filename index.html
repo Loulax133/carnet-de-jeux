@@ -458,6 +458,8 @@ main[data-vt]>.q-float{animation:none}
 .sw-ui{flex:none;width:46px;height:28px;border-radius:999px;background:var(--line);position:relative;transition:background .2s}
 .sw-ui::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--bg);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
 .vtoggle.on .sw-ui{background:var(--inv-bg)}.vtoggle.on .sw-ui::after{transform:translateX(18px)}
+.pl-help{max-height:58vh;overflow:auto;margin:6px 0 0}.pl-help p{margin:0 0 12px;font-size:15px;line-height:1.45}
+.pl-box .vtoggle{background:none;border:0;box-shadow:none;padding:0;margin-top:14px;border-radius:0}
 .seg.gseg{overflow-x:auto;scrollbar-width:none;flex-wrap:nowrap;gap:2px}.seg.gseg::-webkit-scrollbar{display:none}.seg.gseg button{flex:none;white-space:nowrap;padding-left:12px;padding-right:12px}
 .sb-box{padding:14px 12px;margin-top:2px}
 .sb-tiles{display:grid;grid-template-columns:repeat(9,1fr);gap:5px}
@@ -2266,13 +2268,17 @@ const plSt = () => lsGet(PL_KEY) || {};
 const plSet = o => lsSet(PL_KEY, {...plSt(), ...o});
 const plAdmin = () => !db && (S.fbk.admin || (!!myUid() && plSt().admin===myUid()));
 const plOpen = () => !!plSt().open;
-const plLocked = () => !!db || (!plAdmin() && !plOpen());
+/* v40 : jeu ouvert à tous dans le code (PL_OPEN_ALL). Le verrou cfg/app.playlistOpen et l'interrupteur admin restent en place,
+   ils ne servent plus tant que PL_OPEN_ALL est vrai. Remettre false pour refermer le jeu. */
+const PL_OPEN_ALL = true;
+const plLocked = () => !!db || (!PL_OPEN_ALL && !plAdmin() && !plOpen());
+/* v40 : le jeu fonctionne seulement avec YouTube Music (abonnement de celui qui lance). La playlist se crée d'elle-même au toucher
+   de « Créer la playlist » (connexion Google la 1re fois). Pas de mode « liens YouTube » (écarté par Louis le 15/11). */
 const plYt = s => { s = String(s||'').trim();
   const m = s.match(/(?:[?&]v=|youtu\.be\/|\/shorts\/|\/embed\/|\/live\/)([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/) || s.match(/^([A-Za-z0-9_-]{11})$/);
   return m ? m[1] : null; };
 const plThumb = v => plYt(v) ? `https://i.ytimg.com/vi/${plYt(v)}/mqdefault.jpg` : '';
 const plOne = v => 'https://music.youtube.com/watch?v=' + v;
-const plAll = L => 'https://www.youtube.com/watch_videos?video_ids=' + (L.tracks||[]).map(t=>t.v).join(',');
 const plBonusFor = (n, b) => b==='auto' || !b ? Math.max(1, Math.ceil((n-1)/2)) : +b;
 const plBonus = L => plBonusFor(L.order.length, L.bonus);
 const plPerDefault = n => n>=7 ? 2 : n>=5 ? 3 : 4;
@@ -2301,7 +2307,8 @@ async function plSearch(q){
    l'app crée une playlist NON RÉPERTORIÉE avec les morceaux dans l'ordre mélangé, puis l'ouvre dans YouTube Music
    (abonnement YouTube Music = sans pub ; l'app YouTube classique, elle, affiche des pubs sans YouTube Premium).
    Coût : 50 unités pour la playlist + 50 par morceau, sur le même quota que la recherche. Reprise possible si ça coupe (L.yt.n).
-   À la fin, la playlist est supprimée sauf si l'hôte choisit de la garder (L.ytKeep). Jeton : 'yz-yt-tok' (1 h). */
+   v40 : la playlist reste dans YouTube Music par défaut ; elle n'est supprimée à la fin que si l'hôte active « Supprimer la playlist
+   à la fin » (L.ytKeep === false ; absent = gardée). Jeton : 'yz-yt-tok' (1 h). */
 const YT_SCOPE = 'https://www.googleapis.com/auth/youtube', YT_TOK = 'yz-yt-tok';
 let ytClient = null, ytWait = null;
 const ytNow = () => { const t = lsGet(YT_TOK); return t && t.exp > Date.now() + 60000 ? t.t : null; };
@@ -2333,7 +2340,7 @@ async function plMakeYt(){
   S.plYt = {busy:true, err:null}; render();
   try{
     if(!L.yt){ const title = await plYtName();
-      const pl = await ytApi('playlists?part=snippet,status', {method:'POST', body:JSON.stringify({snippet:{title, description:'Créée par le Carnet de jeux. Se supprime à la fin de la partie, sauf si tu choisis de la garder.'}, status:{privacyStatus:'unlisted'}})});
+      const pl = await ytApi('playlists?part=snippet,status', {method:'POST', body:JSON.stringify({snippet:{title, description:'Créée par le Carnet de jeux (jeu de la playlist).'}, status:{privacyStatus:'unlisted'}})});
       L.yt = {id:pl.id, n:0, miss:0, title}; local.save(); }
     for(let i = L.yt.n; i < L.tracks.length; i++){
       try{ await ytApi('playlistItems?part=snippet', {method:'POST', body:JSON.stringify({snippet:{playlistId:L.yt.id, resourceId:{kind:'youtube#video', videoId:L.tracks[i].v}}})}); }
@@ -2359,7 +2366,7 @@ async function plYtName(){
   return base + ' #' + n;
 }
 async function plDropYt(L){
-  if(!L.yt || L.ytKeep) return;
+  if(!L.yt || L.ytKeep!==false) return;
   if(!ytNow()){ toast('Pense à supprimer la playlist dans YouTube Music (autorisation Google expirée).'); return; }
   try{ await ytApi('playlists?id=' + encodeURIComponent(L.yt.id), {method:'DELETE'}); }catch(e){ toast('Playlist YouTube Music pas supprimée : fais-le à la main.'); }
 }
@@ -2459,7 +2466,7 @@ async function plPull(){
         L.songs = {...(L.songs||{}), [p]:songs}; L.ready = {...(L.ready||{}), [p]:rd}; ch = true; } }
     if(L.phase==='play'){
       Object.entries(d.votes||{}).forEach(([i, g]) => { i = +i; const t = (L.tracks||[])[i];
-        if(!t || (L.shown||{})[i] || t.by===p || g===p || !L.order.includes(g)) return;
+        if(!t || (L.shown||{})[i] || g===p || !L.order.includes(g)) return;
         if(((L.votes||{})[i]||{})[p]!==g){ L.votes = {...(L.votes||{}), [i]:{...((L.votes||{})[i]||{}), [p]:g}}; ch = true; } }); } });
   if(JSON.stringify(joined)!==JSON.stringify(S.plJoined)){ S.plJoined = joined; if(!ch) plRender(); }
   return ch;
@@ -2614,13 +2621,16 @@ function plSetupExtra(){
   return `${navigator.onLine ? '' : `<div class="glass pl-net pl-warn" style="margin-top:14px">Pas de connexion : ce jeu a besoin d’internet pour chercher et écouter les morceaux.</div>`}<div class="glass" style="padding:2px 18px;margin-top:14px">
     <div class="field"><span class="label">Morceaux par joueur</span><div class="chips">${[2,3,4].map(v => `<button class="chip${per===v?' on':''}" data-a="pl-per" data-v="${v}">${v}</button>`).join('')}</div>
       <span class="hint">${P.per ? '' : 'Choisi selon le nombre de joueurs. '}${n>=3 ? plM(n*per)+' au total.' : ''}</span></div>
+    <div class="field"><span class="label">Musique</span><div class="pl-h" style="font-size:20px">YouTube Music</div>
+      <span class="hint">Il faut un abonnement YouTube Music pour lancer une partie (les autres joueurs n’en ont pas besoin). La playlist se crée toute seule sur ton compte, connexion Google la première fois. <button class="link" data-a="pl-help">Comment ça marche ?</button></span></div>
     <div class="field"><span class="label">Bonus morceau introuvable</span><div class="chips">${['auto',1,2,3].map(v => `<button class="chip${String(P.bonus)===String(v)?' on':''}" data-a="pl-bonus" data-v="${v}">${v==='auto'?'Auto':v}</button>`).join('')}</div>
       <span class="hint">Si personne ne trouve ton morceau, tu gagnes ${plural(B,'point')}.${P.bonus==='auto' ? ' En auto, le bonus grandit avec le nombre de joueurs : plus on est, plus c’est dur de ne pas être trouvé.' : ''}</span></div></div>
-    ${plAdmin() ? plAdminCard() : ''}`;
+    ${plAdmin() && !PL_OPEN_ALL ? plAdminCard() : ''}`;
 }
 const rulesPL = open => `<details class="rules glass dense"${open?' open':''}><summary>Règles en bref</summary><ul>
-  <li>Chacun ajoute ses morceaux en secret, <b>de 2 à 4</b> selon le nombre de joueurs. Il suffit de coller un lien YouTube.</li>
-  <li>La playlist est <b>mélangée</b>. À chaque morceau, chacun vote pour celui qui l'a mis, sauf l'auteur, qui garde le secret.</li>
+  <li>Chacun ajoute ses morceaux en secret, <b>de 2 à 4</b> selon le nombre de joueurs.</li>
+  <li>Celui qui lance la partie doit avoir <b>YouTube Music</b> : la playlist se crée sur son compte.</li>
+  <li>La playlist est <b>mélangée</b>. À chaque morceau, chacun vote pour celui qui l'a mis. L'auteur vote aussi pour donner le change, mais son vote ne compte pas.</li>
   <li><b>1 point</b> par bonne réponse.</li>
   <li>Morceau que <b>personne</b> n'a trouvé : bonus pour celui qui l'a mis.</li>
   <li>Le plus gros total gagne.</li></ul></details>`;
@@ -2663,12 +2673,13 @@ function plCollectView(L){
 function plPlayView(L){
   const st = runPL(L), i = L.idx, t = L.tracks[i], shown = !!(L.shown||{})[i], me = plMe(L), R = plRemote(L);
   const nm = p => esc(pname(p, L.names[p])), avf = p => av(p, pname(p, L.names[p]));
-  const vs = (L.votes||{})[i]||{}, voters = L.order.filter(p => p!==t.by), nv = voters.filter(p => vs[p]).length, last = i >= L.tracks.length-1;
+  /* v40 : tout le monde « vote », l'auteur aussi (vote leurre, jamais compté par runPL) : sinon son écran, ou le nom absent
+     de la liste des votes chez l'hôte, donne la réponse. */
+  const vs = (L.votes||{})[i]||{}, voters = L.order, nv = voters.filter(p => vs[p]).length, last = i >= L.tracks.length-1;
   const entry = st.log.find(x => x.i===i);
-  const myVote = me && me!==t.by && !shown ? `<h2>Ton vote</h2><div class="chips">${L.order.filter(p => p!==me).map(p => `<button class="chip${vs[me]===p?' on':''}" data-a="pl-vote" data-voter="${me}" data-g="${p}">${nm(p)}</button>`).join('')}</div>`
-    : me===t.by && !shown ? `<div class="glass pl-box"><b>C'est ton morceau.</b> <span class="meta">Garde ton sérieux, tu ne votes pas.</span></div>` : '';
-  const status = voters.map(p => { const remote = !!R[p], self = p===me;
-    return `<div class="item">${avf(p)}<div class="grow"><div class="name">${nm(p)}${self?' <span class="hint">· toi</span>':''}</div><div class="meta">${shown ? (vs[p] ? (vs[p]===t.by ? '<b style="color:var(--ink)">Trouvé</b>' : 'A voté '+nm(vs[p])) : 'Pas de vote') : vs[p] ? '<b style="color:var(--ink)">A voté</b>' : remote ? 'Vote sur son téléphone…' : 'Pas encore voté'}</div></div>${!shown && !remote && !self ? `<button class="btn ghost" style="padding:9px 14px;font-size:13px;flex:none" data-a="pl-vfor" data-p="${p}">${vs[p]?'Changer':'Voter'}</button>` : ''}</div>`; }).join('');
+  const myVote = me && !shown ? `<h2>Ton vote</h2><div class="chips">${L.order.filter(p => p!==me).map(p => `<button class="chip${vs[me]===p?' on':''}" data-a="pl-vote" data-voter="${me}" data-g="${p}">${nm(p)}</button>`).join('')}</div>` : '';
+  const status = voters.map(p => { const remote = !!R[p], self = p===me, author = p===t.by;
+    return `<div class="item">${avf(p)}<div class="grow"><div class="name">${nm(p)}${self?' <span class="hint">· toi</span>':''}</div><div class="meta">${shown ? (author ? '<b style="color:var(--ink)">'+(self?'Ton':'Son')+' morceau</b>' : vs[p] ? (vs[p]===t.by ? '<b style="color:var(--ink)">Trouvé</b>' : 'A voté '+nm(vs[p])) : 'Pas de vote') : vs[p] ? '<b style="color:var(--ink)">A voté</b>' : remote ? 'Vote sur son téléphone…' : 'Pas encore voté'}</div></div>${!shown && !remote && !self ? `<button class="btn ghost" style="padding:9px 14px;font-size:13px;flex:none" data-a="pl-vfor" data-p="${p}">${vs[p]?'Changer':'Voter'}</button>` : ''}</div>`; }).join('');
   const reveal = shown && entry ? `<div class="glass pl-box pl-reveal">${plTrackShow(t.v, t.t)}<div class="label" style="margin-top:14px">Mis par</div><div class="pl-h">${nm(t.by)}</div>
       <p class="meta" style="margin:0">${entry.bonus ? `Personne n'a trouvé : <b style="color:var(--ink)">+${plural(st.B,'point')}</b> pour ${nm(t.by)}.` : entry.ok.length ? `Trouvé par ${andList(entry.ok.map(nm))} : +1 chacun.` : 'Personne n’a voté.'}</p></div>` : '';
   return `${plHead(L, 'morceau '+(i+1)+' sur '+L.tracks.length)}<h1>${shown ? 'La <em>réponse</em>' : 'Qui a mis <em>ce morceau</em> ?'}</h1>
@@ -2679,6 +2690,7 @@ function plPlayView(L){
     <h2>${shown ? 'Les votes' : 'Votes · '+nv+' sur '+voters.length}</h2><div class="glass" style="padding:4px 16px"><div class="list">${status}</div></div>
     <div class="stack" style="margin-top:18px">${!shown ? `<button class="btn block" data-a="pl-reveal" id="pl-reveal">${nv<voters.length ? `Révéler (${nv} sur ${voters.length} ont voté)` : 'Révéler'}</button>`
       : last ? `<button class="btn block" data-a="pl-finish" id="pl-finish">Voir les résultats</button>` : `<button class="btn block" data-a="pl-next" id="pl-next">Morceau suivant</button>`}</div>
+    ${shown && !last && L.yt ? `<p class="hint" style="margin:8px 0 0">Pour avancer dans YouTube Music sans quitter l’app : « Dis Siri, morceau suivant », ou le bouton suivant de tes écouteurs ou de l’enceinte.</p>` : ''}
     ${plScores(L, st.tot, nm, avf)}
     ${endControls('playlist', false, '')}`;
 }
@@ -2689,17 +2701,31 @@ const plTrackShow = (v, t) => `<div class="pl-show">${plThumb(v) ? `<img class="
 /* Carte de lecture : grande au premier morceau, réduite ensuite. */
 function plYtCard(L, big){
   const n = L.tracks.length, Y = L.yt, ready = Y && Y.n >= n, B = S.plYt;
-  if(ready){ const keep = `<div class="seg" style="margin:12px 0 0"><button class="${L.ytKeep?'':'on'}" data-a="pl-ytkeep" data-v="0">Supprimer à la fin</button><button class="${L.ytKeep?'on':''}" data-a="pl-ytkeep" data-v="1">La garder</button></div>`;
+  const drop = L.ytKeep===false, keep = `<button class="vtoggle${drop?' on':''}" data-a="pl-ytdrop" role="switch" aria-checked="${drop}"><span class="grow"><b>Supprimer la playlist à la fin</b><span class="hint">${drop ? 'Elle disparaîtra de ton YouTube Music à la fin de la partie.' : 'Sinon, elle reste dans ton YouTube Music.'}</span></span><span class="sw-ui" aria-hidden="true"></span></button>`;
+  if(ready){
     return big ? `<div class="glass pl-box"><b>Ta playlist est prête</b>${Y.title ? ` · ${esc(Y.title)}` : ''}<p class="meta" style="margin:4px 0 12px">Non répertoriée, dans ton YouTube Music, dans l’ordre de l’app. Laisse la lecture aléatoire coupée : c’est déjà mélangé.${Y.miss ? ' '+plM(Y.miss)+' indisponible'+(Y.miss>1?'s':'')+' sur YouTube Music : écoute-le'+(Y.miss>1?'s':'')+' avec « Lancer ce morceau ».' : ''}</p><a class="btn block" href="${ytListUrl(Y.id)}" target="_blank" rel="noopener">Ouvrir dans YouTube Music</a>${keep}</div>`
-      : `<p class="note" style="margin:0 0 12px"><a class="link" href="${ytListUrl(Y.id)}" target="_blank" rel="noopener">Rouvrir la playlist dans YouTube Music</a></p>`; }
+      : `<p class="note" style="margin:0 0 12px"><a class="link" href="${ytListUrl(Y.id)}" target="_blank" rel="noopener">Rouvrir la playlist dans YouTube Music</a> <br>${drop ? 'Supprimée à la fin · <button class="link" data-a="pl-ytdrop">la garder plutôt</button>' : 'Gardée à la fin · <button class="link" data-a="pl-ytdrop">la supprimer plutôt</button>'}</p>`; }
   const btn = `<button class="btn block" data-a="pl-yt" id="pl-yt" ${B.busy?'disabled':''}>${B.busy ? `Ajout des morceaux… ${Y ? Y.n : 0} sur ${n}` : Y ? 'Reprendre la création' : 'Créer la playlist dans YouTube Music'}</button>`;
-  if(!big && !Y && !B.err) return `<p class="note" style="margin:0 0 12px"><button class="link" data-a="pl-yt">Créer la playlist dans YouTube Music</button> · <a class="link" href="${plAll(L)}" target="_blank" rel="noopener">Ouvrir dans YouTube</a></p>`;
-  return `<div class="glass pl-box"><b>Lance la musique</b><p class="meta" style="margin:4px 0 12px">L’app crée une playlist non répertoriée sur ton compte YouTube Music (connexion Google demandée la première fois), puis l’ouvre. Elle est supprimée à la fin de la partie.</p>${btn}
+  const help = `<button class="link" data-a="pl-help">Comment ça marche ?</button>`;
+  if(!big && !Y && !B.err) return `<p class="note" style="margin:0 0 12px"><button class="link" data-a="pl-yt">Créer la playlist dans YouTube Music</button></p>`;
+  return `<div class="glass pl-box"><b>Lance la musique</b><p class="meta" style="margin:4px 0 12px">L’app crée une playlist non répertoriée sur ton compte YouTube Music (connexion Google demandée la première fois), puis l’ouvre. ${help}</p>${btn}${keep}
     ${B.err ? `<p class="hint pl-err">${esc(B.err)}</p>` : ''}
-    <p class="hint" style="margin:10px 0 0">Ou <a class="link" href="${plAll(L)}" target="_blank" rel="noopener">ouvrir dans YouTube</a> (avec pubs sans YouTube Premium), ou morceau par morceau avec « Lancer ce morceau ».</p></div>`;
+    <p class="hint" style="margin:10px 0 0">En secours, morceau par morceau avec « Lancer ce morceau ».</p></div>`;
+}
+/* Page « Comment ça marche » (v40) : ouverte depuis le lancement ou la carte de lecture. */
+function plHelp(){
+  $ov.innerHTML = `<div class="scrim fade" data-close></div><div class="panel glass pop" role="dialog" aria-label="Comment ça marche">
+    <div class="label">Jeu de la playlist</div><h3>Comment ça marche</h3>
+    <div class="pl-help">
+      <p><b>1. Les morceaux.</b> Chacun ajoute les siens en secret : tape le titre et l’artiste, ou colle un lien (dans YouTube ou YouTube Music : <b>Partager → Copier le lien</b>). Tes amis reliés le font sur leur téléphone ; pour les autres, passe-leur le tien.</p>
+      <p><b>2. La musique, avec YouTube Music.</b> Il faut un abonnement YouTube Music pour lancer une partie ; les autres joueurs n’en ont pas besoin. Quand tu touches « Créer la playlist », l’app la crée sur ton compte, déjà mélangée. <b>La première fois</b>, Google te fait choisir ton compte, puis affiche « Google n’a pas validé cette application » : touche <b>Paramètres avancés → Accéder à Carnet jeu</b>, puis autorise. C’est normal, l’app est privée. Les fois suivantes, une fenêtre Google s’ouvre et se ferme toute seule. Ensuite, « Ouvrir dans YouTube Music » et lance la lecture, aléatoire coupé. Elle reste dans ton YouTube Music, sauf si tu choisis de la supprimer.</p>
+      <p><b>3. Pendant la partie.</b> Le téléphone qui joue la musique affiche le titre : retourne-le, ou envoie le son sur une enceinte. Chacun vote sur son téléphone, même celui qui a mis le morceau (son vote ne compte pas, c’est pour ne pas se griller). Pour passer au suivant sans quitter l’app : « Dis Siri, morceau suivant ».</p>
+    </div>
+    <div class="foot"><button class="btn" data-close>Compris</button></div></div>`;
+  $ov.onclick = e => { if(e.target.closest('[data-close]')) closePanel(); };
 }
 function plVotePanel(p){
-  const L = S.live.playlist, t = L && L.tracks[L.idx]; if(!t || p===t.by) return;
+  const L = S.live.playlist, t = L && L.tracks[L.idx]; if(!t) return;
   const cur = ((L.votes||{})[L.idx]||{})[p];
   $ov.innerHTML = `<div class="scrim fade" data-close></div><div class="panel glass pop" role="dialog" aria-label="Vote">
     <div class="label">Vote de ${esc(pname(p, L.names[p]))}</div><h3>Qui a mis ce morceau ?</h3><div class="meta">Morceau ${L.idx+1} sur ${L.tracks.length}</div>
@@ -2709,7 +2735,7 @@ function plVotePanel(p){
 }
 function plVote(voter, g){
   const L = S.live.playlist; if(!L || L.phase!=='play') return; const i = L.idx, t = L.tracks[i];
-  if(!t || (L.shown||{})[i] || voter===t.by || voter===g || !L.order.includes(g)) return;
+  if(!t || (L.shown||{})[i] || voter===g || !L.order.includes(g)) return;
   L.votes = {...(L.votes||{}), [i]:{...((L.votes||{})[i]||{}), [voter]:g}}; plSave();
 }
 function viewPLGuest(){
@@ -2730,8 +2756,8 @@ function viewPLGuest(){
       ${mine}<h2>Les joueurs</h2><div class="glass" style="padding:4px 16px"><div class="list">${players}</div></div>`;
   }
   const i = st.idx, cur = st.cur || {}, entry = st.log.find(x => x.i===i), mineT = J.me.songs.some(s => s.v===cur.v), v = J.me.votes[i];
-  const voters = st.order.length - 1;
-  const vote = entry ? '' : mineT ? `<div class="glass pl-box"><b>C'est ton morceau.</b> <span class="meta">Garde ton sérieux, tu ne votes pas.</span></div>`
+  const voters = st.order.length;   /* v40 : l'auteur vote aussi (leurre), son écran ressemble à celui des autres */
+  const vote = entry ? ''
     : `<h2>Qui l’a mis ?</h2><div class="chips">${st.order.filter(p => p!==J.pid).map(p => `<button class="chip${v===p?' on':''}" data-a="plg-vote" data-g="${p}">${nm(p)}</button>`).join('')}</div>
        <p class="hint" style="margin-top:10px">${v ? 'Vote envoyé. Tu peux changer d’avis jusqu’à la révélation.' : 'Touche un nom pour voter.'} · ${st.voted.length} sur ${voters} ont voté.</p>`;
   const reveal = entry ? `<div class="glass pl-box pl-reveal">${plTrackShow(entry.v, entry.t)}<div class="label" style="margin-top:14px">Mis par</div><div class="pl-h">${entry.by===J.pid ? 'Toi' : nm(entry.by)}</div>
@@ -2748,6 +2774,7 @@ function clickPL(el, a){
   if(!a || !(a.startsWith('pl-') || a.startsWith('plg-'))) return false;
   const L = S.live.playlist, p = el.dataset.p;
   if(a==='pl-per'){ S.plSetup.per = +el.dataset.v; render(); return true; }
+  if(a==='pl-help'){ plHelp(); return true; }
   if(a==='pl-pick'){ const x = ((S.plRes||{}).items||[]).find(r => r.v===el.dataset.v); if(x) plAdd(p, x.v, x.t); return true; }
   if(a==='pl-bonus'){ const v = el.dataset.v; S.plSetup.bonus = v==='auto' ? 'auto' : +v; render(); return true; }
   if(a==='pl-open'){ plSetOpen(el.dataset.v==='1'); return true; }
@@ -2767,10 +2794,11 @@ function clickPL(el, a){
   if(a==='pl-build'){ if(L.phase!=='collect' || !L.order.every(x => (L.ready||{})[x]) || Object.keys(plDups(L)).length) return true;
     const all = []; L.order.forEach(x => ((L.songs||{})[x]||[]).forEach(s => all.push({v:s.v, t:s.t, by:x})));
     L.tracks = plShuffle(all); L.phase = 'play'; L.idx = 0; L.votes = {}; L.shown = {}; S.plFor = null; window.scrollTo(0,0); plSave();
+    plMakeYt();   /* dans le même toucher : sinon Safari bloque la fenêtre Google */
     moment(plM(L.tracks.length), 'Playlist créée'); return true; }
   if(a==='pl-vote'){ plVote(el.dataset.voter, el.dataset.g); return true; }
   if(a==='pl-yt'){ plMakeYt(); return true; }
-  if(a==='pl-ytkeep'){ L.ytKeep = el.dataset.v==='1'; local.save(); render(); return true; }
+  if(a==='pl-ytdrop'){ L.ytKeep = L.ytKeep===false; local.save(); render(); return true; }
   if(a==='pl-vfor'){ plVotePanel(p); return true; }
   if(a==='pl-reveal'){ if(L.phase!=='play') return true; L.shown = {...(L.shown||{}), [L.idx]:true}; plSave();
     const x = runPL(L).log.find(e => e.i===L.idx); if(x && x.bonus) moment('+'+runPL(L).B, 'Personne n’a trouvé'); return true; }
@@ -2785,7 +2813,7 @@ function afterPL(){
     const i = document.getElementById('pl-url'); if(i) i.oninput = () => { S.plDraft = i.value; }; }
   const L = S.live.playlist;
   if(!S.plj && L && !L.over && S.plPushed!==L.sid+':'+L.phase){ S.plPushed = L.sid+':'+L.phase; plPushSoon(); }
-  if(!S.plj && L && L.phase==='play' && !L.over && !(L.yt && L.yt.n >= L.tracks.length)) loadGis().catch(()=>{});
+  if(!S.plj && L && !L.over && (L.phase==='collect' ? true : !(L.yt && L.yt.n >= L.tracks.length))) loadGis().catch(()=>{});
   plWake(!!((S.plj && !S.plj.gone && !S.plj.d.st.done) || (L && L.phase==='play' && !L.over)));
   if(S.plj || (L && !L.over)) plLoop();
 }
@@ -2820,7 +2848,7 @@ defGame('playlist', {
   name:'Playlist', doc:'gpl', min:3, needsNet:true,
   locked: plLocked,
   card: L => ({dice:`<span class="die pl-ic">${PL_IC}</span>`,
-    hint: 'Morceaux YouTube · devine qui a mis quoi' + (navigator.onLine ? '' : ' · internet nécessaire') + (plAdmin() && !plOpen() ? ' · en test, visible par toi seul' : ''),
+    hint: 'YouTube Music · devine qui a mis quoi' + (navigator.onLine ? '' : ' · internet nécessaire') + (plAdmin() && !plOpen() && !PL_OPEN_ALL ? ' · en test, visible par toi seul' : ''),
     pill: L ? (L.phase==='play' ? `En cours · morceau ${(L.idx||0)+1} sur ${(L.tracks||[]).length}` : 'En cours · ajout des morceaux') : plLocked() ? 'Bientôt' : ''}),
   setupNote:' Au moins trois joueurs.', setupRules: () => rulesPL(true), setupExtra: plSetupExtra,
   newLive: (order, names) => { const P = S.plSetup, startedAt = Date.now();
@@ -4522,7 +4550,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '39b';
+window.APP_VERSION = '40';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

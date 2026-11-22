@@ -524,7 +524,7 @@ const local = {
   load(){ const d = local.read(DATA_KEY) || local.read(PREV_KEY); if(d) applyData(d); if(!S.paused) S.paused = []; },
   snapshot(){ return {v:DATA_V, players:S.players, games:S.games, lives:S.live, paused:S.paused||[], rules421:S.rules421, savedAt:Date.now(), exportedAt:S.exportedAt||0}; },
   save(){ try{ const cur = localStorage.getItem(DATA_KEY); if(cur) localStorage.setItem(PREV_KEY, cur);
-      localStorage.setItem(DATA_KEY, JSON.stringify(local.snapshot())); try{ pubSoon(); }catch(e){} try{ driveSoon(); }catch(e){} }
+      localStorage.setItem(DATA_KEY, JSON.stringify(local.snapshot())); try{ pubSoon(); }catch(e){} try{ driveSoon(); }catch(e){} try{ cloudSoon(); }catch(e){} }
     catch(e){ toast("Sauvegarde impossible sur ce téléphone. Exporte tes données par sécurité."); } }
 };
 async function exportData(){
@@ -659,13 +659,14 @@ function viewHome(){
 }
 
 /* Accès aux réglages (v29) : la même roue en haut de l'accueil et de Joueurs (avant : seulement Joueurs).
-   Un point signale ce qui attend (Drive, ami à relier, retours à lire). */
+   Un point signale ce qui attend (ami à relier, retours à lire). v41 : plus de rappel Drive. */
 function setBtn(id){
   if(db) return '';
-  const todo = driveDue() || linkTodo() || fbkTodo();
+  const todo = linkTodo() || fbkTodo();
   return `<span class="crowned" style="margin-top:6px"><button class="navb" data-go="settings" id="${id}" aria-label="Réglages : compte, apparence et sauvegarde">${GEAR}</button>${todo?'<span class="obadge" style="min-width:12px;height:12px;padding:0;right:0;bottom:auto;top:0" aria-hidden="true"></span>':''}</span>`;
 }
-/* Une seule carte d'alerte sur l'accueil, la plus importante : demande d'ami, ami à relier, puis sauvegarde Drive. */
+/* Une seule carte d'alerte sur l'accueil, la plus importante : demande d'ami, puis ami à relier.
+   v41 : plus de carte Drive (la sauvegarde se fait sur le compte, sans geste). */
 function homeAlert(){
   if(db) return '';
   const card = (title, hint, btn) => `<div class="glass row alert-card" id="home-alert"><span class="grow"><b>${title}</b><span class="hint">${hint}</span></span>${btn}</div>`;
@@ -677,7 +678,6 @@ function homeAlert(){
     const un = myPid() ? unlinkedFriends() : [];
     if(un.length) return card(`Relie ${esc(un[0].name)} à son joueur`, 'Sinon vos parties ne s’échangent pas.', B(`data-lkopen="${esc(un[0].uid)}"`, 'Relier'));
   }
-  if(driveDue()) return card('Sauvegarde Drive', driveTodo(), B('data-a="drive-now"', S.drive.busy?'…':'Sauvegarder', S.drive.busy));
   return '';
 }
 
@@ -2900,14 +2900,14 @@ const GEAR = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke
 function viewSettings(){
   const A = S.acct, p = A.profile, u = A.user || A.cache;
   const acctSub = u && p ? `${esc(p.name)} · code ${esc(p.code)}` : 'Pas de compte';
-  const backSub = S.drive.on ? `Drive${online()?' et amis':''} · ${ago(S.drive.last)}` : online() ? 'Amis · Drive non connecté' : 'Export et import · Drive non connecté';
+  const backSub = cloudOn() ? `Sur ton compte${S.drive.on?' et Drive':''}${online()?' · amis':''}` : online() ? `Amis${S.drive.on?' · Drive':''} · pas sur ton compte` : S.drive.on ? 'Drive · export et import' : 'Export et import';
   return `${setBack()}
   <div class="label">Réglages</div><h1>Les <em>réglages</em></h1>
   ${syncCard()}
   <div class="glass" style="padding:8px 16px;margin-top:10px"><div class="list">
     <div class="item tap" role="button" tabindex="0" data-go="account"><div class="grow"><div class="name">Mon compte${linkTodo()?' <span class="pdot" style="background:var(--ink);margin:0 0 0 6px"></span>':''}</div><div class="meta">${acctSub}</div></div><span class="chev" aria-hidden="true">›</span></div>
     <div class="item tap" role="button" tabindex="0" data-go="look"><div class="grow"><div class="name">Apparence</div><div class="meta">${lookName()}</div></div><span class="chev" aria-hidden="true">›</span></div>
-    <div class="item tap" role="button" tabindex="0" data-go="backup"><div class="grow"><div class="name">Sauvegarde et synchro${driveDue()?' <span class="pdot" style="background:var(--ink);margin:0 0 0 6px"></span>':''}</div><div class="meta">${backSub}</div></div><span class="chev" aria-hidden="true">›</span></div>
+    <div class="item tap" role="button" tabindex="0" data-go="backup"><div class="grow"><div class="name">Sauvegarde et synchro</div><div class="meta">${backSub}</div></div><span class="chev" aria-hidden="true">›</span></div>
     <div class="item tap" role="button" tabindex="0" data-go="feedback"><div class="grow"><div class="name">Bug ou idée</div><div class="meta">Signaler un problème, proposer une option</div></div><span class="chev" aria-hidden="true">›</span></div>
     ${S.fbk.admin ? `<div class="item tap" role="button" tabindex="0" data-go="fbadmin"><div class="grow"><div class="name">Retours reçus${fbkTodo()?' <span class="pdot" style="background:var(--ink);margin:0 0 0 6px"></span>':''}</div><div class="meta">${fbkTodo() ? plural(fbkTodo(),'message')+' à lire' : 'Tout est traité'}</div></div><span class="chev" aria-hidden="true">›</span></div>` : ''}
   </div></div>`;
@@ -2916,32 +2916,37 @@ function viewSettings(){
 const SET_VIEWS = ['settings','account','backup','look','feedback','fbadmin'];
 const TAB_NAMES = {home:'Jeux', stats:'Stats', history:'Historique', players:'Joueurs'};
 const setBack = () => { const f = TAB_NAMES[S.setFrom] ? S.setFrom : 'players'; return `<button class="back" data-go="${f}">← ${TAB_NAMES[f]}</button>`; };
-/* ---- synchro en un toucher (v29) : Drive + renvoi aux amis ----
-   Pour l'utilisateur c'est la même question, « est-ce que tout est à jour ? ». Un seul bouton fait les deux :
-   le renvoi aux amis (resyncAll) puis la sauvegarde Drive si quelque chose manque (le toucher autorise la fenêtre Google). */
-const syncTodo = () => !db && S.drive.on && drivePending() > 0;
+/* ---- synchro en un toucher (v29, revue en v41) ----
+   Un seul bouton : sauvegarde sur le compte (réception + envoi) et renvoi aux amis (resyncAll). Drive n'est rafraîchi
+   que si Google est encore connecté (pas de fenêtre Google ici : Drive est une option, plus un passage obligé). */
+const syncTodo = () => cloudOn() && (!!S.cloud.err || cloudDirty() > 0);
 function syncCard(){
   if(db) return '';
-  const fr = online(), D = S.drive, busy = S.syncing || D.busy;
-  if(!D.on && !fr) return `<div class="glass sync-card" id="sync-card"><span class="sync-ic todo" aria-hidden="true">!</span><span class="grow"><b>Pas de copie ailleurs</b><span class="hint">Connecte Google Drive pour retrouver tes parties si tu changes de téléphone.</span></span><button class="btn" style="padding:10px 16px;font-size:14px;flex:none" data-a="drive-on" ${D.busy?'disabled':''}>${D.busy?'…':'Connecter'}</button></div>`;
-  const todo = syncTodo(), bits = [];
-  if(D.on) bits.push(drivePending() ? `${plural(drivePending(),'partie')} pas encore sur Drive` : `Drive ${ago(D.last)}`); else bits.push('Drive non connecté');
-  if(fr) bits.push(`amis ${ago(resyncState().last)}`);
-  return `<div class="glass sync-card" id="sync-card"><span class="sync-ic${todo?' todo':''}" aria-hidden="true">${todo?'!':'✓'}</span><span class="grow"><b>${todo ? 'À synchroniser' : 'Tout est à jour'}</b><span class="hint">${bits.join(' · ')}</span></span><button class="btn${todo?'':' ghost'}" style="padding:10px 16px;font-size:14px;flex:none" data-a="sync-all" ${busy?'disabled':''}>${busy?'…':'Synchroniser'}</button></div>`;
+  const C = S.cloud, D = S.drive, busy = S.syncing || C.busy || D.busy;
+  const B = (attr, t, ghost) => `<button class="btn${ghost?' ghost':''}" style="padding:10px 16px;font-size:14px;flex:none" ${attr} ${busy?'disabled':''}>${busy?'…':t}</button>`;
+  const card = (todo, title, hint, btn) => `<div class="glass sync-card" id="sync-card"><span class="sync-ic${todo?' todo':''}" aria-hidden="true">${todo?'!':'✓'}</span><span class="grow"><b>${title}</b><span class="hint">${hint}</span></span>${btn}</div>`;
+  if(!online()) return D.on ? card(false, 'Copie sur Drive', `Dernière : ${ago(D.last)}. Avec un compte, tes parties sont sauvegardées toutes seules.`, B('data-go="account"', 'Compte', true))
+    : card(true, 'Pas de copie ailleurs', 'Crée un compte : tes parties y sont sauvegardées toutes seules, et tu les retrouves sur un autre téléphone.', B('data-go="account"', 'Créer un compte'));
+  if(C.off) return card(true, 'Pas sauvegardé sur ton compte', 'Tu as coupé la sauvegarde. Tes parties ne sont que sur ce téléphone' + (D.on ? ' et sur Drive.' : '.'), B('data-bk="1"', 'Activer'));
+  const n = cloudDirty(), todo = !!C.err || n > 0, bits = [];
+  bits.push(C.err ? esc(C.err) : !navigator.onLine && n ? `${plural(n,'modification')} en attente de réseau` : n ? `${plural(n,'modification')} à envoyer` : `${plural(S.games.length,'partie')} sur ton compte`);
+  bits.push(`amis ${ago(resyncState().last)}`);
+  return card(todo, todo ? 'À synchroniser' : 'Tout est à jour', bits.join(' · '), B('data-a="sync-all"', 'Synchroniser', !todo));
 }
 async function syncAll(){
   if(db || S.syncing) return;
   if(!navigator.onLine){ toast('Pas de connexion. Réessaie quand tu as du réseau.'); return; }
   S.syncing = true; render(); const t0 = Date.now(), msg = [];
   try{
+    if(cloudOn()){ await cloudSync(true); if(!S.cloud.err) msg.push('Compte à jour'); }
     if(online()){ const r = resyncAll(false) || {n:0, fixed:0};
       if(r.n) msg.push(`${plural(r.n,'partie')} renvoyée${r.n>1?'s':''} à ${plural(r.who,'ami')}`);
       if(r.fixed) msg.push(`${plural(r.fixed,'doublon')} retiré${r.fixed>1?'s':''}`); }
-    if(S.drive.on && (driveChanged() || Date.now() - S.drive.last > DRIVE_AUTO)){ await driveRun(driveBackupNow, true); if(!S.drive.err) msg.push('Drive à jour'); }
+    if(S.drive.on && tokNow() && driveChanged()){ await driveRun(driveBackupNow, false); if(!S.drive.err) msg.push('Drive à jour'); }
   }catch(e){}
   await new Promise(r => setTimeout(r, Math.max(0, 900 - (Date.now()-t0))));
   S.syncing = false; render();
-  toast(S.drive.err ? S.drive.err : msg.length ? msg.join(' · ') : 'Tout est déjà à jour');
+  toast(S.cloud.err && cloudOn() ? S.cloud.err : msg.length ? msg.join(' · ') : 'Tout est déjà à jour');
 }
 
 /* ================= bugs et idées (v26) =================
@@ -3026,7 +3031,7 @@ async function fbAction(a, el){
 function viewAccountPage(){
   return `<button class="back" data-go="settings">← Réglages</button>
   <div class="label">Réglages</div><h1>Mon <em>compte</em></h1>
-  <p class="sub">Pour retrouver tes amis et partager les parties.</p>${viewAccount()}${online() && !S.acct.mode ? (linkTodo() ? viewLinkGuide() : '') + viewMe() : ''}`;
+  <p class="sub">Pour sauvegarder tes parties, retrouver tes amis et partager les parties.</p>${viewAccount()}${online() && !S.acct.mode ? (linkTodo() ? viewLinkGuide() : '') + viewMe() : ''}`;
 }
 /* Aide à la liaison (v19) : les 3 conditions pour que les parties partent et arrivent. */
 const unlinkedFriends = () => friendsOk().filter(f => !pidOfUid(f.uid));
@@ -3070,8 +3075,8 @@ function viewLook(){
 function viewBackup(){
   return `<button class="back" data-go="settings">← Réglages</button>
   <div class="label">Réglages</div><h1>La <em>sauvegarde</em></h1>
-  <p class="sub">Tes parties vivent sur ce téléphone. Ici, tu en gardes une copie ailleurs et tu les échanges avec tes amis.</p>
-  ${S.drive.on || online() ? `<div style="margin:-6px 0 10px">${syncCard()}</div>` : ''}
+  <p class="sub">Tes parties vivent sur ce téléphone. Avec un compte, une copie est gardée dessus toute seule : tu les retrouves en te connectant sur un autre téléphone.</p>
+  <div style="margin:-6px 0 10px">${syncCard()}</div>
   ${viewDrive()}
   ${viewFriendsSync()}
   <div class="glass" style="padding:16px 18px;margin-top:10px"><p style="margin:0 0 4px">Tout est enregistré dans ce téléphone, même hors ligne. Les mises à jour de l'app n'y touchent pas.</p>
@@ -3251,7 +3256,7 @@ function viewHistory(){
   const f = S.hfilter;
   const gs = [...S.games].filter(g => known(g) && (f==='all' || kindOf(g)===f)).sort((a,b)=>b.date-a.date);
   const top = `<div class="label">${plural(gs.length,'partie')}</div><h1>Les <em>parties</em></h1>
-    <p class="sub">La plus récente en premier.</p><div class="hbar">${seg('hfilter',[['all','Tout'], ...GAME_ORDER.map(k=>[k,GAMES[k].name])],'gseg')}${!db && (online() || S.drive.on) ? `<button class="navb sync${S.syncing?' go':''}" data-a="sync-all" id="hsync" aria-label="Synchroniser avec mes amis et Drive" title="Synchroniser avec mes amis et Drive" ${S.syncing?'disabled':''}>${SYNC_IC}${syncTodo()?'<span class="obadge" aria-hidden="true"></span>':''}</button>` : ''}</div>`;
+    <p class="sub">La plus récente en premier.</p><div class="hbar">${seg('hfilter',[['all','Tout'], ...GAME_ORDER.map(k=>[k,GAMES[k].name])],'gseg')}${!db && (online() || S.drive.on) ? `<button class="navb sync${S.syncing?' go':''}" data-a="sync-all" id="hsync" aria-label="Synchroniser avec mon compte et mes amis" title="Synchroniser avec mon compte et mes amis" ${S.syncing?'disabled':''}>${SYNC_IC}${syncTodo()?'<span class="obadge" aria-hidden="true"></span>':''}</button>` : ''}</div>`;
   if(!gs.length) return top + `<div class="glass empty"><div class="serif">Rien d'enregistré</div><p>Chaque partie terminée arrive ici avec la date et les scores de chacun.</p></div>`;
   const fmt = d => new Date(d).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
   return top + `<div class="stack">${gs.map(g=>{
@@ -3328,7 +3333,7 @@ async function onUser(u){
   render();
   if(S.acct.creating) return;
   try{ const {m, fs} = FB; const snap = await m.getDoc(m.doc(fs, 'users', u.uid));
-    if(snap.exists()){ const d = snap.data(); setProfile({name:d.name, code:d.code}); frLoad(true).then(()=>{ checkInbox(); flushSoon(); watchSync(); watchCheck(true); resyncAuto(); fbkLoad(true).then(() => plCheck(true)); }); pubSoon(); }
+    if(snap.exists()){ const d = snap.data(); setProfile({name:d.name, code:d.code}); frLoad(true).then(()=>{ checkInbox(); flushSoon(); watchSync(); watchCheck(true); resyncAuto(); fbkLoad(true).then(() => plCheck(true)); }); pubSoon(); cloudSync(true); }
     else if(!S.acct.profile) S.acct.needsProfile = true;
   }catch(e){ /* hors ligne : on garde le profil en cache */ }
   render();
@@ -3390,7 +3395,7 @@ function viewAccount(){
   if(u && p && !A.needsProfile){
     if(A.mode==='delete') return `<div class="glass" style="padding:16px 18px">
       <p style="margin:0 0 6px"><b>Supprimer ton compte ?</b></p>
-      <p class="hint" style="margin:0 0 12px">Ton nom, ton code ami, tes amitiés, tes résultats partagés, ta boîte aux lettres et ton accès en ligne seront effacés. Tes parties et tes joueurs restent sur ce téléphone, et tes sauvegardes Drive ne sont pas touchées.</p>
+      <p class="hint" style="margin:0 0 12px">Ton nom, ton code ami, tes amitiés, tes résultats partagés, la copie de tes parties sur ton compte, ta boîte aux lettres et ton accès en ligne seront effacés. Tes parties et tes joueurs restent sur ce téléphone, et tes sauvegardes Drive ne sont pas touchées.</p>
       <form id="acct-del-form" class="stack" style="gap:10px"><input type="password" id="acct-pw" placeholder="Ton mot de passe pour confirmer" autocomplete="current-password" aria-label="Mot de passe">
       <div class="row"><button class="btn" type="submit" ${A.busy?'disabled':''}>${A.busy?'Suppression…':'Supprimer définitivement'}</button><button class="btn ghost" type="button" data-a="acct-cancel">Annuler</button></div></form>${msg}</div>`;
     return `<div class="glass" style="padding:16px 18px">
@@ -3414,8 +3419,8 @@ function viewAccount(){
       </form>
       ${isNew ? `<p class="hint" style="margin:10px 0 0">Ton e-mail sert seulement à te connecter et à récupérer ton mot de passe. Personne d'autre ne le voit.</p>`
         : `<button class="link" data-a="acct-forgot">Mot de passe oublié ?</button>`}${msg}</div>`; }
-  return `<div class="glass" style="padding:16px 18px"><p style="margin:0 0 4px">Un compte sert à retrouver tes amis et à partager les parties avec eux.</p>
-    <p class="hint" style="margin:0 0 14px">C'est facultatif. Sans compte, l'app marche exactement comme avant, et tes parties restent sur ce téléphone dans tous les cas.</p>
+  return `<div class="glass" style="padding:16px 18px"><p style="margin:0 0 4px">Un compte sauvegarde tes parties toutes seules, pour les retrouver sur un autre téléphone. Il sert aussi à retrouver tes amis et à partager les parties avec eux.</p>
+    <p class="hint" style="margin:0 0 14px">C'est facultatif. Sans compte, l'app marche pareil, et tes parties restent sur ce téléphone dans tous les cas.</p>
     <div class="row"><button class="btn" data-a="acct-new">Créer un compte</button><button class="btn ghost" data-a="acct-login">Se connecter</button></div>${msg}</div>`;
 }
 async function acctAction(a){
@@ -3440,6 +3445,7 @@ async function acctForm(id){
     if(!pw){ A.err = AUTH_ERR['auth/missing-password']; render(); return; }
     return acctRun(async () => { const {m, fs, auth} = await fb(); const user = auth.currentUser;
       await m.reauthenticateWithCredential(user, m.EmailAuthProvider.credential(user.email, pw));
+      await cloudWipe(); S.cloud.uid = null; S.cloud.h = {}; S.cloud.last = 0; cloudSave();
       const b = m.writeBatch(fs);
       const frs = await m.getDocs(m.query(m.collection(fs, 'friendships'), m.where('members', 'array-contains', user.uid)));
       frs.docs.forEach(x => b.delete(x.ref)); b.delete(m.doc(fs, 'results', user.uid));
@@ -3550,13 +3556,13 @@ const ago = t => { if(!t) return 'jamais'; const d = Math.floor((Date.now()-t)/8
 function viewDrive(){
   const D = S.drive;
   const err = D.err ? `<p class="hint" style="color:var(--ink);margin:10px 0 0">${esc(D.err)}</p>` : '';
-  if(!D.on) return `<div class="glass" style="padding:16px 18px"><p style="margin:0 0 4px"><b>Google Drive</b></p>
-    <p class="hint" style="margin:0 0 14px">Une copie de tes parties dans un dossier « ${DRIVE_FOLDER} » de ton Drive, pour les retrouver si tu changes de téléphone. L'app ne voit que les fichiers qu'elle crée, rien d'autre de ton Drive.</p>
+  if(!D.on) return `<div class="glass" style="padding:16px 18px"><p style="margin:0 0 4px"><b>Google Drive</b> <span class="meta">· en option</span></p>
+    <p class="hint" style="margin:0 0 14px">En plus : une copie lisible de tes parties dans un dossier « ${DRIVE_FOLDER} » de ton Drive. L'app ne voit que les fichiers qu'elle crée, rien d'autre de ton Drive.</p>
     <button class="btn" data-a="drive-on" ${D.busy?'disabled':''}>${D.busy?'Connexion…':'Connecter Google Drive'}</button>${err}</div>`;
   const list = D.list ? `<div class="list" style="margin-top:10px">${D.list.length ? D.list.map(f=>`<div class="item"><div class="grow"><div class="name" style="font-weight:500">${new Date(f.createdTime).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long'})} · ${new Date(f.createdTime).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div><div class="meta">${Math.max(1,Math.round((Number(f.size)||0)/1024))} Ko</div></div><button class="btn ghost" style="padding:8px 14px;font-size:13px" data-drivefile="${esc(f.id)}">Restaurer</button></div>`).join('') : '<p class="hint">Aucune sauvegarde dans le dossier pour l’instant.</p>'}</div>
     <p class="hint" style="margin:6px 0 0">Restaurer ajoute les parties et joueurs de la sauvegarde qui manquent ici, sans rien effacer.</p>` : '';
   return `<div class="glass" style="padding:16px 18px"><div class="row" style="justify-content:space-between"><b>Google Drive</b><span class="meta">Dernière sauvegarde : ${ago(D.last)}</span></div>
-    <p class="hint" style="margin:6px 0 14px">Sauvegarde automatique à l'ouverture et après chaque partie quand Google est connecté. Les ${DRIVE_KEEP} dernières sont gardées.</p>
+    <p class="hint" style="margin:6px 0 14px">En option, en plus de ton compte. Copie faite toute seule quand Google est encore connecté, sinon avec « Sauvegarder maintenant ». Les ${DRIVE_KEEP} dernières sont gardées.</p>
     <div class="row"><button class="btn" data-a="drive-now" ${D.busy?'disabled':''}>${D.busy?'Un instant…':'Sauvegarder maintenant'}</button><button class="btn ghost" data-a="drive-list" ${D.busy?'disabled':''}>${D.list?'Actualiser':'Voir les sauvegardes'}</button></div>
     ${list}<button class="link" data-a="drive-off" style="margin-top:8px">Déconnecter Google Drive</button>${err}</div>`;
 }
@@ -3571,6 +3577,125 @@ async function driveAction(a, el){
     await driveRun(async () => { const d = await (await gapi('files/'+id+'?alt=media')).json(); mergeData(d); }, true); }
   else if(a==='drive-off'){ const t = tokNow(); if(t && window.google && google.accounts) try{ google.accounts.oauth2.revoke(t, ()=>{}); }catch(e){}
     lsSet(DRIVE_TOK, null); D.on = false; D.list = null; D.err = null; driveSave(); render(); toast('Drive déconnecté. Les sauvegardes restent dans ton Drive.'); }
+}
+
+/* ================= sauvegarde sur le compte (v41) =================
+   Remplace les rappels Drive : dès qu'on est connecté, le carnet est copié sur le compte, sans geste (la connexion
+   Firebase ne s'expire pas comme le jeton Google). Un nouveau téléphone retrouve tout en se connectant.
+   bk/{uid}/items/{clé} {d, at} : un document par élément, d = JSON de l'élément (null = supprimé), at = heure serveur.
+   Clés : g_<partie>, p_<joueur> (sans la photo, jamais envoyée), z_<partie en pause>, s_rules421.
+   Les parties en cours ne partent pas (elles restent sur le téléphone où on les joue).
+   Synchro dans les deux sens, sans jamais perdre une donnée :
+   - envoi : chaque élément dont l'empreinte a changé depuis la dernière synchro (h[clé]) ; un élément disparu d'ici
+     part comme supprimé (garde-fou : pas plus de la moitié des parties d'un coup, au-delà de 5) ;
+   - réception (seulement les documents modifiés depuis `last`, moins une marge) : on prend la version du compte si
+     l'élément n'a pas bougé ici depuis la dernière synchro ; s'il a changé des deux côtés, on garde celle d'ici
+     (elle repart au prochain envoi). Un élément supprimé ici mais pas encore envoyé ne revient pas.
+   État local yz-cloud {uid, off, last, h}. off = l'utilisateur a coupé la sauvegarde (Mon compte → Confidentialité). */
+const CLOUD_KEY = 'yz-cloud', CLOUD_PULL = 60000;
+S.cloud = Object.assign({uid:null, off:false, last:0, h:{}}, lsGet(CLOUD_KEY) || {}, {busy:false, err:null, first:false, ok:0, pullAt:0, again:null});
+const cloudSave = () => lsSet(CLOUD_KEY, {uid:S.cloud.uid, off:S.cloud.off, last:S.cloud.last, h:S.cloud.h});
+const cloudOn = () => !db && online() && !S.cloud.off;
+/* Jamais synchronisé avec ce compte sur ce téléphone : on attend la première réception avant de demander « C'est qui, toi ? ». */
+const cloudWaiting = () => cloudOn() && navigator.onLine && (S.cloud.first || S.cloud.uid !== myUid());
+const hashOf = s => s.length.toString(36) + '.' + (hashStr(s) >>> 0).toString(36);
+function cloudItems(){
+  const out = {};
+  S.games.forEach(g => { if(g && g.id) out['g_'+g.id] = JSON.stringify(g); });
+  Object.entries(S.players).forEach(([id, p]) => { if(!p) return; const {photo, ...rest} = p; out['p_'+id] = JSON.stringify(rest); });
+  (S.paused||[]).forEach(x => { if(x && x.id) out['z_'+x.id] = JSON.stringify(x); });
+  if(S.rules421) out['s_rules421'] = JSON.stringify(S.rules421);
+  return out;
+}
+/* Ce qui reste à envoyer (affichage seulement). */
+function cloudDirty(){
+  const C = S.cloud, loc = cloudItems(); let n = 0;
+  Object.entries(loc).forEach(([k, s]) => { if(C.h[k] !== hashOf(s)) n++; });
+  Object.keys(C.h).forEach(k => { if(C.h[k] !== 0 && !(k in loc)) n++; });
+  return n;
+}
+function cloudApply(key, d){
+  const t = key.slice(0, 2), id = key.slice(2);
+  if(t==='g_'){ S.games = S.games.filter(g => g.id!==id); if(d){ const g = JSON.parse(d); if(g && g.id===id) S.games.push(g); } }
+  else if(t==='p_'){ const old = S.players[id]; if(!d){ delete S.players[id]; return; }
+    const p = JSON.parse(d); if(old && old.photo) p.photo = old.photo; S.players[id] = p; }
+  else if(t==='z_'){ S.paused = (S.paused||[]).filter(x => x.id!==id); if(d){ const x = JSON.parse(d); if(x && x.id===id && GAMES[x.k]) S.paused.push(x); } }
+  else if(key==='s_rules421' && d){ S.rules421 = {...DEF_RULES, ...JSON.parse(d)}; }
+}
+async function cloudPull(){
+  const {m, fs} = await fb(), me = myUid(), C = S.cloud;
+  const col = m.collection(fs, 'bk', me, 'items');
+  const snap = await m.getDocs(C.last ? m.query(col, m.where('at', '>=', new Date(C.last - 60000))) : col);
+  const loc = cloudItems(); let changed = 0, maxAt = C.last;
+  snap.docs.forEach(x => { const r = x.data(), key = x.id, d = typeof r.d==='string' ? r.d : null;
+    const at = r.at && r.at.toMillis ? r.at.toMillis() : 0; if(at > maxAt) maxAt = at;
+    const rh = d ? hashOf(d) : 0, cur = loc[key] ? hashOf(loc[key]) : null, base = C.h[key];
+    if(cur===rh || (cur===null && rh===0)){ C.h[key] = rh; return; }
+    try{
+      if(cur===null){ if(base!==undefined && base!==0 && base===rh) return; /* supprimé ici, pas encore envoyé */
+        cloudApply(key, d); C.h[key] = rh; changed++; return; }
+      if(base===cur){ cloudApply(key, d); C.h[key] = rh; changed++; } /* pas touché ici : la version du compte gagne */
+    }catch(e){ /* document illisible : ignoré */ }
+  });
+  C.last = maxAt; C.pullAt = Date.now(); cloudSave();
+  if(changed){ local.save(); render(); }
+  return changed;
+}
+async function cloudPush(){
+  const {m, fs} = await fb(), me = myUid(), C = S.cloud;
+  const loc = cloudItems(), ops = [];
+  Object.entries(loc).forEach(([k, s]) => { const h = hashOf(s); if(C.h[k] !== h) ops.push([k, s, h]); });
+  let gone = Object.keys(C.h).filter(k => C.h[k] !== 0 && !(k in loc));
+  /* Garde-fou : beaucoup de parties disparues d'un coup (données effacées ?) → on n'envoie pas ces suppressions. */
+  const goneG = gone.filter(k => k.startsWith('g_')).length, haveG = Object.keys(C.h).filter(k => k.startsWith('g_') && C.h[k]!==0).length;
+  if(goneG > 5 && goneG > haveG / 2) gone = gone.filter(k => !k.startsWith('g_'));
+  gone.forEach(k => ops.push([k, null, 0]));
+  for(let i = 0; i < ops.length; i += 400){ const part = ops.slice(i, i+400), b = m.writeBatch(fs);
+    part.forEach(([k, s]) => b.set(m.doc(fs, 'bk', me, 'items', k), {d:s, at:m.serverTimestamp()}));
+    await b.commit(); part.forEach(([k,, h]) => { C.h[k] = h; }); cloudSave(); }
+  return ops.length;
+}
+let cloudT = null, cloudP = null;
+function cloudSoon(){ if(!cloudOn()) return; clearTimeout(cloudT); cloudT = setTimeout(() => cloudSync(false), 2000); }
+const CLOUD_ERR = e => /permission|PERMISSION/.test(String(e && (e.code||e.message))) ? "Le serveur a refusé la sauvegarde. Vérifie que les dernières règles Firestore sont publiées."
+  : /unavailable|network|Failed to fetch|offline/i.test(String(e && (e.code||e.message))) ? "Pas de connexion : la sauvegarde repartira toute seule." : "La sauvegarde sur ton compte n'a pas marché. Elle repartira toute seule.";
+function cloudSync(pull){
+  if(!cloudOn() || !navigator.onLine) return Promise.resolve();
+  const C = S.cloud;
+  if(cloudP){ C.again = {pull: !!(pull || (C.again && C.again.pull))}; return cloudP; }
+  if(C.uid !== myUid()){ C.uid = myUid(); C.last = 0; C.h = {}; C.first = true; cloudSave(); }
+  if(C.first || Date.now() - C.pullAt > CLOUD_PULL) pull = true;
+  cloudP = (async () => { C.busy = true; C.err = null; const first = C.first;
+    try{ if(pull) await cloudPull(); await cloudPush(); C.ok = Date.now(); }
+    catch(e){ C.err = CLOUD_ERR(e); }
+    C.busy = false; C.first = false; cloudP = null;
+    if(first || ['backup','settings','history','result','account'].includes(S.view)) render();
+    const ag = C.again; C.again = null; if(ag) cloudSync(ag.pull);
+  })();
+  return cloudP;
+}
+/* Toutes les copies du compte (coupure de la sauvegarde, suppression du compte). */
+async function cloudWipe(){
+  const {m, fs} = await fb(), me = myUid();
+  const snap = await m.getDocs(m.collection(fs, 'bk', me, 'items'));
+  for(let i = 0; i < snap.docs.length; i += 400){ const b = m.writeBatch(fs); snap.docs.slice(i, i+400).forEach(x => b.delete(x.ref)); await b.commit(); }
+}
+async function cloudSet(on){
+  const C = S.cloud;
+  if(on){ C.off = false; C.uid = null; C.h = {}; C.last = 0; cloudSave(); render(); await cloudSync(true);
+    toast(C.err || 'Tes parties sont sauvegardées sur ton compte'); return; }
+  if(!navigator.onLine){ toast('Pas de connexion. Réessaie quand tu as du réseau.'); return; }
+  C.busy = true; render();
+  try{ await cloudWipe(); C.off = true; C.h = {}; C.last = 0; C.uid = null; cloudSave(); toast('Copie effacée de ton compte. Tes parties restent sur ce téléphone.'); }
+  catch(e){ toast(CLOUD_ERR(e)); }
+  C.busy = false; S.confirm = null; render();
+}
+/* Ligne d'état sous le classement, juste après la fin d'une partie. */
+function viewResCloud(){
+  if(!cloudOn()) return '';
+  const C = S.cloud, t = !navigator.onLine ? 'Sera sauvegardée sur ton compte au retour du réseau'
+    : C.busy ? 'Sauvegarde sur ton compte…' : C.err ? C.err : 'Sauvegardée sur ton compte';
+  return `<p class="hint" id="res-cloud">${esc(t)}</p>`;
 }
 
 
@@ -3726,6 +3851,11 @@ function viewMe(){
     <div class="field"><span class="label">Partie en cours visible par les joueurs</span>
       <div class="seg" style="margin:0"><button class="${watchOn()?'on':''}" data-wshare="1">Oui</button><button class="${watchOn()?'':'on'}" data-wshare="0">Non</button></div>
       <span class="hint">Les joueurs de la partie qui sont tes amis peuvent suivre les scores en direct sur leur téléphone, sans rien modifier. Personne d'autre.</span></div>
+    <div class="field"><span class="label">Sauvegarder mes parties sur mon compte</span>
+      <div class="seg" style="margin:0"><button class="${S.cloud.off?'':'on'}" data-bk="1" ${S.cloud.busy?'disabled':''}>Oui</button><button class="${S.cloud.off?'on':''}" data-bk="0" ${S.cloud.busy?'disabled':''}>Non</button></div>
+      ${S.confirm==='bkoff' ? `<span class="hint" style="color:var(--ink)">La copie de tes parties sera effacée de ton compte. Elles restent sur ce téléphone, mais tu ne les retrouveras plus en te connectant ailleurs.</span>
+      <div class="row" style="gap:16px;margin-top:6px"><button class="btn ghost" style="padding:8px 14px;font-size:13px" data-bk="del" ${S.cloud.busy?'disabled':''}>${S.cloud.busy?'…':'Effacer la copie'}</button><button class="link" data-a="cancel">Annuler</button></div>`
+      : `<span class="hint">Tes parties et tes joueurs (jamais les photos) sont copiés sur ton compte pour les retrouver sur un autre téléphone. Toi seul y as accès.</span>`}</div>
   </details>`;
 }
 /* Renvoi aux amis (v25), rangé depuis la v29 avec la sauvegarde : le bouton Synchroniser fait les deux. */
@@ -3739,7 +3869,7 @@ function viewFriendsSync(){
    Sans fiche, la boîte aux lettres attend et les amis ne voient rien (cas d'Emma, v15). Carnet vide (nouveau téléphone,
    réinstallation) : on propose d'abord la restauration Drive, sinon créer une fiche neuve ferait un doublon de l'ancienne. */
 const ME_PANEL = {open:false, none:false};
-const meNeeded = () => !db && S.ready && !S.locked && online() && !S.acct.creating && !myPid();
+const meNeeded = () => !db && S.ready && !S.locked && online() && !S.acct.creating && !myPid() && !cloudWaiting();
 function meCheck(){
   if(ME_PANEL.open && !meNeeded()){ ME_PANEL.open = false; ME_PANEL.none = false; closePanel(); return; }
   if(ME_PANEL.open){ mePanel(); return; }
@@ -3840,6 +3970,10 @@ async function frClick(el){
   if(d.frlink){ await frLinkTo(S.fid, d.frlink); return true; }
   if(d.frnew){ const id = frNewPlayer(S.fid); if(id){ S.pid = id; go('player'); } return true; }
   if(d.me){ await meSet(d.me); return true; }
+  if(d.bk){ if(d.bk==='1'){ S.confirm = null; if(S.cloud.off) await cloudSet(true); else render(); }
+    else if(d.bk==='0'){ if(!S.cloud.off){ S.confirm = 'bkoff'; S.privOpen = true; render(); } }
+    else if(d.bk==='del') await cloudSet(false);
+    return true; }
   if(d.share){ const on = d.share==='1'; const st = lsGet(PUB_KEY) || {};
     lsSet(PUB_KEY, on ? {} : {off:true, has:true}); render(); pubSoon(); toast(on ? 'Tes amis verront tes résultats' : 'Tes résultats ne sont plus partagés'); return true; }
   if(d.wshare){ const on = d.wshare==='1'; lsSet(WATCH_KEY, {...(lsGet(WATCH_KEY)||{}), off:!on}); render(); watchSync();
@@ -4238,11 +4372,6 @@ function viewSheet(g, el){
   const head = `<thead><tr><th></th>${ids.map(id=>`<th>${dot(id)}${nmOf(id)}</th>`).join('')}</tr></thead>`;
   return G.sheet(g, sh, ids, nmOf, head, el, title);
 }
-/* État de la sauvegarde Drive sous le classement, juste après la fin d'une partie. */
-function viewResDrive(){ const D = S.drive;
-  if(D.busy) return `<p class="hint" id="res-drive">Sauvegarde sur Drive…</p>`;
-  if(!drivePending()) return `<p class="hint" id="res-drive">Sauvegardée sur Drive</p>`;
-  return `<div class="glass row" id="res-drive" style="padding:12px 14px 12px 18px;margin:14px 0 0;justify-content:space-between;flex-wrap:nowrap;border-radius:22px"><span class="grow"><b>Pas encore sur Drive</b><span class="hint">${D.err ? esc(D.err) : 'Un toucher pour reconnecter Google'}</span></span><button class="btn" style="padding:10px 16px;font-size:14px" data-a="drive-now">Sauvegarder</button></div>`; }
 function viewResult(){
   const R = S.result; if(!R || !R.g) return viewHome();
   const g = R.g, k = kindOf(g);
@@ -4261,7 +4390,7 @@ function viewResult(){
   <p class="sub">${R.from==='end' ? 'Partie enregistrée dans l\'historique.' : spect ? `Partie de ${esc(R.owner||'ton ami')} terminée.${myPid() ? ' Elle va arriver dans ton historique.' : ''}` : 'Classement final.'}</p>
   <div class="glass" style="padding:8px 16px"><div class="list res-list">${rows.map((x,i)=>`<div class="item${x.win?' win':''}${rv((n-1-i)*RV_STEP)}"><span class="rk">${x.rk}</span>${spect ? wav((g.cols||{})[x.r.id], x.r.name) : av(x.r.id, pname(x.r.id,x.r.name))}<div class="grow"><div class="name">${nm(x.r)}</div>${x.meta?`<div class="meta">${x.meta}</div>`:''}</div>${x.big?`<div class="tok">${x.big}</div>`:''}</div>`).join('')}</div></div>
   ${g.src ? `<p class="hint">Reçue de ${esc(g.src.name)}</p>` : ''}
-  ${R.from==='end' && !db && S.drive.on ? viewResDrive() : ''}
+  ${R.from==='end' && !db ? viewResCloud() : ''}
   ${viewSheet(g, el)}
   <div class="stack" style="margin-top:18px">
     ${spect ? '' : `<button class="btn block" data-a="res-again" id="res-again">Rejouer avec les mêmes</button>`}
@@ -4406,11 +4535,11 @@ async function saveFinished(k){ return GAMES[k].record(S.live[k]); }
 
 $app.addEventListener('toggle', e => { if(e.target && e.target.id==='privacy') S.privOpen = e.target.open; }, true);
 $app.addEventListener('input', e => { if(e.target && e.target.id==='fb-text'){ S.fbk.draft = e.target.value; if(S.fbk.err){ S.fbk.err = null; const x = document.getElementById('fb-err'); if(x) x.remove(); } } });
-const CLICK_SEL = '[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-mg],[data-mg-yes],[data-rg],[data-rg-yes],[data-seg],[data-player],[data-color],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-lkopen],[data-me],[data-share],[data-frsend],[data-wshare],[data-watch],[data-game],[data-sgrp],[data-look]'
+const CLICK_SEL = '[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-mg],[data-mg-yes],[data-rg],[data-rg-yes],[data-seg],[data-player],[data-color],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-lkopen],[data-me],[data-bk],[data-share],[data-frsend],[data-wshare],[data-watch],[data-game],[data-sgrp],[data-look]'
   + GAME_ORDER.map(k=>GAMES[k].sel ? ','+GAMES[k].sel : '').join('');
 $app.addEventListener('click', async e => {
   const el = e.target.closest(CLICK_SEL); if(!el) return;
-  if(el.matches('[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-lkopen],[data-me],[data-share],[data-wshare],[data-frsend],[data-a=fr-rm]') && await frClick(el)) return;
+  if(el.matches('[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-lkopen],[data-me],[data-bk],[data-share],[data-wshare],[data-frsend],[data-a=fr-rm]') && await frClick(el)) return;
   { const G = GAMES[S.view]; if(G && G.click && G.click(el, el.dataset.a)) return; }
   if(el.dataset.watch){ watchOpen(el.dataset.watch); return; }
   if(el.dataset.plj){ plJoin(el.dataset.plj); return; }
@@ -4531,8 +4660,8 @@ async function boot(){
   if(!d){ local.load(); S.ready=true; render(); try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
     if(S.acct.cache) fb().catch(()=>{});
     if(S.drive.on){ loadGis().catch(()=>{}); driveAuto(); }
-    document.addEventListener('visibilitychange', () => { if(!document.hidden){ driveAuto(); checkInbox(); flushSoon(); watchSync(); resyncAuto(); if(S.view==='watch') watchPoll(); else watchCheck(true); } });
-    addEventListener('online', () => { checkInbox(); flushSoon(); pubSoon(); watchSync(); watchCheck(true); driveAuto(); });
+    document.addEventListener('visibilitychange', () => { if(!document.hidden){ driveAuto(); cloudSync(false); checkInbox(); flushSoon(); watchSync(); resyncAuto(); if(S.view==='watch') watchPoll(); else watchCheck(true); } });
+    addEventListener('online', () => { checkInbox(); flushSoon(); pubSoon(); watchSync(); watchCheck(true); driveAuto(); cloudSync(false); });
     setInterval(() => { if(!document.hidden && S.view!=='watch') watchCheck(true); }, 30000);
     return; }
   db = d;
@@ -4550,7 +4679,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '40';
+window.APP_VERSION = '41';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

@@ -1,5 +1,5 @@
 rules_version = '2';
-// Carnet de jeux — règles Firestore (comptes, codes, amis, résultats, parties partagées, partie en direct, bugs et idées, réglages, jeu de la playlist).
+// Carnet de jeux — règles Firestore (comptes, codes, amis, résultats, parties partagées, partie en direct, bugs et idées, réglages, jeu de la playlist, sauvegarde du carnet).
 // À coller dans Firebase > Firestore Database > Règles, puis « Publier ».
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -180,6 +180,18 @@ service cloud.firestore {
           && request.resource.data.updatedAt == request.time;
         allow delete: if signedIn() && (request.auth.uid == uid || isHost());
       }
+    }
+
+    // Sauvegarde du carnet sur le compte (v41) : bk/{uid}/items/{clé} {d, at}. Seul le titulaire lit, écrit et efface.
+    // d = JSON d'une partie (g_), d'un joueur sans photo (p_), d'une partie en pause (z_) ou d'un réglage (s_) ; null = supprimé.
+    match /bk/{uid}/items/{key} {
+      function isMe() { return signedIn() && request.auth.uid == uid; }
+      allow get, list, delete: if isMe();
+      allow create, update: if isMe()
+        && key.matches('(g|p|z|s)_.{1,300}')
+        && request.resource.data.keys().hasOnly(['d', 'at'])
+        && (request.resource.data.d == null || (request.resource.data.d is string && request.resource.data.d.size() < 500000))
+        && request.resource.data.at == request.time;
     }
 
     // Tout le reste : fermé.

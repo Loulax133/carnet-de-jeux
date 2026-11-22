@@ -65,3 +65,13 @@ Les données de jeu sont stockées dans chaque téléphone, à part : une mise �
 - Les jeux de l'accueil sont triés pour chaque téléphone selon ses parties. Partie en cours d'abord, puis un score d'habitude : chaque partie des 90 derniers jours compte, d'autant plus qu'elle est récente (poids divisé par 2 tous les 30 jours). À égalité : le plus joué en tout, sinon l'ordre d'origine. Un jeu verrouillé (« Bientôt ») reste à la fin.
 - Jeu nouveau (première partie il y a moins de 14 jours) : remonté au moins au milieu de la liste. Ensuite il garde la place que lui donnent ses parties.
 - Rien de stocké : l'ordre est recalculé à chaque affichage (fonction `homeOrder()`, réglages `HOME_DAYS`, `HOME_HALF`, `HOME_NEW`). Les parties reçues d'amis comptent aussi.
+
+## Sauvegarde sur le compte (version 41)
+- Dès qu'on est connecté, le carnet est copié sur le compte, sans rien toucher : parties, joueurs (jamais les photos), parties en pause, réglages du 421. Les parties en cours restent sur le téléphone où on les joue.
+- Nouveau téléphone : se connecter suffit, tout revient (la fenêtre « C'est qui, toi ? » attend la fin de la récupération).
+- Deux téléphones : les ajouts, modifications et suppressions passent de l'un à l'autre (à l'ouverture, au retour au premier plan et au bouton Synchroniser). Si un élément a changé des deux côtés, la version du téléphone gagne. Garde-fou : un téléphone qui perd d'un coup plus de la moitié de ses parties (au-delà de 5) n'efface rien sur le compte.
+- Base : `bk/{uid}/items/{clé}` `{d, at}` (clés `g_`, `p_`, `z_`, `s_`), lisible et modifiable par le titulaire seul. `firestore.rules` change (bloc `bk`) : à recoller dans Firebase. **Remettre ton code ami à la place de `TON_CODE_AMI`** avant de publier.
+- Interrupteur « Sauvegarder mes parties sur mon compte » dans Mon compte → Confidentialité (Oui par défaut). Non = la copie est effacée du serveur. La suppression du compte l'efface aussi.
+- Google Drive devient une option : plus de carte ni de point de rappel, plus de fenêtre Google au bouton Synchroniser. La copie Drive se fait toute seule si Google est encore connecté, ou avec « Sauvegarder maintenant ».
+- Nouvelle clé locale (à ne pas renommer) : `yz-cloud`.
+

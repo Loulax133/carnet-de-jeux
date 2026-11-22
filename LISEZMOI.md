@@ -1,6 +1,6 @@
 # Carnet de jeux — version hors ligne
 
-Compteur de points pour Yahtzee, 421, Skyjo, Shut the Box et Farkle. Fonctionne sans réseau une fois installé.
+Compteur de points pour Yahtzee, 421, Skyjo, Shut the Box, Farkle, la Playlist et le Tarot. Fonctionne sans réseau une fois installé.
 
 ## Fichiers
 - `index.html` — l'application
@@ -74,4 +74,10 @@ Les données de jeu sont stockées dans chaque téléphone, à part : une mise �
 - Interrupteur « Sauvegarder mes parties sur mon compte » dans Mon compte → Confidentialité (Oui par défaut). Non = la copie est effacée du serveur. La suppression du compte l'efface aussi.
 - Google Drive devient une option : plus de carte ni de point de rappel, plus de fenêtre Google au bouton Synchroniser. La copie Drive se fait toute seule si Google est encore connecté, ou avec « Sauvegarder maintenant ».
 - Nouvelle clé locale (à ne pas renommer) : `yz-cloud`.
+
+## Tarot (version 42)
+- Nouveau module `tarot`, de 3 à 5 joueurs (règles FFT). Par donne : preneur, partenaire (roi appelé, à 5, « Seul » possible), contrat (Petite ×1, Garde ×2, Garde sans ×4, Garde contre ×6), bouts et points de l'attaque, primes (petit au bout, poignée, chelem).
+- Attaque : ±(25 + écart) × contrat ± petit au bout (10 × contrat) ± poignée + chelem. Le preneur marque ce que paient les défenseurs (à 5, le partenaire prend une part) : la somme fait toujours 0.
+- Fin de partie à la main, le plus gros total gagne. Une donne se corrige en la touchant dans le tableau.
+- `firestore.rules` change (règle `watch` : ajout de `tarot` pour la partie en direct) : à recoller dans Firebase avant d'uploader. **Remettre ton code ami à la place de `TON_CODE_AMI`.**
 

@@ -691,7 +691,7 @@ function viewSetup(k){
     <div class="glass empty"><div class="serif">Aucun joueur pour l'instant</div><p>Chaque joueur ajouté garde ses stats d'une partie à l'autre.</p>
     <button class="btn" data-go="players">Ajouter des joueurs</button></div>`;
   const cnt = id => S.games.filter(g=>kindOf(g)===k && (g.results||[]).some(r=>r.id===id)).length;
-  const ok = sel.size >= G.min && (!G.needsNet || navigator.onLine);
+  const over = G.max && sel.size > G.max, ok = sel.size >= G.min && !over && (!G.needsNet || navigator.onLine);
   return `${back}
     <div class="label">${G.name} · nouvelle partie</div><h1>Qui <em>joue</em> ce soir ?</h1>
     <p class="sub">Sélectionne les joueurs dans l'ordre du tour.${G.setupNote||''}</p>
@@ -700,7 +700,7 @@ function viewSetup(k){
       return `<div class="item" role="button" tabindex="0" data-pick="${id}" data-k="${k}" style="cursor:pointer"><span class="crowned">${photoOf(id) ? av(id,p.name) : `<div class="avatar" style="${order<0?'background:var(--chip);color:var(--ink)':avStyle(id)}">${initial(p.name)}</div>`}${order<0?'':`<span class="obadge">${order+1}</span>`}</span><div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">${plural(cnt(id),'partie')} de ${G.name}</div></div><span class="meta">${order<0?'':'Sélectionné'}</span></div>`;}).join('')}</div></div>
     ${G.virtual ? virtToggle(k) : ''}
     ${G.setupExtra ? G.setupExtra() : ''}
-    <div style="margin-top:18px"><button class="btn block" data-a="start" data-k="${k}" id="start-${k}" ${ok?'':'disabled'}>Lancer la partie${sel.size?' à '+sel.size:''}</button></div>
+    <div style="margin-top:18px"><button class="btn block" data-a="start" data-k="${k}" id="start-${k}" ${ok?'':'disabled'}>${over ? G.max+' joueurs au maximum' : 'Lancer la partie'+(sel.size?' à '+sel.size:'')}</button></div>
     <p class="note">Il manque quelqu'un ? <button class="link" data-go="players">Ajoute-le</button></p>
     ${G.setupRules()}`;
 }
@@ -1785,13 +1785,14 @@ function statsSkyView(top, ids, nameOf, pool, extra){
 }
 /* Courbe des totaux cumulés par manche (Skyjo), une ligne par joueur dans sa couleur.
    Même couleur (ou sans couleur) pour plusieurs joueurs : la 2e, 3e… ligne est en pointillés différents. */
-function skyChart(ids, st, nmOf, el){
+function skyChart(ids, st, nmOf, el, o){
+  const END = o && 'end' in o ? o.end : SKY_END, UNIT = (o && o.unit) || 'manche';
   const n = st.log.length; if(!n) return '';
   /* v29 : la courbe se dessine à l'ouverture (0,9 s). el = temps écoulé depuis l'ouverture de l'écran. */
   const anim = typeof el==='number' && el < 1500 && !reduceMotion(), D0 = 120 - (el||0), dl = ms => anim ? ` style="animation-delay:${Math.round(ms)}ms"` : '';
   const cum = {}; ids.forEach(id => { let t = 0; cum[id] = [0, ...st.log.map(r => (t += (r.fin[id]||0)))]; });
-  const all = ids.flatMap(id=>cum[id]); let lo = Math.min(0, ...all), hi = Math.max(SKY_END, ...all);
-  const span = hi - lo, step = [10,20,25,50,100,200].find(s => span/s <= 5) || 500;
+  const all = ids.flatMap(id=>cum[id]); let lo = Math.min(0, ...all), hi = Math.max(END||0, ...all);
+  const span = (hi - lo) || 10, step = [10,20,25,50,100,200,250,500,1000].find(s => span/s <= 5) || 2000;
   lo = Math.floor(lo/step)*step; hi = Math.ceil(hi/step)*step;
   const W = 320, H = 190, L = 30, R = 10, T = 8, B = 22;
   const X = i => L + (n ? i/n : 0)*(W-L-R), Y = v => T + (hi-v)/(hi-lo)*(H-T-B);
@@ -1806,11 +1807,11 @@ function skyChart(ids, st, nmOf, el){
     const line = s.d || !anim ? `<polyline points="${P.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${s.c}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"${s.d?` stroke-dasharray="${s.d}"`:''}${anim?` class="ln-f"${dl(D0)}`:''}/>`
       : `<path d="M${P.map(p=>p.join(' ')).join('L')}" pathLength="1" class="ln" fill="none" stroke="${s.c}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"${dl(D0)}/>`;
     return line + (n <= 15 ? cum[id].slice(1).map((v,i)=>`<circle cx="${f(X(i+1))}" cy="${f(Y(v))}" r="2.6" fill="${s.c}"${anim?` class="pt"${dl(D0 + (i+1)/n*900)}`:''}/>`).join('') : ''); }).join('');
-  const end = hi >= SKY_END ? `<line class="end" x1="${L}" x2="${W-R}" y1="${f(Y(SKY_END))}" y2="${f(Y(SKY_END))}"/><text x="${L+4}" y="${f(Y(SKY_END))-4}">fin</text>` : '';
+  const end = END && hi >= END ? `<line class="end" x1="${L}" x2="${W-R}" y1="${f(Y(END))}" y2="${f(Y(END))}"/><text x="${L+4}" y="${f(Y(END))-4}">fin</text>` : '';
   const leg = ids.map((id,j) => { const s = style[j]; return `<span><svg width="20" height="8" aria-hidden="true"><line x1="1" x2="19" y1="4" y2="4" stroke="${s.c}" stroke-width="2.2" stroke-linecap="round"${s.d?` stroke-dasharray="${s.d}"`:''}/></svg>${nmOf(id)}</span>`; }).join('');
   return `<h2>Évolution</h2><div class="glass" style="padding:14px 14px 10px" id="sky-chart">
-    <svg class="sky-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Points cumulés par manche">${grid}${end}${xl}${lines}</svg>
-    <div class="sky-leg">${leg}</div><p class="hint" style="margin:4px 2px 0">Points cumulés, manche après manche.</p></div>`;
+    <svg class="sky-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Points cumulés par ${UNIT}">${grid}${end}${xl}${lines}</svg>
+    <div class="sky-leg">${leg}</div><p class="hint" style="margin:4px 2px 0">Points cumulés, ${UNIT} après ${UNIT}.</p></div>`;
 }
 function sheetSky(g, sh, ids, nmOf, head, el, title){
   const st = runSky({order:ids, rounds:sh.rounds||[]});
@@ -2877,6 +2878,202 @@ defGame('playlist', {
   sheet: (g, sh, ids, nmOf, head, el, title) => `<h2>${title}</h2><div class="glass" style="padding:4px 16px"><div class="list">${(sh.tracks||[]).map(t => `<div class="item pl-song">${plThumb(t.v) ? `<img class="pl-th" src="${plThumb(t.v)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<div class="grow"><div class="pl-t">${esc(t.t)}</div><div class="meta">Mis par <b style="color:var(--ink)">${esc(t.by)}</b> · ${t.bonus ? 'personne n’a trouvé' : (t.ok||[]).length ? 'trouvé par '+andList(t.ok.map(esc)) : 'pas de vote'}</div></div></div>`).join('')}</div></div>`,
   after: afterPL,
   click: clickPL, sel:'[data-plj]'
+});
+
+/* =====================================================================================
+   Module Tarot (v42). Règles FFT, de 3 à 5 joueurs (à 5 : le preneur appelle un roi, il peut s'appeler lui-même).
+   Une donne : preneur, partenaire (à 5), contrat, bouts et points de l'attaque, primes (petit au bout, poignée, chelem).
+   Score de l'attaque A = ±(25 + écart) × contrat ± petit au bout (10 × contrat) ± poignée + chelem.
+   Le preneur marque (n−1)·A (à 5 avec un partenaire : 2A, partenaire A), chaque défenseur −A : la somme fait toujours 0.
+   L = {order, names, rounds:[{t, p?, c, b, pts, pab?, pg?, ch?}], startedAt}. Fin de partie à la main, le plus gros total gagne.
+   ===================================================================================== */
+const TAR_C = [{n:'Petite', s:'P', m:1}, {n:'Garde', s:'G', m:2}, {n:'Garde sans', s:'GS', m:4}, {n:'Garde contre', s:'GC', m:6}];
+const TAR_NEED = [56, 51, 41, 36], TAR_PG = [0, 20, 30, 40], TAR_PGN = {3:[13,15,18], 4:[10,13,15], 5:[8,10,13]};
+const TAR_CH = [0, 400, 200, -200], TAR_CHN = ['Aucun', 'Annoncé, réussi', 'Non annoncé, réussi', 'Annoncé, raté'];
+const tarNew = () => ({t:null, p:null, c:null, b:null, pts:undefined, pab:null, pg:0, ch:0});
+const tarSign = v => v > 0 ? '+'+v : v < 0 ? '−'+(-v) : '0';
+/* Une donne → {A, made, diff, need, d:{pid: points}} */
+function tarDonne(r, order){
+  const c = TAR_C[r.c], need = TAR_NEED[r.b], made = r.pts >= need, s = made ? 1 : -1, diff = Math.abs(r.pts - need);
+  const A = s*(25 + diff)*c.m + (r.pab==='a' ? 1 : r.pab==='d' ? -1 : 0)*10*c.m + s*TAR_PG[r.pg||0] + TAR_CH[r.ch||0];
+  const d = {}; order.forEach(id => d[id] = -A);
+  if(order.length===5 && r.p && r.p!==r.t){ d[r.t] = 2*A; d[r.p] = A; } else d[r.t] = (order.length-1)*A;
+  return {A, made, diff, need, d};
+}
+function runTar(L){
+  const tot = {}, takes = {}, made = {}; L.order.forEach(id => { tot[id] = 0; takes[id] = 0; made[id] = 0; });
+  const log = (L.rounds||[]).map(r => { const x = tarDonne(r, L.order);
+    L.order.forEach(id => tot[id] += x.d[id]||0); takes[r.t] = (takes[r.t]||0) + 1; if(x.made) made[r.t] = (made[r.t]||0) + 1;
+    return {...x, r, fin:x.d}; });
+  const max = Math.max(...L.order.map(id => tot[id]));
+  return {tot, takes, made, log, lead:max, winners: log.length ? L.order.filter(id => tot[id]===max) : []};
+}
+const tarReady = (R, n) => R.t && R.c!==null && R.b!==null && R.pts!==undefined && (n!==5 || R.p);
+const rulesTar = open => `<details class="rules glass"${open?' open':''}><summary>Règles en bref</summary><ul>
+  <li>Le <b>preneur</b> joue seul contre les autres (à 5, avec le joueur qui a le <b>roi appelé</b>). Il choisit son contrat : <b>Petite ×1, Garde ×2, Garde sans ×4, Garde contre ×6</b>.</li>
+  <li>Les <b>bouts</b> (le 1, le 21 et l'excuse) fixent les points à faire : <b>56</b> sans bout, <b>51</b> avec 1, <b>41</b> avec 2, <b>36</b> avec 3. Il y a 91 points en tout.</li>
+  <li>Donne réussie ou chutée : <b>(25 + l'écart) × le contrat</b>, pour chaque défenseur.</li>
+  <li><b>Petit au bout</b> : 10 × le contrat, au camp qui le fait. <b>Poignée</b> : 20, 30 ou 40, au camp qui gagne la donne. <b>Chelem</b> : 400 annoncé, 200 sans annonce, −200 annoncé et raté.</li>
+  <li>Le preneur encaisse ce que paient les défenseurs (à 5, le partenaire prend une part). Le plus gros total gagne.</li></ul></details>`;
+function viewTar(){
+  const L = S.live.tarot; if(!L) return viewSetup('tarot');
+  if(!S.tar) S.tar = tarNew();
+  if(S.tarFix && !(L.rounds||[])[S.tarFix.i]) S.tarFix = null;
+  const st = runTar(L), n = L.order.length, nm = id => esc(pname(id, L.names[id])), F = S.tarFix, R = F || S.tar;
+  const order = [...L.order].sort((a,b) => st.tot[b]-st.tot[a]);
+  const standings = order.map((id,i) => { const t = st.tot[id];
+    return `<div class="item">${av(id, pname(id, L.names[id]))}<div class="grow"><div class="name">${nm(id)}</div>
+      <div class="meta">${[i===0 && st.log.length && st.winners.length===1 ? 'En tête' : '', st.takes[id] ? `${plural(st.takes[id],'prise')} · ${st.made[id]} réussie${st.made[id]>1?'s':''}` : ''].filter(Boolean).join(' · ')}</div></div>
+      <div class="tok"><span data-ck="t:${id}" data-n="${t}">${t}</span><small>pts</small></div></div>`; }).join('');
+  const chips = (f, items, cls) => `<div class="chips${cls?' '+cls:''}">${items.map(([v, t]) => `<button class="chip${R[f]===v?' on':''}" data-a="tar-set" data-f="${f}" data-v="${v===null?'':v}" aria-pressed="${R[f]===v}">${t}</button>`).join('')}</div>`;
+  const pg = TAR_PGN[n] || TAR_PGN[4];
+  const more = R.more || R.pab || R.pg || R.ch;
+  let preview = '';
+  if(tarReady(R, n)){ const x = tarDonne(R, L.order), C = TAR_C[R.c];
+    const part = n===5 && R.p && R.p!==R.t;
+    preview = `${C.n} ${x.made ? 'réussie' : 'chutée'}${x.diff ? ' de '+x.diff : ' pile'} · ${nm(R.t)} <b>${tarSign(x.d[R.t])}</b>${part ? ` · ${nm(R.p)} <b>${tarSign(x.d[R.p])}</b>` : ''} · ${n - (part?2:1) > 1 ? 'chaque défenseur' : 'la défense'} <b>${tarSign(-x.A)}</b>`; }
+  const rows = st.log.map((x,i) => `<tr class="sky-row${F&&F.i===i?' on':''}" data-a="tar-fix" data-i="${i}"><td style="text-align:left" class="meta">D${i+1} ${TAR_C[x.r.c].s}</td>${L.order.map(id => `<td>${x.d[id]}${x.r.t===id ? ' <span class="meta">•</span>' : x.r.p===id ? ' <span class="meta">◦</span>' : ''}</td>`).join('')}</tr>`).reverse().join('');
+  return `<button class="back" data-go="home">← Jeux</button>
+  <div class="label">Donne ${st.log.length+1}</div>
+  <h1>Le <em>Tarot</em></h1>
+  <p class="sub">Le plus gros total gagne. Tu arrêtes quand vous voulez.</p>
+  <div class="glass" style="padding:8px 16px"><div class="list">${standings}</div></div>
+  <div class="glass" id="tar-form" style="padding:6px 18px 18px;margin-top:14px">
+    ${F ? `<div class="field" style="margin-bottom:0"><span class="label">Correction · donne ${F.i+1}</span></div>` : ''}
+    <div class="field"><span class="label">Qui prend ?</span>${chips('t', L.order.map(id => [id, dot(id)+nm(id)]))}</div>
+    ${n===5 ? `<div class="field"><span class="label">Avec qui ?</span>${chips('p', [...L.order.filter(id => id!==R.t).map(id => [id, dot(id)+nm(id)]), ...(R.t ? [[R.t, 'Seul']] : [])])}<span class="hint">Celui qui a le roi appelé. « Seul » si le preneur s'est appelé lui-même.</span></div>` : ''}
+    <div class="field"><span class="label">Contrat</span>${chips('c', TAR_C.map((c,i) => [i, c.n]))}</div>
+    <div class="field"><span class="label">Bouts de l'attaque</span>${chips('b', [0,1,2,3].map(v => [v, String(v)]))}${R.b!==null ? `<span class="hint">À faire : ${TAR_NEED[R.b]} points.</span>` : ''}</div>
+    <div class="field"><span class="label">Points de l'attaque</span><button class="pickbtn" data-a="tar-pts"><span>${R.pts===undefined ? 'Sur 91' : 'Défense : '+(91-R.pts)}</span><span class="c">${R.pts===undefined ? '–' : R.pts}</span></button></div>
+    ${more ? `<div class="field"><span class="label">Petit au bout</span>${chips('pab', [[null,'Non'],['a','Attaque'],['d','Défense']], 'sm')}</div>
+      <div class="field"><span class="label">Poignée</span>${chips('pg', [[0,'Non'],[1,'Simple'],[2,'Double'],[3,'Triple']], 'sm')}<span class="hint">${pg[0]}, ${pg[1]} ou ${pg[2]} atouts à ${n}. Elle va au camp qui gagne la donne.</span></div>
+      <div class="field"><span class="label">Chelem</span>${chips('ch', TAR_CHN.map((t,i) => [i, i ? t : 'Non']), 'sm')}</div>`
+      : `<button class="link" data-a="tar-more" style="display:block;margin:0 0 14px">Petit au bout, poignée, chelem</button>`}
+    ${preview ? `<p class="hint" style="font-size:13.5px;margin:4px 0 12px">${preview}</p>` : ''}
+    ${F ? `<button class="btn block" data-a="tar-fix-ok" id="tar-fix-ok" ${tarReady(R, n)?'':'disabled'}>Enregistrer la correction</button>
+    <button class="link" data-a="tar-fix-no" style="display:block;margin:12px auto 0">Annuler</button>`
+    : `<button class="btn block" data-a="tar-round" id="tar-round" ${tarReady(R, n)?'':'disabled'}>Valider la donne</button>`}
+  </div>
+  ${st.log.length ? `<h2>Donnes</h2><div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats">
+    <thead><tr><th></th>${L.order.map(id => `<th>${dot(id)}${nm(id)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+    <p class="hint" style="margin:8px 0">• preneur${n===5?' · ◦ appelé':''} · touche une donne pour la corriger</p>
+    <button class="link" data-a="tar-undo" id="tar-undo">Annuler la dernière donne</button></div>` : ''}
+  ${endControls('tarot', false, st.winners.length ? `Enregistrer la victoire de ${andList(st.winners.map(nm))} dans l'historique ?` : 'Enregistrer la partie ?')}
+  ${rulesTar(false)}`;
+}
+const tarClean = R => { const r = {t:R.t, c:R.c, b:R.b, pts:R.pts}; if(R.p) r.p = R.p; if(R.pab) r.pab = R.pab; if(R.pg) r.pg = R.pg; if(R.ch) r.ch = R.ch; return r; };
+function clickTar(el, a){
+  const L = S.live.tarot; if(!L) return false;
+  if(!S.tar) S.tar = tarNew();
+  const R = S.tarFix || S.tar, n = L.order.length;
+  if(a==='tar-set'){ const f = el.dataset.f, raw = el.dataset.v;
+    const v = raw==='' ? null : ['c','b','pg','ch'].includes(f) ? Number(raw) : raw;
+    const oldT = R.t, toggles = ['t','p','c','b'].includes(f);
+    R[f] = toggles && R[f]===v ? null : v;
+    /* Changement de preneur : « Seul » (p = ancien preneur) ou partenaire devenu preneur ne tiennent plus. */
+    if(f==='t' && R.p && (R.p===oldT || R.p===R.t)) R.p = null;
+    render(); return true; }
+  if(a==='tar-more'){ R.more = true; render(); return true; }
+  if(a==='tar-pts'){ const opts = []; for(let v=0; v<=91; v++) opts.push({v, t:String(v), s:'déf. '+(91-v)});
+    wheel({who:'Attaque', title:'Points de l’attaque', meta:'Compte les plis du preneur (et de son partenaire à 5). La défense a le reste sur 91.',
+      opts, start: R.pts===undefined ? (R.b!==null ? TAR_NEED[R.b] : 46) : R.pts, onOk:o => { R.pts = o.v; render(); }, onClear:() => { R.pts = undefined; render(); }}); return true; }
+  if(a==='tar-round'){ if(S.tarFix || !tarReady(S.tar, n)) return true;
+    const r = tarClean(S.tar); L.rounds = [...(L.rounds||[]), r]; S.tar = tarNew(); saveLiveSoon('tarot');
+    window.scrollTo({top:0, behavior:'smooth'});
+    const x = tarDonne(r, L.order), who = esc(pname(r.t, L.names[r.t]));
+    if(r.ch===1 || r.ch===2) moment('Chelem !', who, true);
+    else if(r.pab==='a') moment('Petit au bout', who+' · '+tarSign(10*TAR_C[r.c].m));
+    else if(x.made && r.c===3) moment('Garde contre', who+' · '+tarSign(x.d[r.t]));
+    return true; }
+  if(a==='tar-fix'){ const i = +el.dataset.i, r = (L.rounds||[])[i]; if(!r) return true;
+    if(S.tarFix && S.tarFix.i===i){ S.tarFix = null; render(); return true; }
+    S.tarFix = {...tarNew(), ...r, i, more: !!(r.pab || r.pg || r.ch)}; render();
+    const f = document.getElementById('tar-form'); if(f) f.scrollIntoView({behavior:reduceMotion()?'auto':'smooth', block:'start'}); return true; }
+  if(a==='tar-fix-no'){ S.tarFix = null; render(); return true; }
+  if(a==='tar-fix-ok'){ const F = S.tarFix; if(!F || !(L.rounds||[])[F.i] || !tarReady(F, n)) return true;
+    const rounds = [...L.rounds]; rounds[F.i] = tarClean(F); L.rounds = rounds; S.tarFix = null; saveLiveSoon('tarot');
+    toast('Donne '+(F.i+1)+' corrigée'); return true; }
+  if(a==='tar-undo'){ L.rounds = (L.rounds||[]).slice(0,-1); S.tarFix = null; saveLiveSoon('tarot'); return true; }
+  return false;
+}
+function statsT(id, pool){
+  const st = {played:0, wins:0, sum:0, best:null, takes:0, made:0};
+  (pool||S.games).filter(g => kindOf(g)==='tarot').forEach(g => { const r = (g.results||[]).find(r => r.id===id); if(!r) return;
+    st.played++; st.sum += r.total; st.best = st.best===null ? r.total : Math.max(st.best, r.total);
+    st.takes += r.takes||0; st.made += r.made||0; if((g.winners||[]).includes(id)) st.wins++; });
+  st.avg = st.played ? Math.round(st.sum/st.played) : 0; st.rate = st.played ? st.wins/st.played : 0; st.takeRate = st.takes ? st.made/st.takes : null;
+  return st;
+}
+function statsTarView(top, ids, nameOf, pool){
+  const rows = [...ids].map(id => ({id, name:nameOf(id), ...statsT(id, pool)}));
+  rows.sort((a,b) => b.wins-a.wins || b.rate-a.rate || b.avg-a.avg);
+  const hi = f => [...rows].filter(r => r[f]!==null).sort((a,b) => b[f]-a[f])[0];
+  const w = rows[0], avg = hi('avg'), rec = hi('best'), most = hi('played'), tk = hi('takes');
+  const sure = [...rows].filter(r => r.takes >= 3).sort((a,b) => b.takeRate-a.takeRate || b.takes-a.takes)[0];
+  return top + `<div class="podium">
+    ${award('Le meilleur', w, plural(w.wins,'victoire'), Math.round(w.rate*100)+' % de victoires', true)}
+    ${award('Meilleure moyenne', avg, avg.avg+' pts', 'en fin de partie')}
+    ${rec ? award('Record', rec, rec.best+' pts', 'en une partie') : ''}
+    ${award('Le plus assidu', most, plural(most.played,'partie'), '')}
+    ${tk.takes ? award('Prend tout', tk, plural(tk.takes,'prise'), '') : ''}
+    ${sure ? award('Le plus sûr', sure, pct(sure.takeRate), 'de prises réussies') : ''}
+  </div>
+  <h2>Classement</h2>
+  <div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats">
+    <thead><tr><th></th><th>Joueur</th><th>V.</th><th>Parties</th><th>Moy.</th><th>Prises</th><th>Réussies</th></tr></thead>
+    <tbody>${rows.map((r,i) => `<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px">${dot(r.id)}<b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round(r.rate*100)}%${barC(r.id)}"></i></div></td><td>${r.wins}</td><td>${r.played}</td><td>${r.avg}</td><td>${r.takes}</td><td>${r.takeRate===null ? '–' : pct(r.takeRate)}</td></tr>`).join('')}</tbody>
+  </table></div>
+  <p class="note">Classement par victoires, puis taux de victoire, puis moyenne. « Le plus sûr » compte à partir de 3 prises. La barre montre le taux de victoire.</p>`;
+}
+function tarTable(ids, st, nm, rev, P){
+  const rows = st.log.map((x,i) => `<tr><td style="text-align:left" class="meta">D${i+1} ${TAR_C[x.r.c].s}</td>${ids.map(id => `<td>${x.d[id]}${x.r.t===id ? ' <span class="meta">•</span>' : x.r.p===id ? ' <span class="meta">◦</span>' : ''}</td>`).join('')}</tr>`);
+  return rev ? rows.reverse().join('') : rows.join('');
+}
+const tarLegend = n => `• preneur${n===5?' · ◦ appelé':''} · P petite, G garde, GS garde sans, GC garde contre`;
+function sheetTar(g, sh, ids, nmOf, head, el, title){
+  const st = runTar({order:ids, rounds:sh.rounds||[]});
+  return `${skyChart(ids, st, nmOf, el, {end:null, unit:'donne'})}<h2>${title}</h2><div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats sheet-h${ids.length>3?' wide':''}">${head}<tbody>${tarTable(ids, st, nmOf, false)}
+    <tr class="sh-tot"><td><b>Total</b></td>${ids.map(id => `<td><b>${st.tot[id]}</b></td>`).join('')}</tr></tbody></table>
+    <p class="hint" style="margin:8px 0">${tarLegend(ids.length)}</p></div>`;
+}
+function watchTar(L, P){
+  const st = runTar(L), order = [...L.order].sort((a,b) => st.tot[b]-st.tot[a]);
+  const standings = order.map((id,i) => `<div class="item${P.fl(id)}">${P.av(id)}<div class="grow"><div class="name">${P.nm(id)}${P.mine(id)?' <span class="hint">· toi</span>':''}</div>
+    <div class="meta">${[i===0 && st.log.length && st.winners.length===1 ? 'En tête' : '', st.takes[id] ? plural(st.takes[id],'prise') : ''].filter(Boolean).join(' · ')}</div></div><div class="tok"><span data-ck="wt:${id}" data-n="${st.tot[id]}">${st.tot[id]}</span><small>pts</small></div></div>`).join('');
+  return `<p class="sub" style="margin-top:-6px">Donne ${st.log.length+1} · le plus gros total gagne.</p>
+  <div class="glass" style="padding:8px 16px"><div class="list">${standings}</div></div>
+  ${st.log.length ? `<h2>Donnes</h2><div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats">
+    <thead><tr><th></th>${L.order.map(id => `<th>${P.dot(id)}${P.nm(id)}</th>`).join('')}</tr></thead><tbody>${tarTable(L.order, st, P.nm, true)}</tbody></table>
+    <p class="hint" style="margin:8px 0">${tarLegend(L.order.length)}</p></div>` : ''}`;
+}
+defGame('tarot', {
+  name:'Tarot', doc:'gtar', min:3, max:5, rounds:true,
+  get manualEnd(){ return !!(S.live.tarot && (S.live.tarot.rounds||[]).length); },
+  card: L => ({dice:['1','21','★'].map(v => `<span class="card">${v}</span>`).join(''), hint:'De 3 à 5 joueurs · le plus gros total gagne',
+    pill: L ? `En cours · donne ${(L.rounds||[]).length+1}` : ''}),
+  setupNote:' De 3 à 5 joueurs.', setupRules: () => rulesTar(true),
+  newLive: (order, names) => ({order, names, rounds:[], startedAt:Date.now()}),
+  summary: L => { const r = runTar(L), n = (L.rounds||[]).length; return n ? plural(n,'donne')+' · '+L.order.map(id => r.tot[id]).join(' / ') : 'pas encore de donne'; },
+  view: viewTar,
+  resetUi(){ S.tar = tarNew(); S.tarFix = null; },
+  record(L){ const st = runTar(L);
+    const results = L.order.map(id => ({id, name:pname(id, L.names[id]), total:st.tot[id], takes:st.takes[id], made:st.made[id]}));
+    return {game:'tarot', date:Date.now(), startedAt:L.startedAt, results, winners:st.winners, rounds:st.log.length, sheet:{rounds:JSON.parse(JSON.stringify(L.rounds||[]))}}; },
+  stats: statsT, statsView: statsTarView,
+  player: id => { const s = statsT(id); return psection('Tarot', s.played, stile('Victoires', s.wins, pct(s.rate)) + stile('Parties', s.played) + stile('Moyenne', s.avg, 'pts en fin de partie') + stile('Record', s.best ?? '–', 'pts') + stile('Prises', s.takes, s.takeRate===null ? '' : pct(s.takeRate)+' réussies')); },
+  outcome: (g, id) => outcomePts(g, id, false),
+  win: (g, id) => (g.winners||[]).includes(id) ? 1 : 0,
+  duel: (g, r) => -r.total,
+  mine: (g, r, pid) => ({k:'tarot', d:g.date, w: (g.winners||[]).includes(pid) ? 1 : 0, p: r.total}),
+  val: r => r.total,
+  friendTiles: (s, tile, pct) => tile('Victoires', s.w, pct(s.rate)) + tile('Parties', s.n) + tile('Moyenne', s.avg ?? '–', 'pts') + tile('Record', s.best ?? '–', 'pts'),
+  extra: g => plural(g.rounds||0, 'donne'),
+  hist: (g, nm) => histByTotal(g, nm, false, `<span><b>${g.rounds||0}</b> donnes</span>`),
+  result: (g, nm) => resultByTotal(g, nm, false, r => r.takes ? `${plural(r.takes,'prise')} · ${r.made} réussie${r.made>1?'s':''}` : 'Jamais pris'),
+  sheetTitle:'Donnes', sheet: sheetTar,
+  watch: watchTar,
+  watchDiff(a, b, out){ const x = runTar(a), y = runTar(b); b.order.forEach(p => { if(x.tot[p]!==y.tot[p]) out.add(p); }); },
+  click: clickTar
 });
 
 /* ================= players ================= */
@@ -4132,7 +4329,7 @@ function mapSheet(sh, mp){
   const o = JSON.parse(JSON.stringify(sh)), keys = x => Object.fromEntries(Object.entries(x||{}).map(([k,v]) => [mp(k), v]));
   if(o.scores) o.scores = keys(o.scores);
   if(Array.isArray(o.rounds)) o.rounds = o.rounds.map(r => { const n = {...r};
-    if(r.scores) n.scores = keys(r.scores); ['closer','w','l'].forEach(f => { if(r[f]) n[f] = mp(r[f]); }); return n; });
+    if(r.scores) n.scores = keys(r.scores); ['closer','w','l','t','p'].forEach(f => { if(r[f]) n[f] = mp(r[f]); }); return n; });
   return o;
 }
 let inboxBusy = false;
@@ -4679,7 +4876,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '41';
+window.APP_VERSION = '42';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

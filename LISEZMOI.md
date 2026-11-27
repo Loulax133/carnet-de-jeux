@@ -112,3 +112,9 @@ Les données de jeu sont stockées dans chaque téléphone, à part : une mise �
 - **App Check** (Fraud Defense, anciennement reCAPTCHA Enterprise, invisible) : nouveau SDK `firebase-13.1.0-ac.js` (l'ancien `firebase-13.1.0.js` ne sert plus). Ne pas activer « Enforce » dans la console Firebase avant que tout le monde ait cette version.
 - `confidentialite.html` mentionne reCAPTCHA. `firestore.rules` ne change pas.
 - Nouvelles clés locales (à ne pas renommer) : `yz-tro` (carte trophées vue), `yz-season` (thème de saison coupé).
+
+## Neige sur l'accueil (version 47)
+- Thème de saison : flocons animés qui tombent derrière les cartes de l'accueil, à Noël (plus nombreux, avec de vrais flocons à 6 branches) et en hiver (plus discrets). Coupés par « Réduire les animations » et par l'interrupteur « Thème de saison ».
+- Liste Joueurs : le nombre de trophées n'est plus affiché (il reste sur la fiche de chaque joueur).
+- Yahtzee bonus, règle de la bande (Louis) : pour prendre les +100 d'un nouveau Yahtzee (case Yahtzee déjà à 50), on barre une case libre au choix (0). Sinon les dés comptent normalement, sans bonus. Plus de joker. En jeu virtuel : toucher +100, puis la case à barrer (retoucher +100 pour annuler). Règles en bref mises à jour. Interrupteur dans le code : `YZ_HOUSE`.
+- `firestore.rules` ne change pas.

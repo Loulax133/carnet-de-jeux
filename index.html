@@ -521,7 +521,9 @@ main[data-vt]>.q-float{animation:none}
 .sheet td.vpick .vpot{display:inline-block;min-width:40px;padding:3px 9px;border-radius:999px;border:1px dashed var(--mute);color:var(--mute);font-size:16px}
 .sheet td.vpick.best .vpot{border-style:solid;border-color:var(--ink);color:var(--ink)}
 .sheet td.vlock{min-width:62px;color:var(--line)}
-.sheet td .vpot.ybon{display:inline-block;min-width:40px;padding:3px 9px;border-radius:999px;font-size:16px;border:1px solid #C99417;background:color-mix(in srgb,#EDBE36 22%,transparent);color:var(--gold-ink)}
+.sheet td .vpot.ybon.on{border-style:solid!important;background:#EDBE36;color:#4a3304}
+.sheet td.vpick.cross .vpot{border-color:#C99417;color:var(--gold-ink)}
+.sheet td .vpot.ybon{appearance:none;cursor:pointer;font-family:inherit;border-style:dashed!important;display:inline-block;min-width:40px;padding:3px 9px;border-radius:999px;font-size:16px;border:1px solid #C99417;background:color-mix(in srgb,#EDBE36 22%,transparent);color:var(--gold-ink)}
 .vtoggle{appearance:none;display:flex;align-items:center;gap:14px;width:100%;text-align:left;font:inherit;color:var(--ink);padding:14px 18px;margin-top:14px;cursor:pointer;border-radius:22px}
 .vtoggle b{display:block}
 .sw-ui{flex:none;width:46px;height:28px;border-radius:999px;background:var(--line);position:relative;transition:background .2s}
@@ -1338,7 +1340,7 @@ const rulesYahtzee = (open) => `<details class="rules glass dense"${open?' open'
   <li><b>Section haute</b> : on additionne seulement les dés de la valeur choisie. Trois 4 dans la case Quatre, ça fait 12.</li>
   <li><b>Prime de 35</b> si la section haute atteint 63, soit trois dés de chaque valeur.</li>
   <li><b>Brelan, carré, chance</b> : on compte la somme des cinq dés. Full 25, petite suite 30, grande suite 40, Yahtzee 50.</li>
-  <li><b>Yahtzee bonus</b> : +100 pour chaque nouveau Yahtzee si la case Yahtzee est déjà à 50.</li>
+  <li><b>Yahtzee bonus</b> (règle de la bande) : nouveau Yahtzee alors que la case Yahtzee est déjà à 50 → pour prendre les +100, on <b>barre une case libre au choix</b> (elle passe à 0). Sinon on inscrit ses dés normalement, sans bonus.</li>
   <li>13 tours. Le plus gros total gagne.</li></ul></details>`;
 /* ================= Yahtzee view ================= */
 function yzTurnIndex(L){ const f = L.order.map(id=>filled(L.scores[id])); const m = Math.min(...f); return Math.max(0, f.indexOf(m)); }
@@ -1356,10 +1358,12 @@ function viewYahtzee(){
   /* v32 : en jeu virtuel, les cases libres montrent les points possibles avec les dés ; on touche pour inscrire. */
   const V = L.virtual ? (L.vd || (L.vd = vdFresh(5))) : null, canV = V && V.roll && !VDS.busy;
   const okV = canV ? yzAllowed(V.vals, sc) : [], potV = Object.fromEntries(okV.map(c => [c, yzScore(c, V.vals, sc)])), bestV = Math.max(0, ...Object.values(potV));
-  const ybNow = canV && yzIsYz(V.vals) && sc.yz===50;
+  const ybNow = canV && yzIsYz(V.vals) && sc.yz===50, crossV = YZ_HOUSE && ybNow && S.yzCross;
   const cell = (cid, label, v, txt) => { const has = v!==undefined && v!==null;
     /* v46 : Yahtzee bonus en jeu virtuel = automatique (+100 quand on choisit sa case). On le montre pour qu'on ne cherche pas à le toucher. */
-    if(V && cid==='yb' && ybNow) return `<td class="big vlock"><span class="vpot ybon">${has ? txt+' ' : ''}+100</span></td>`;
+    /* v47 : le +100 n'est inscrit qu'avec la case choisie (règle officielle) ; toucher la pastille inscrit la case du joker si elle est imposée. */
+    if(V && cid==='yb' && ybNow) return `<td class="big"><button class="vpot ybon${crossV?' on':''}" data-a="yb-go" aria-pressed="${!!crossV}" aria-label="${crossV ? 'Annuler le Yahtzee bonus' : 'Prendre le Yahtzee bonus en barrant une case'}">${has ? txt+' ' : ''}+100</button></td>`;
+    if(V && crossV && !has && cid!=='yb') return `<td class="cell big vpick cross" data-vc="${cid}" tabindex="0" role="button" aria-label="${esc(name)}, barrer ${label}"><span class="vpot">0</span></td>`;
     /* Sinon la ligne Yahtzee bonus reste corrigeable à la main (roue), même vide : un bonus oublié peut toujours être ajouté. */
     if(V && !has && cid!=='yb') return cid in potV ? `<td class="cell big vpick${potV[cid]===bestV&&bestV>0?' best':''}" data-vc="${cid}" tabindex="0" role="button" aria-label="${esc(name)}, ${label} : ${potV[cid]}"><span class="vpot">${potV[cid]}</span></td>` : `<td class="big vlock">–</td>`;
     return `<td class="cell big${has?(v===0?' zero':''):' empty-c'}${S.just===id+cid?' just':''}" tabindex="0" role="button" data-p="${id}" data-c="${cid}" aria-label="${esc(name)}, ${label}">${has?txt:'–'}</td>`; };
@@ -1401,11 +1405,11 @@ function viewYahtzee(){
       <tr class="total"><td class="cat">Total</td><td data-ck="yzt:${id}" data-n="${t.total}">${t.total}</td></tr>
     </tbody></table></div>
   ${land ? `</div><div class="yz-right">${yzTrayCard(V)}</div></div>` : ''}
-  <p class="note">${V ? 'Lance les dés, puis touche une case : le score s’inscrit tout seul, Yahtzee bonus compris. Touche une case déjà remplie pour la corriger.' : 'Touche une ligne pour noter le score. Après chaque nouveau score, on passe au joueur suivant. Glisse ou utilise les flèches pour corriger.'}</p>
+  <p class="note">${V ? 'Lance les dés, puis touche une case : le score s’inscrit tout seul. Yahtzee bonus : touche +100 puis barre une case. Touche une case déjà remplie pour la corriger.' : 'Touche une ligne pour noter le score. Après chaque nouveau score, on passe au joueur suivant. Glisse ou utilise les flèches pour corriger.'}</p>
   ${endControls('yahtzee', done, done?'Enregistrer cette partie dans l\'historique ?':'Toutes les cases ne sont pas remplies. Enregistrer quand même avec les scores actuels ?')}
   ${rulesYahtzee(false)}`;
 }
-function yzMove(d, top){ const L=S.live.yahtzee; if(!L) return; const n=L.order.length; if(n<2) return;
+function yzMove(d, top){ S.yzCross = false; const L=S.live.yahtzee; if(!L) return; const n=L.order.length; if(n<2) return;
   S.yzp = ((S.yzp||0) + d + n) % n; S.yzAnim = d>0 ? 'l' : 'r'; render(); if(top) yzTop(); }
 /* Remonte en haut de la grille (le bandeau du joueur), sans remonter tout en haut de la page. */
 function yzTop(){ const el = document.querySelector('.pnav'); if(!el) return;
@@ -1536,8 +1540,11 @@ const yzIsYz = d => d.length===5 && d[0] && d.every(v => v===d[0]);
 const yzFree = (sc, id) => sc[id]===undefined || sc[id]===null;
 /* Joker : Yahtzee alors que la case Yahtzee est déjà remplie. Case du haut de la même valeur si elle est libre,
    sinon une case du bas (full, suites à pleine valeur), sinon une case du haut à 0. */
+/* v47 (Louis : « on a toujours joué comme ça ») : pas de joker. Un Yahtzee bonus se prend en barrant une case libre au choix (0) ; sinon les dés comptent normalement. */
+const YZ_HOUSE = true;
 function yzAllowed(d, sc){
   const all = ALL.filter(c => yzFree(sc, c.id)).map(c => c.id);
+  if(YZ_HOUSE) return all;
   if(!yzIsYz(d) || yzFree(sc, 'yz')) return all;
   const up = UPPER[d[0]-1].id; if(yzFree(sc, up)) return [up];
   const low = LOWER.filter(c => yzFree(sc, c.id)).map(c => c.id);
@@ -1545,7 +1552,7 @@ function yzAllowed(d, sc){
 }
 function yzScore(cid, d, sc){
   const c = yzCnt(d), sum = d.reduce((a,b)=>a+b,0), mx = Math.max(...c), has = a => a.every(v => c[v]);
-  const joker = yzIsYz(d) && !yzFree(sc, 'yz');
+  const joker = !YZ_HOUSE && yzIsYz(d) && !yzFree(sc, 'yz');
   const up = UPPER.find(u => u.id===cid); if(up) return c[up.face]*up.face;
   return {tk: mx>=3?sum:0, fk: mx>=4?sum:0, fh: joker || (c.includes(3)&&c.includes(2)) ? 25 : 0,
     ss: joker || has([1,2,3,4]) || has([2,3,4,5]) || has([3,4,5,6]) ? 30 : 0, ls: joker || has([1,2,3,4,5]) || has([2,3,4,5,6]) ? 40 : 0,
@@ -1553,6 +1560,7 @@ function yzScore(cid, d, sc){
 }
 const yzV = () => { const L = S.live.yahtzee; if(!L || !L.virtual) return null; if(!L.vd) L.vd = vdFresh(5); return L.vd; };
 function yzRoll(dir){
+  S.yzCross = false;
   const L = S.live.yahtzee, V = yzV(); if(!V || VDS.busy) return;
   if(V.roll >= 3){ toast('Plus de lancer : choisis ta case.'); return; }
   const idx = V.vals.map((v,i)=>i).filter(i => !V.held[i] || !V.roll); if(!idx.length){ toast('Tous les dés sont gardés.'); return; }
@@ -1568,7 +1576,8 @@ function yzCommit(cid){
   const L = S.live.yahtzee, V = yzV(); if(!V || !V.roll || VDS.busy) return;
   const pid = L.order[S.yzp], sc0 = L.scores[pid] || {};
   if(!yzFree(sc0, cid) || !yzAllowed(V.vals, sc0).includes(cid)) return;
-  const v = yzScore(cid, V.vals, sc0), bonus = yzIsYz(V.vals) && sc0.yz===50, before = totals(sc0);
+  const cross = YZ_HOUSE && !!S.yzCross && yzIsYz(V.vals) && sc0.yz===50; S.yzCross = false;
+  const v = cross ? 0 : yzScore(cid, V.vals, sc0), bonus = YZ_HOUSE ? cross : yzIsYz(V.vals) && sc0.yz===50, before = totals(sc0);
   const sc = {...sc0, [cid]:v}; if(bonus) sc.yb = (sc0.yb||0) + 1;
   const c = ALL.find(x => x.id===cid);
   S.yzUndo = {pid, cid, prev:undefined, idx:L.order.indexOf(pid), label:c.label, txt:String(v)+(bonus?' · +100':''), vd:JSON.parse(JSON.stringify(V)), yb:sc0.yb};
@@ -1585,7 +1594,8 @@ function yzTrayCard(V){
   const busy = VDS.busy, top = `<span class="label">${V.roll>=3 ? 'Plus de lancer' : 'Lancer '+(V.roll+1)+' sur 3'}</span><span class="rolls" aria-label="${V.roll} lancer${V.roll>1?'s':''} sur 3">${[0,1,2].map(i=>`<i class="${i<V.roll?'used':''}"></i>`).join('')}</span>`;
   const L = S.live.yahtzee, sc = (L && L.scores[L.order[S.yzp]]) || {}, yzNow = !busy && V.roll && yzIsYz(V.vals) && !yzFree(sc, 'yz');
   const forced = yzNow ? yzAllowed(V.vals, sc) : [], fc = forced.length===1 ? ALL.find(c=>c.id===forced[0]) : null;
-  const hint = busy ? '' : !V.roll ? '' : yzNow ? (sc.yz===50 ? 'Yahtzee bonus : +100, compté tout seul. ' : 'Case Yahtzee barrée : pas de bonus. ') + (fc ? `Règle du joker : ces dés vont dans la case ${fc.label}.` : 'Choisis ta case : le joker vaut le maximum.')
+  const hint = busy ? '' : !V.roll ? '' : YZ_HOUSE && yzNow ? (sc.yz===50 ? (S.yzCross ? 'Choisis la case à barrer : elle passe à 0 et tu gagnes 100 points. Retouche +100 pour annuler.' : 'Yahtzee bonus ! Touche +100 puis barre une case pour les 100 points, ou inscris tes dés normalement.') : 'Case Yahtzee barrée : pas de bonus, tes dés comptent normalement.')
+    : yzNow ? (sc.yz===50 ? 'Yahtzee bonus ! ' : 'Case Yahtzee barrée : pas de bonus. ') + (fc ? `Règle du joker : touche la case ${fc.label}${sc.yz===50 ? ' (ou le +100), les 100 points s’ajoutent avec' : ''}.` : `Choisis ta case : le joker vaut le maximum${sc.yz===50 ? ', et les 100 points s’ajoutent avec' : ''}.`)
     : V.roll<3 ? 'Touche un dé pour le garder, ou choisis ta case' : 'Choisis ta case dans la grille';
   return vdCard(top, `<span class="hint">${hint}</span><button class="btn" data-a="vroll" id="vroll" ${V.roll>=3||busy?'disabled':''}>${V.roll ? 'Relancer' : 'Lancer'}</button>`);
 }
@@ -1618,9 +1628,13 @@ function yzAfter(){ yzFloat(); const V = yzV(); if(!V || !document.getElementByI
   vdMount(V.vals.map((v,i) => ({v: V.roll ? v : 0, held: !!V.held[i]})), {label:'Gardés', onTap: yzHold, onThrow: yzRoll}); }
 function clickYz(el, a){
   if(el.dataset.vc){ yzCommit(el.dataset.vc); return true; }
+  if(a==='yb-go'){ const L = S.live.yahtzee, V = yzV(); if(!L || !V || !V.roll || VDS.busy) return true;
+    if(YZ_HOUSE){ S.yzCross = !S.yzCross; render(); return true; }
+    const sc = L.scores[L.order[S.yzp]] || {}, ok = yzAllowed(V.vals, sc);
+    if(ok.length===1) yzCommit(ok[0]); else toast('Choisis la case où mettre ces dés : le +100 s’ajoute en même temps.'); return true; }
   if(a==='vroll'){ yzRoll(null); return true; }
   if(el.matches('td.cell,tr.rt')){ const tr = el.closest('tr'); if(tr){ tr.classList.add('tapped'); setTimeout(()=>tr.classList.remove('tapped'), 220); } openCell(el.dataset.p, el.dataset.c); return true; }
-  if(el.dataset.yzp){ const i=Number(el.dataset.yzp); if(i!==S.yzp){ S.yzAnim = i>S.yzp?'l':'r'; S.yzp=i; render(); } return true; }
+  if(el.dataset.yzp){ const i=Number(el.dataset.yzp); if(i!==S.yzp){ S.yzCross = false; S.yzAnim = i>S.yzp?'l':'r'; S.yzp=i; render(); } return true; }
   if(a==='yz-prev'){ yzMove(-1); return true; }
   if(a==='yz-next'){ yzMove(1); return true; }
   if(a==='yz-undo'){ const U=S.yzUndo, L=S.live.yahtzee; if(!U||!L) return true; const sc={...(L.scores[U.pid]||{})};
@@ -3278,7 +3292,7 @@ function viewPlayers(){
   <p class="sub">Ajoute autant de monde que tu veux. Les mêmes joueurs servent pour tous les jeux.</p>
   <form id="addp" class="row" style="flex-wrap:nowrap"><input type="text" id="pname" placeholder="Prénom" maxlength="24" autocomplete="off" aria-label="Prénom du joueur"><button class="btn" type="submit" id="addbtn">Ajouter</button></form>
   ${ps.length ? `<div class="glass" style="padding:8px 16px;margin-top:16px"><div class="list">${ps.map(([id,p])=>{
-    return `<div class="item tap" role="button" tabindex="0" data-player="${id}">${crowned(av(id,p.name), id===king)}<div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">${tagOf(p)}${GAME_ORDER.map(k=>[GAMES[k].name, GAMES[k].stats(id).played]).filter(x=>x[1]).map(x=>x[0]+' '+x[1]).join(' · ') || 'Pas encore de partie'}</div></div>${troCount(id)}<span class="chev" aria-hidden="true">›</span></div>`;}).join('')}</div></div>
+    return `<div class="item tap" role="button" tabindex="0" data-player="${id}">${crowned(av(id,p.name), id===king)}<div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">${tagOf(p)}${GAME_ORDER.map(k=>[GAMES[k].name, GAMES[k].stats(id).played]).filter(x=>x[1]).map(x=>x[0]+' '+x[1]).join(' · ') || 'Pas encore de partie'}</div></div><span class="chev" aria-hidden="true">›</span></div>`;}).join('')}</div></div>
     <p class="note">Touche un joueur pour voir ses stats et modifier son profil. La couronne va au meilleur taux de victoire tous jeux confondus, à partir de 3 parties à plusieurs. Les parties en solo ne comptent pas.</p>` : ''}
   ${viewFriendsBlock()}`;
 }
@@ -3461,7 +3475,7 @@ function viewLook(){
     <div class="swatches">${sw(null,'Sans couleur','var(--bg)','var(--ink)')}${LOOKS().map(c=>sw(c.id, c.n, c.c, inkOn(c.c))).join('')}</div>
     <p class="hint" style="margin:14px 0 0">Réglage gardé sur ce téléphone seulement. Il ne change rien à tes parties.</p>
   </div>
-  <button class="vtoggle glass${seasonOff()?'':' on'}" data-a="season-t" role="switch" aria-checked="${!seasonOff()}" id="season-t" style="margin-top:14px"><span class="grow"><b>Thème de saison</b><span class="hint">Neige à la place des confettis de décembre à fin février, flocons sur l’accueil à Noël</span></span><span class="sw-ui" aria-hidden="true"></span></button>`;
+  <button class="vtoggle glass${seasonOff()?'':' on'}" data-a="season-t" role="switch" aria-checked="${!seasonOff()}" id="season-t" style="margin-top:14px"><span class="grow"><b>Thème de saison</b><span class="hint">Neige à la place des confettis de décembre à fin février, flocons sur l’accueil</span></span><span class="sw-ui" aria-hidden="true"></span></button>`;
 }
 function viewBackup(){
   return `<button class="back" data-go="settings">← Réglages</button>
@@ -3739,18 +3753,31 @@ function snowfall(o){ o = o || {};
     for(const p of P){ p.sw += p.vs; p.y += p.vy; p.x += Math.sin(p.sw)*.7; p.rot += p.vr; flake(p); }
     if(el < life) requestAnimationFrame(frame); else cv.remove(); };
   requestAnimationFrame(frame); }
-/* Accueil à Noël : quelques flocons qui tombent doucement derrière les cartes. */
-let snowRAF = 0;
-function homeSnow(){ const on = S.view==='home' && season()==='noel' && !reduceMotion() && !document.hidden; let cv = document.getElementById('home-snow');
-  if(!on){ if(cv){ cancelAnimationFrame(snowRAF); cv.remove(); } return; } if(cv) return;
+/* Accueil en saison (v47, Louis : « pousser un peu plus ») : flocons derrière les cartes, petits points et quelques
+   vrais flocons à 6 branches qui tournent doucement. Noël : plus nombreux ; hiver : plus discret. */
+let snowRAF = 0, snowSeason = null;
+function homeSnow(){ const se = season(), on = S.view==='home' && se && !reduceMotion() && !document.hidden; let cv = document.getElementById('home-snow');
+  if(cv && (!on || snowSeason!==se)){ cancelAnimationFrame(snowRAF); cv.remove(); cv = null; }
+  if(!on || cv) return; snowSeason = se;
   cv = document.createElement('canvas'); cv.id = 'home-snow'; cv.setAttribute('aria-hidden','true'); { const b = document.querySelector('.blobs'); if(b) b.after(cv); else document.body.prepend(cv); }
   const dpr = Math.min(2, devicePixelRatio||1); let W = 0, H = 0; const c = cv.getContext('2d');
   const size = () => { W = innerWidth; H = innerHeight; cv.width = W*dpr; cv.height = H*dpr; c.setTransform(dpr,0,0,dpr,0,0); }; size();
-  const col = getComputedStyle(document.documentElement).getPropertyValue('--mute') || '#999';
-  const P = Array.from({length:22}, () => ({x:Math.random()*W, y:Math.random()*H, r:1.4+Math.random()*2.6, vy:.25+Math.random()*.45, sw:Math.random()*6.28}));
+  const dark = () => { const t = document.documentElement.dataset.theme; return t==='dark' || (t!=='light' && matchMedia('(prefers-color-scheme: dark)').matches); };
+  const noel = se==='noel', N = Math.round((noel ? 46 : 26) * Math.min(1.4, Math.max(.8, W/390)));
+  const mk = top => { const big = Math.random() < (noel ? .3 : .18);
+    return {x:Math.random()*W, y: top ? -12 : Math.random()*H, big, r: big ? 5+Math.random()*5 : 1.3+Math.random()*2.2,
+      vy: big ? .35+Math.random()*.4 : .25+Math.random()*.55, sw:Math.random()*6.28, vs:.008+Math.random()*.012, rot:Math.random()*6.28, vr:(Math.random()-.5)*.012,
+      a: big ? (noel ? .6 : .45) : (noel ? .5 : .35)}; };
+  const P = Array.from({length:N}, () => mk(false));
+  const flake = p => { c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.lineWidth = 1.3; c.lineCap = 'round';
+    for(let a=0;a<6;a++){ c.rotate(Math.PI/3); c.beginPath(); c.moveTo(0,0); c.lineTo(0,-p.r); c.moveTo(0,-p.r*.55); c.lineTo(p.r*.3,-p.r*.82); c.moveTo(0,-p.r*.55); c.lineTo(-p.r*.3,-p.r*.82); c.stroke(); }
+    c.restore(); };
   const frame = () => { if(!document.getElementById('home-snow')) return; if(cv.width !== Math.round(innerWidth*dpr)) size();
-    c.clearRect(0,0,W,H); c.fillStyle = col; c.globalAlpha = .38;
-    for(const p of P){ p.y += p.vy; p.sw += .012; p.x += Math.sin(p.sw)*.25; if(p.y > H+6){ p.y = -6; p.x = Math.random()*W; } c.beginPath(); c.arc(p.x, p.y, p.r, 0, 6.2832); c.fill(); }
+    const dk = dark(), col = dk ? '#ffffff' : '#8aa0b8'; c.clearRect(0,0,W,H); c.fillStyle = col; c.strokeStyle = col;
+    for(let i=0;i<P.length;i++){ const p = P[i]; p.y += p.vy; p.sw += p.vs; p.x += Math.sin(p.sw)*.35; p.rot += p.vr;
+      if(p.y > H+14){ P[i] = mk(true); continue; }
+      c.globalAlpha = p.a * (dk ? .8 : 1);
+      if(p.big) flake(p); else { c.beginPath(); c.arc(p.x, p.y, p.r, 0, 6.2832); c.fill(); } }
     snowRAF = requestAnimationFrame(frame); };
   snowRAF = requestAnimationFrame(frame); }
 
@@ -5303,7 +5330,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '46';
+window.APP_VERSION = '47';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

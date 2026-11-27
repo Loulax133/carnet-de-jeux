@@ -220,7 +220,7 @@ nav.tabs{bottom:calc(8px + env(safe-area-inset-bottom,0px));padding:4px;width:mi
 .stile{padding:14px 16px;border-radius:20px;background:var(--glass);border:1px solid var(--glass-edge);box-shadow:var(--glass-shadow);min-width:0}
 .stile .v{font-family:var(--serif);font-size:34px;line-height:1.05;margin-top:6px;font-variant-numeric:tabular-nums}
 .swatches{display:flex;flex-wrap:wrap;gap:10px}
-:root{--up:#23955A;--down:#D8433E;--gold:#E2AE1F;--gold-ink:#8A6200}
+:root{--up:#1B7D4B;--down:#C0362F;--gold:#E2AE1F;--gold-ink:#8A6200}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--up:#45C47E;--down:#F0605A;--gold:#EDBE36;--gold-ink:#F3CF5E}}
 :root[data-theme="dark"]{--up:#45C47E;--down:#F0605A;--gold:#EDBE36;--gold-ink:#F3CF5E}
 .tr{display:inline-flex;align-items:center;gap:3px;margin-left:8px;font:600 13px var(--sans);vertical-align:middle;position:relative;top:-5px;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -240,6 +240,41 @@ td .tr{margin-left:4px;top:-1px} td .tr svg{width:8px;height:7px}
 .tc-row{display:grid;grid-template-columns:96px 1fr auto;align-items:center;gap:12px;padding:8px 0}
 .tc-n{font-weight:600;font-size:14px}.tc-row .bar{margin:0}.tc-v{font-family:var(--serif);font-size:22px;font-variant-numeric:tabular-nums}.tc-v small{font-family:var(--sans);font-size:12px;color:var(--mute)}
 .tcon .meta{margin-top:6px}
+.trow{appearance:none;display:flex;align-items:center;gap:12px;width:100%;margin-top:14px;padding:12px 16px;border:0;font:inherit;color:var(--ink);text-align:left;cursor:pointer}
+.trow .tr-m{display:flex;flex:none}.trow .tr-m svg+svg{margin-left:-7px}.trow .tr-m svg{filter:drop-shadow(0 0 0 var(--bg))}
+.trow b{display:block;font-size:15px}
+.tcount{display:inline-flex;align-items:center;gap:4px;font:600 13px var(--sans);color:var(--mute);margin-right:4px;font-variant-numeric:tabular-nums}
+.tgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px 10px;padding:18px 12px}
+.tcell{display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px;min-width:0}.tcell b{font-size:13px;line-height:1.2;margin-top:6px}.tcell .hint{font-size:11px;line-height:1.3}
+.tcell.off b{color:var(--mute);font-weight:600}
+.tprog{width:70%;height:4px;border-radius:2px;background:var(--chip);overflow:hidden;margin-top:5px}.tprog i{display:block;height:100%;background:var(--ink)}
+.ycard{appearance:none;display:flex;align-items:center;gap:12px;width:100%;padding:16px 18px;margin:0 0 12px;border:0;font:inherit;color:var(--ink);text-align:left;cursor:pointer;background:linear-gradient(135deg,color-mix(in srgb,#EDBE36 24%,var(--glass)),var(--glass))}
+.ycard b{display:block;font-family:var(--serif);font-weight:400;font-size:28px;line-height:1.1;margin:3px 0 2px}
+.story{--inv-bg:#f4f4f4;--inv-ink:#0a0a0a;--line:rgba(255,255,255,.2);--mute:#8f8e93;--ink:#f4f4f4;position:fixed;inset:0;z-index:60;background:#0a0a0a;color:#f4f4f4;display:flex;flex-direction:column;padding:calc(14px + env(safe-area-inset-top,0px)) 26px calc(24px + env(safe-area-inset-bottom,0px));overflow:hidden}
+.story::before{content:"";position:absolute;right:-35%;top:-12%;width:130%;height:62%;background:radial-gradient(closest-side,rgba(237,190,54,.2),transparent);pointer-events:none}
+.st-bars{display:flex;gap:4px;position:relative;z-index:2}.st-bars i{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.22)}.st-bars i.done,.st-bars i.on{background:#f4f4f4}
+.st-x{position:absolute;right:12px;top:calc(24px + env(safe-area-inset-top,0px));z-index:3;width:44px;height:44px;border:0;background:none;color:#f4f4f4;font-size:30px;line-height:1;cursor:pointer}
+.st-prev,.st-next{position:absolute;top:80px;bottom:130px;border:0;background:none;z-index:1;cursor:pointer}.st-prev{left:0;width:35%}.st-next{right:0;width:65%}
+.st-body{flex:1;display:flex;flex-direction:column;justify-content:center;position:relative;animation:st-in .45s cubic-bezier(.2,.8,.3,1)}
+.story .label{color:#8f8e93}
+.st-big{font-family:var(--serif);font-size:min(44vw,190px);line-height:.95;margin:12px 0 6px;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:14px;white-space:nowrap}.st-big.serif{font-size:min(14vw,62px);line-height:1.02;white-space:normal}
+.st-flame{width:.36em;height:.42em;flex:none}
+.st-title{font-family:var(--serif);font-style:italic;font-size:34px;line-height:1.1}
+.st-sub{color:#b5b4b9;font-size:17px;margin:16px 0 0;max-width:30ch}
+.st-med{display:flex;flex-wrap:wrap;gap:16px 8px;margin-top:20px}.st-med span{display:flex;flex-direction:column;align-items:center;width:74px;text-align:center;gap:7px}.st-med em{font-style:normal;font-size:11px;color:#b5b4b9;line-height:1.2}
+.st-dl{position:relative;z-index:2;margin-top:28px;align-self:flex-start;background:#f4f4f4;color:#0a0a0a}
+.st-again{position:relative;z-index:2;align-self:flex-start;margin-top:14px;color:#b5b4b9}
+.st-foot{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#5c5b60;position:relative;z-index:2}
+@keyframes st-in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+#home-snow{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+body[data-view="year"] nav.tabs{display:none}
+h1.xmas em{color:#B07F0C}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) h1.xmas em{color:#EDBE36}}
+:root[data-theme="dark"] h1.xmas em{color:#EDBE36}
+.moment .medal{display:block;margin:0 auto 8px}.moment b .m-t{display:block;font-size:40px;line-height:1.05}
+@media (prefers-reduced-motion: reduce){.st-body{animation:none}}
+.ff-bar{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--chip);margin-top:7px;gap:2px}.ff-bar i{display:block;height:100%}.ff-bar i.eq{background:var(--line)}
+.ff-sc{display:flex;align-items:baseline;gap:6px;font-family:var(--serif);font-size:26px;font-variant-numeric:tabular-nums}.ff-sc span{color:var(--mute);font-size:20px}
 .sw{appearance:none;width:44px;height:44px;border-radius:50%;border:2px solid transparent;cursor:pointer;font-family:var(--serif);font-size:22px;display:grid;place-items:center;box-shadow:0 0 0 1px var(--line)}
 .sw.on{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--ink)}
 .sw:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
@@ -486,6 +521,7 @@ main[data-vt]>.q-float{animation:none}
 .sheet td.vpick .vpot{display:inline-block;min-width:40px;padding:3px 9px;border-radius:999px;border:1px dashed var(--mute);color:var(--mute);font-size:16px}
 .sheet td.vpick.best .vpot{border-style:solid;border-color:var(--ink);color:var(--ink)}
 .sheet td.vlock{min-width:62px;color:var(--line)}
+.sheet td .vpot.ybon{display:inline-block;min-width:40px;padding:3px 9px;border-radius:999px;font-size:16px;border:1px solid #C99417;background:color-mix(in srgb,#EDBE36 22%,transparent);color:var(--gold-ink)}
 .vtoggle{appearance:none;display:flex;align-items:center;gap:14px;width:100%;text-align:left;font:inherit;color:var(--ink);padding:14px 18px;margin-top:14px;cursor:pointer;border-radius:22px}
 .vtoggle b{display:block}
 .sw-ui{flex:none;width:46px;height:28px;border-radius:999px;background:var(--line);position:relative;transition:background .2s}
@@ -675,11 +711,12 @@ function homeOrder(){
 }
 function viewHome(){
   const n = k => S.games.filter(g=>kindOf(g)===k).length;
-  return `<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div><div class="label">Carnet de jeux</div><h1>On joue <em>à quoi</em> ?</h1></div>${setBtn('home-settings')}</div>
+  return `<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div><div class="label">Carnet de jeux</div><h1${season()==='noel' ? ' class="xmas"' : ''}>On joue <em>à quoi</em> ?</h1></div>${setBtn('home-settings')}</div>
   <p class="sub">Choisis un jeu. Les parties en cours t'attendent là où tu les as laissées.</p>
   ${plInviteCards()}
   ${S.watchList.map(d=>`<button class="wcard glass" data-watch="${d.id}"><span class="grow"><span class="label"><span class="live-dot"></span>En direct</span><b>${GAMES[d.k].name} de ${esc(d.ownerName)}</b><span class="hint">${watchWith(d)}</span></span><span class="pill">Suivre</span></button>`).join('')}
   ${homeAlert()}
+  ${yearCard()}${troIntro()}
   ${(() => { /* v43 (Louis, 27/11) : les 3 premiers jeux (et toute partie en cours) en grande carte, les autres en lignes compactes. */
     const order = homeOrder(), big = order.filter((k,i) => i < HOME_BIG || S.live[k]), rest = order.filter(k => !big.includes(k));
     return `<div class="games">${big.map(k => { const G = GAMES[k], c = G.card(S.live[k]);
@@ -734,6 +771,7 @@ function viewSetup(k){
       const order = [...sel].indexOf(id);
       return `<div class="item" role="button" tabindex="0" data-pick="${id}" data-k="${k}" style="cursor:pointer"><span class="crowned">${photoOf(id) ? av(id,p.name) : `<div class="avatar" style="${order<0?'background:var(--chip);color:var(--ink)':avStyle(id)}">${initial(p.name)}</div>`}${order<0?'':`<span class="obadge">${order+1}</span>`}</span><div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">${plural(cnt(id),'partie')} de ${G.name}</div></div><span class="meta">${order<0?'':'Sélectionné'}</span></div>`;}).join('')}</div></div>
     ${G.virtual ? virtToggle(k) : ''}
+    ${k!=='playlist' && sel.size>1 ? shufToggle(k) : ''}
     ${G.setupExtra ? G.setupExtra() : ''}
     <div style="margin-top:18px"><button class="btn block" data-a="start" data-k="${k}" id="start-${k}" ${ok?'':'disabled'}>${over ? G.max+' joueurs au maximum' : 'Lancer la partie'+(sel.size?' à '+sel.size:'')}</button></div>
     <p class="note">Il manque quelqu'un ? <button class="link" data-go="players">Ajoute-le</button></p>
@@ -1260,6 +1298,10 @@ const vdFresh = n => ({vals:Array(n).fill(0), held:Array(n).fill(false), roll:0}
 /* Carte du plateau : en-tête (lancer n sur 3…), le plateau, une ligne d'aide et les boutons. */
 const vdCard = (top, foot) => `<div class="vtray glass" id="vtray"><div class="vt-top">${top}</div><div class="vd-slot" id="vd-slot"></div><div class="vt-foot">${foot}</div></div>`;
 /* Choix au lancement de la partie. */
+/* v45 (Louis, 27/11) : option « Tirer au sort qui commence », décochée à chaque nouvelle partie. */
+const shufToggle = k => { const on = !!(S.shuf && S.shuf[k]);
+  return `<button class="vtoggle glass${on?' on':''}" data-a="shuf" data-k="${k}" role="switch" aria-checked="${on}" id="shuf-${k}"><span class="grow"><b>Tirer au sort qui commence</b><span class="hint">L’ordre des joueurs est mélangé au lancement</span></span><span class="sw-ui" aria-hidden="true"></span></button>`; };
+function shuffled(a){ a = [...a]; for(let i=a.length-1; i>0; i--){ let j; try{ const u = new Uint32Array(1); crypto.getRandomValues(u); j = u[0] % (i+1); }catch(e){ j = Math.floor(Math.random()*(i+1)); } [a[i], a[j]] = [a[j], a[i]]; } return a; }
 const virtToggle = k => { const on = virtOn(k), G = GAMES[k];
   return `<button class="vtoggle glass${on?' on':''}" data-a="vtoggle" data-k="${k}" role="switch" aria-checked="${on}" id="vtoggle-${k}"><span class="grow"><b>Jeu virtuel</b><span class="hint">${G.virtualHint}</span></span><span class="sw-ui" aria-hidden="true"></span></button>`; };
 
@@ -1314,8 +1356,12 @@ function viewYahtzee(){
   /* v32 : en jeu virtuel, les cases libres montrent les points possibles avec les dés ; on touche pour inscrire. */
   const V = L.virtual ? (L.vd || (L.vd = vdFresh(5))) : null, canV = V && V.roll && !VDS.busy;
   const okV = canV ? yzAllowed(V.vals, sc) : [], potV = Object.fromEntries(okV.map(c => [c, yzScore(c, V.vals, sc)])), bestV = Math.max(0, ...Object.values(potV));
+  const ybNow = canV && yzIsYz(V.vals) && sc.yz===50;
   const cell = (cid, label, v, txt) => { const has = v!==undefined && v!==null;
-    if(V && !has) return cid in potV ? `<td class="cell big vpick${potV[cid]===bestV&&bestV>0?' best':''}" data-vc="${cid}" tabindex="0" role="button" aria-label="${esc(name)}, ${label} : ${potV[cid]}"><span class="vpot">${potV[cid]}</span></td>` : `<td class="big vlock">–</td>`;
+    /* v46 : Yahtzee bonus en jeu virtuel = automatique (+100 quand on choisit sa case). On le montre pour qu'on ne cherche pas à le toucher. */
+    if(V && cid==='yb' && ybNow) return `<td class="big vlock"><span class="vpot ybon">${has ? txt+' ' : ''}+100</span></td>`;
+    /* Sinon la ligne Yahtzee bonus reste corrigeable à la main (roue), même vide : un bonus oublié peut toujours être ajouté. */
+    if(V && !has && cid!=='yb') return cid in potV ? `<td class="cell big vpick${potV[cid]===bestV&&bestV>0?' best':''}" data-vc="${cid}" tabindex="0" role="button" aria-label="${esc(name)}, ${label} : ${potV[cid]}"><span class="vpot">${potV[cid]}</span></td>` : `<td class="big vlock">–</td>`;
     return `<td class="cell big${has?(v===0?' zero':''):' empty-c'}${S.just===id+cid?' just':''}" tabindex="0" role="button" data-p="${id}" data-c="${cid}" aria-label="${esc(name)}, ${label}">${has?txt:'–'}</td>`; };
   const row = c => `<tr class="${V?'':'rt'}" data-p="${id}" data-c="${c.id}"><td class="cat">${c.face ? `<span class="catrow">${dieMini(c.face)}<span>${c.label}<span class="hint">${c.hint}</span></span></span>` : `${c.label}<span class="hint">${c.hint}</span>`}</td>${cell(c.id, c.label, sc[c.id], sc[c.id])}</tr>`;
   const sum = (label, val, hint) => `<tr class="sum"><td class="cat">${label}${hint?`<span class="hint">${hint}</span>`:''}</td><td class="big">${val}</td></tr>`;
@@ -1537,7 +1583,10 @@ function yzCommit(cid){
 }
 function yzTrayCard(V){
   const busy = VDS.busy, top = `<span class="label">${V.roll>=3 ? 'Plus de lancer' : 'Lancer '+(V.roll+1)+' sur 3'}</span><span class="rolls" aria-label="${V.roll} lancer${V.roll>1?'s':''} sur 3">${[0,1,2].map(i=>`<i class="${i<V.roll?'used':''}"></i>`).join('')}</span>`;
-  const hint = busy ? '' : !V.roll ? '' : V.roll<3 ? 'Touche un dé pour le garder, ou choisis ta case' : 'Choisis ta case dans la grille';
+  const L = S.live.yahtzee, sc = (L && L.scores[L.order[S.yzp]]) || {}, yzNow = !busy && V.roll && yzIsYz(V.vals) && !yzFree(sc, 'yz');
+  const forced = yzNow ? yzAllowed(V.vals, sc) : [], fc = forced.length===1 ? ALL.find(c=>c.id===forced[0]) : null;
+  const hint = busy ? '' : !V.roll ? '' : yzNow ? (sc.yz===50 ? 'Yahtzee bonus : +100, compté tout seul. ' : 'Case Yahtzee barrée : pas de bonus. ') + (fc ? `Règle du joker : ces dés vont dans la case ${fc.label}.` : 'Choisis ta case : le joker vaut le maximum.')
+    : V.roll<3 ? 'Touche un dé pour le garder, ou choisis ta case' : 'Choisis ta case dans la grille';
   return vdCard(top, `<span class="hint">${hint}</span><button class="btn" data-a="vroll" id="vroll" ${V.roll>=3||busy?'disabled':''}>${V.roll ? 'Relancer' : 'Lancer'}</button>`);
 }
 /* v43 : paysage (même règle que le CSS paysage). Un changement d'orientation redessine la vue. */
@@ -2565,7 +2614,7 @@ async function plWake(on){
   try{ if(on && !plLock && navigator.wakeLock && !document.hidden){ plLock = await navigator.wakeLock.request('screen'); plLock.addEventListener('release', () => { plLock = null; }); }
     else if(!on && plLock){ const l = plLock; plLock = null; await l.release(); } }catch(e){}
 }
-document.addEventListener('visibilitychange', () => { if(!document.hidden && S.view==='playlist'){ plLock = null; render(); } });
+document.addEventListener('visibilitychange', () => { if(!document.hidden && GAMES[S.view]){ plLock = null; render(); } });
 addEventListener('online', () => { S.plNet = false; if(['home','playlist'].includes(S.view)) render(); });
 addEventListener('offline', () => { if(['home','playlist'].includes(S.view)) render(); });
 const plNetBar = need => !navigator.onLine || (need && S.plNet) ? `<div class="glass pl-net pl-warn" role="status">${navigator.onLine ? 'Connexion perdue avec les autres téléphones. On réessaie…' : 'Pas de connexion internet. Ce jeu en a besoin pour chercher, écouter et partager les morceaux.'}</div>` : '';
@@ -3229,7 +3278,7 @@ function viewPlayers(){
   <p class="sub">Ajoute autant de monde que tu veux. Les mêmes joueurs servent pour tous les jeux.</p>
   <form id="addp" class="row" style="flex-wrap:nowrap"><input type="text" id="pname" placeholder="Prénom" maxlength="24" autocomplete="off" aria-label="Prénom du joueur"><button class="btn" type="submit" id="addbtn">Ajouter</button></form>
   ${ps.length ? `<div class="glass" style="padding:8px 16px;margin-top:16px"><div class="list">${ps.map(([id,p])=>{
-    return `<div class="item tap" role="button" tabindex="0" data-player="${id}">${crowned(av(id,p.name), id===king)}<div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">${tagOf(p)}${GAME_ORDER.map(k=>[GAMES[k].name, GAMES[k].stats(id).played]).filter(x=>x[1]).map(x=>x[0]+' '+x[1]).join(' · ') || 'Pas encore de partie'}</div></div><span class="chev" aria-hidden="true">›</span></div>`;}).join('')}</div></div>
+    return `<div class="item tap" role="button" tabindex="0" data-player="${id}">${crowned(av(id,p.name), id===king)}<div class="grow"><div class="name">${esc(p.name)}</div><div class="meta">${tagOf(p)}${GAME_ORDER.map(k=>[GAMES[k].name, GAMES[k].stats(id).played]).filter(x=>x[1]).map(x=>x[0]+' '+x[1]).join(' · ') || 'Pas encore de partie'}</div></div>${troCount(id)}<span class="chev" aria-hidden="true">›</span></div>`;}).join('')}</div></div>
     <p class="note">Touche un joueur pour voir ses stats et modifier son profil. La couronne va au meilleur taux de victoire tous jeux confondus, à partir de 3 parties à plusieurs. Les parties en solo ne comptent pas.</p>` : ''}
   ${viewFriendsBlock()}`;
 }
@@ -3411,7 +3460,8 @@ function viewLook(){
     <div class="label" style="margin-bottom:12px">Couleur du fond · ${lookName().replace('Fond ','').toLowerCase()}</div>
     <div class="swatches">${sw(null,'Sans couleur','var(--bg)','var(--ink)')}${LOOKS().map(c=>sw(c.id, c.n, c.c, inkOn(c.c))).join('')}</div>
     <p class="hint" style="margin:14px 0 0">Réglage gardé sur ce téléphone seulement. Il ne change rien à tes parties.</p>
-  </div>`;
+  </div>
+  <button class="vtoggle glass${seasonOff()?'':' on'}" data-a="season-t" role="switch" aria-checked="${!seasonOff()}" id="season-t" style="margin-top:14px"><span class="grow"><b>Thème de saison</b><span class="hint">Neige à la place des confettis de décembre à fin février, flocons sur l’accueil à Noël</span></span><span class="sw-ui" aria-hidden="true"></span></button>`;
 }
 function viewBackup(){
   return `<button class="back" data-go="settings">← Réglages</button>
@@ -3516,6 +3566,206 @@ function viewMerge(id){
     <div class="chips">${others.map(([x,o])=>{ const why = mergeBlock(id, x);
       return `<button class="chip" data-mg="${x}" ${why?'disabled':''} title="${esc(why)}">${dot(x)}${esc(o.name)}${why?` <span class="meta">· ${why}</span>`:''}</button>`; }).join('')}</div></div></div>`;
 }
+/* ===================== v46 : trophées, année au carnet, thème de saison (Louis, 27/11) ===================== */
+/* Trophées : calculés à partir de l'historique (rien de stocké), donc rétroactifs. Or = les plus durs. */
+const TRO = [
+  {id:'first', n:'Première partie', d:'Jouer sa première partie', g:'1'},
+  {id:'p50', n:'Habitué', d:'Jouer 50 parties', g:'50'},
+  {id:'p100', n:'Pilier', d:'Jouer 100 parties', g:'100', gold:1},
+  {id:'five', n:'Touche-à-tout', d:'Jouer à 5 jeux différents', g:'5'},
+  {id:'fire', n:'En feu', d:'5 victoires d’affilée dans un jeu', g:'×5', gold:1},
+  {id:'rec', n:'Record du carnet', d:'Battre le record du carnet dans un jeu', g:'★', gold:1},
+  {id:'yz1', k:'yahtzee', n:'Premier Yahtzee', d:'Faire un Yahtzee', g:'Y'},
+  {id:'yz2', k:'yahtzee', n:'Double Yahtzee', d:'Faire un Yahtzee bonus', g:'Y²', gold:1},
+  {id:'yzp', k:'yahtzee', n:'Prime décrochée', d:'Atteindre 63 en section haute', g:'63'},
+  {id:'yz300', k:'yahtzee', n:'Barre des 300', d:'300 points ou plus au Yahtzee', g:'300', gold:1},
+  {id:'skg', k:'skyjo', n:'Glacial', d:'Finir une partie de Skyjo sous 50', g:'<50'},
+  {id:'skf', k:'skyjo', n:'Fermeture parfaite', d:'Fermer 5 manches de Skyjo sans être doublé', g:'✓'},
+  {id:'sb0', k:'shutbox', n:'Boîte fermée', d:'Fermer toute la boîte au Shut the Box', g:'0', gold:1},
+  {id:'fk3', k:'farkle', n:'Gros tour', d:'Un tour à 3 000 ou plus au Farkle', g:'3k'},
+  {id:'tch', k:'tarot', n:'Chelem', d:'Réussir un chelem au Tarot', g:'C', gold:1},
+  {id:'tgc', k:'tarot', n:'Garde contre', d:'Réussir une garde contre', g:'GC', gold:1},
+  {id:'tpb', k:'tarot', n:'Petit au bout', d:'Mener le petit au bout en attaque', g:'PB'},
+  {id:'q3', k:'421', n:'Triple 421', d:'Faire trois 421 dans une partie', g:'421', gold:1},
+  {id:'plf', k:'playlist', n:'Introuvable', d:'Personne n’a trouvé ton morceau', g:'?'},
+  {id:'plo', k:'playlist', n:'Oreille absolue', d:'Trouver tous les morceaux d’une partie', g:'♪', gold:1}];
+function trophiesOf(pid){
+  const gs = S.games.filter(g=>known(g) && (g.results||[]).some(r=>r.id===pid)).sort((a,b)=>a.date-b.date);
+  const got = {}, hit = (id, g) => { if(!got[id]) got[id] = {at:g.date}; };
+  let n = 0, best = 0, ferm = 0; const kinds = new Set(), streak = {};
+  for(const g of gs){ const k = kindOf(g), r = g.results.find(x=>x.id===pid), multi = g.results.length>1; n++;
+    hit('first', g); if(n===50) hit('p50', g); if(n===100) hit('p100', g);
+    kinds.add(k); if(kinds.size===5) hit('five', g);
+    if(multi){ const w = GAMES[k].win(g, pid); if(w!==null){ streak[k] = w ? (streak[k]||0)+1 : 0; best = Math.max(best, streak[k]); if(streak[k]>=5) hit('fire', g); } }
+    if(recordOf(g, r).includes('du carnet')) hit('rec', g);
+    if(k==='yahtzee'){ if(r.yz===50 || r.yb) hit('yz1', g); if(r.yb) hit('yz2', g); if(r.bonus) hit('yzp', g); if(r.total>=300) hit('yz300', g); }
+    else if(k==='skyjo'){ if(r.total<50) hit('skg', g); ferm += Math.max(0, (r.closed||0)-(r.doubled||0)); if(ferm>=5) hit('skf', g); }
+    else if(k==='shutbox'){ if(r.total===0) hit('sb0', g); }
+    else if(k==='farkle'){ if((r.best||0)>=3000) hit('fk3', g); }
+    else if(k==='421'){ if((r.n421||0)>=3) hit('q3', g); }
+    else if(k==='playlist'){ if((r.fooled||0)>0) hit('plf', g); if(r.opp && r.found===r.opp) hit('plo', g); }
+    else if(k==='tarot'){ ((g.sheet && g.sheet.rounds)||[]).forEach(d => { const att = d.t===pid || d.p===pid, made = d.pts >= TAR_NEED[d.b];
+      if(d.t===pid && (d.ch===1 || d.ch===2)) hit('tch', g); if(d.t===pid && d.c===3 && made) hit('tgc', g); if(att && d.pab==='a') hit('tpb', g); }); } }
+  const prog = {p50:[Math.min(n,50),50], p100:[Math.min(n,100),100], five:[Math.min(kinds.size,5),5], fire:[Math.min(best,5),5], skf:[Math.min(ferm,5),5]};
+  return {got, prog, n:Object.keys(got).length};
+}
+/* Médaille : or (pleine), encre (pleine) ou verrouillée (contour gris). */
+function medal(t, on, sz){ sz = sz || 34; const g = esc(t.g), fs = g.length>2 ? 10.5 : g.length>1 ? 12.5 : 15;
+  const fill = !on ? 'none' : t.gold ? '#EDBE36' : 'var(--inv-bg)', stroke = !on ? 'var(--line)' : t.gold ? '#C99417' : 'var(--inv-bg)', ink = !on ? 'var(--mute)' : t.gold ? '#6B4A06' : 'var(--inv-ink)';
+  return `<svg class="medal" viewBox="0 0 36 36" width="${sz}" height="${sz}" aria-hidden="true"><circle cx="18" cy="18" r="16.5" fill="${fill}" stroke="${stroke}" stroke-width="1.5"${on?'':' stroke-dasharray="3 2.5"'}/>${on && t.gold ? '<circle cx="18" cy="18" r="12.6" fill="none" stroke="#FBE38A" stroke-width="1"/>' : ''}<text x="18" y="${18+fs*.36}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="${ink}" font-family="Figtree,-apple-system,system-ui,sans-serif">${g}</text></svg>`; }
+/* Ligne de la fiche joueur : les 3 derniers trophées + le total, ouvre la vitrine. */
+function troRow(id){ const T = trophiesOf(id), last = TRO.filter(t=>T.got[t.id]).sort((a,b)=>T.got[b.id].at-T.got[a.id].at).slice(0,3);
+  return `<button class="trow glass" data-a="tro-open" data-pid="${id}">${last.length ? `<span class="tr-m">${last.map(t=>medal(t, true, 30)).join('')}</span>` : ''}<span class="grow"><b>${T.n ? plural(T.n,'trophée') : 'Pas encore de trophée'}</b><span class="hint">${T.n ? `sur ${TRO.length} · le dernier : ${last[0].n.toLowerCase()}` : 'La vitrine se remplit en jouant'}</span></span><span class="chev" aria-hidden="true">›</span></button>`; }
+const troCount = id => { const n = trophiesOf(id).n; return n ? `<span class="tcount" aria-label="${plural(n,'trophée')}">${medal({g:'', gold:1}, true, 14)}${n}</span>` : ''; };
+function viewTrophies(){ const id = S.pid, p = S.players[id]; if(!p) return viewPlayers();
+  const T = trophiesOf(id), fmt = d => new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});
+  const cell = t => { const g = T.got[t.id], pr = T.prog[t.id];
+    return `<div class="tcell${g?'':' off'}">${medal(t, !!g, 52)}<b>${t.n}</b><span class="hint">${g ? fmt(g.at) : t.d}</span>${!g && pr ? `<span class="tprog"><i style="width:${Math.round(pr[0]/pr[1]*100)}%"></i></span><span class="hint">${pr[0]} / ${pr[1]}</span>` : ''}</div>`; };
+  const sec = (title, list) => list.length ? `<h2>${title}</h2><div class="glass tgrid">${list.map(cell).join('')}</div>` : '';
+  return `<button class="back" data-go="player">← ${esc(p.name)}</button>
+  <div class="label">${esc(p.name)} · ${T.n} sur ${TRO.length}</div><h1>Les <em>trophées</em></h1>
+  <p class="sub">Ils se débloquent en jouant, parties d’avant comprises. Les plus durs sont en or.</p>
+  ${sec('Tous les jeux', TRO.filter(t=>!t.k))}${GAME_ORDER.map(k => sec(GAMES[k].name, TRO.filter(t=>t.k===k))).join('')}`; }
+/* Fin de partie : trophées débloqués par cette partie, annoncés après les confettis. */
+function troAnnounce(pre, R){ const L = R.live; if(!L || !pre) return;
+  const news = []; L.order.forEach(pid => { const now = trophiesOf(pid).got; TRO.forEach(t => { if(now[t.id] && !pre[pid].has(t.id)) news.push({t, pid}); }); });
+  if(!news.length) return;
+  const nm = pid => pname(pid, L.names[pid]);
+  news.slice(0, 3).forEach((x, i) => setTimeout(() => { if(S.view!=='result' || S.result!==R) return;
+    const more = i===2 && news.length>3 ? ` · +${news.length-3}` : '';
+    reduceMotion() ? toast(`Trophée : ${x.t.n} (${nm(x.pid)})`) : moment(`${medal(x.t, true, 40)}<span class="m-t">${esc(x.t.n)}</span>`, `Trophée · ${esc(nm(x.pid))}${more}`, !!x.t.gold); },
+    (reduceMotion() ? 0 : revealMs(R) + 2600) + i*1500)); }
+const troPre = k => { const L = S.live[k]; if(!L) return null; const o = {}; L.order.forEach(pid => { o[pid] = new Set(Object.keys(trophiesOf(pid).got)); }); return o; };
+
+/* ---------- Ton année au carnet (1er décembre → 31 janvier), images téléchargeables ---------- */
+function yearOf(d){ if(S.yearTest) return S.yearTest; d = d || new Date(); const m = d.getMonth(); return m===11 ? d.getFullYear() : m===0 ? d.getFullYear()-1 : null; }
+function yearData(pid, y){
+  const gs = S.games.filter(g=>known(g) && new Date(g.date).getFullYear()===y && (g.results||[]).some(r=>r.id===pid)).sort((a,b)=>a.date-b.date);
+  if(gs.length < 3) return null;
+  const S1 = [], nm = id => pname(id, (gs.flatMap(g=>g.results).find(r=>r.id===id)||{}).name || '');
+  const mins = gs.reduce((t,g) => t + (g.startedAt && g.date>g.startedAt ? Math.min(g.date-g.startedAt, 4*36e5) : 0), 0)/6e4;
+  const who = new Set(); gs.forEach(g => g.results.forEach(r => { if(r.id!==pid) who.add(r.id); }));
+  S1.push({label:`Ton année ${y}`, big:String(gs.length), title:'parties au carnet', sub: mins>=60 ? `Environ ${Math.round(mins/60)} heures de jeu, avec ${plural(who.size,'joueur')}.` : `Avec ${plural(who.size,'joueur')}.`});
+  const cnt = {}; gs.forEach(g => { const k = kindOf(g); cnt[k] = (cnt[k]||0)+1; });
+  const fav = Object.entries(cnt).sort((a,b)=>b[1]-a[1]);
+  S1.push({label:'Ton jeu', big:GAMES[fav[0][0]].name, serif:1, title:plural(fav[0][1],'partie'), sub: fav[1] ? `Juste devant le ${GAMES[fav[1][0]].name} (${fav[1][1]}).` : 'Fidèle à un seul jeu.'});
+  const k2 = fav.map(x=>x[0]).find(k=>GAMES[k].trend);
+  if(k2){ const c = GAMES[k2].trend, mine = gs.filter(g=>kindOf(g)===k2).map(g=>({g, v:g.results.find(r=>r.id===pid).total})).filter(x=>typeof x.v==='number');
+    const b = mine.sort((a,b)=> c.low ? a.v-b.v : b.v-a.v)[0];
+    if(b) S1.push({label:'Ton plus beau score', big:numFr(b.v, c.dec), title:`points au ${GAMES[k2].name}`, sub:`Le ${new Date(b.g.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}.`}); }
+  let st = {}, bs = {n:0}; gs.filter(g=>g.results.length>1).forEach(g => { const k = kindOf(g), w = GAMES[k].win(g, pid); if(w===null) return; st[k] = w ? (st[k]||0)+1 : 0; if(st[k]>bs.n) bs = {n:st[k], k}; });
+  if(bs.n>=2) S1.push({label:'Ta plus belle série', big:String(bs.n), title: bs.k==='421' ? 'parties sans perdre' : 'victoires d’affilée', sub:`Au ${GAMES[bs.k].name}.`, flame:1});
+  const vs = {}; gs.filter(g=>g.results.length>1).forEach(g => { const du = GAMES[kindOf(g)].duel, me = g.results.find(r=>r.id===pid), a = du(g, me);
+    g.results.forEach(r => { if(r.id===pid) return; const x = vs[r.id] || (vs[r.id] = {id:r.id, n:0, w:0, l:0}); x.n++; const b = du(g, r); if(a<b) x.w++; else if(a>b) x.l++; }); });
+  const riv = Object.values(vs).filter(x=>x.n>=3).sort((a,b)=>Math.abs(a.w-a.l)-Math.abs(b.w-b.l) || b.n-a.n)[0];
+  if(riv) S1.push({label:'Ton rival', big:`${riv.w} – ${riv.l}`, title:esc(nm(riv.id)), sub:`Sur ${plural(riv.n,'partie')} ensemble. ${riv.w>riv.l ? 'Avantage toi.' : riv.w<riv.l ? 'Revanche en ' + (y+1) + ' ?' : 'Parfaite égalité.'}`});
+  const T = trophiesOf(pid), ty = TRO.filter(t=>T.got[t.id] && new Date(T.got[t.id].at).getFullYear()===y);
+  if(ty.length) S1.push({label:'Tes trophées', big:String(ty.length), title: ty.length>1 ? 'trophées débloqués' : 'trophée débloqué', medals:ty});
+  const wins = gs.filter(g=>g.results.length>1 && GAMES[kindOf(g)].win(g, pid)===1).length;
+  S1.push({label:`${y}, c’est fini`, big:'À l’année prochaine', serif:1, title:'', sub:`${plural(wins,'victoire')} cette année. On remet ça ?`, end:1});
+  return S1;
+}
+function troIntro(){ let seen = false; try{ seen = !!localStorage.getItem('yz-tro'); }catch(e){} const pid = myPid(); if(db || seen || !pid) return '';
+  const n = trophiesOf(pid).n; if(!n) return '';
+  return `<div class="glass row alert-card"><span class="grow"><b>Nouveau : les trophées</b><span class="hint">Tu en as déjà ${n}, parties d’avant comprises.</span></span><button class="btn" style="padding:10px 16px;font-size:14px;flex:none" data-a="tro-open" data-pid="${pid}">Voir</button></div>`; }
+function yearCard(){ const y = yearOf(), pid = myPid(); if(db || !y || !pid || !yearData(pid, y)) return '';
+  return `<button class="ycard glass" data-a="year-open"><span class="grow"><span class="label">Nouveau</span><b>Ton année ${y} au carnet</b><span class="hint">Tes parties, ton jeu, ton rival</span></span><span class="chev" aria-hidden="true">›</span></button>`; }
+function viewYear(){ const y = S.yy || yearOf(), pid = S.ypid || myPid(), D = pid && y ? yearData(pid, y) : null;
+  if(!D){ setTimeout(() => go('home')); return ''; }
+  const i = Math.max(0, Math.min(D.length-1, S.ys||0)), s = D[i];
+  return `<div class="story" id="story">
+    <div class="st-bars">${D.map((_,j)=>`<i class="${j<i?'done':j===i?'on':''}"></i>`).join('')}</div>
+    <button class="st-x" data-a="year-close" aria-label="Fermer">×</button>
+    ${s.end ? '' : `<button class="st-prev" data-a="year-prev" aria-label="Précédent"></button><button class="st-next" data-a="year-next" aria-label="Suivant"></button>`}
+    <div class="st-body${s.end?' end':''}" key="${i}">
+      <div class="label">${s.label}</div>
+      <div class="st-big${s.serif?' serif':''}">${s.flame ? FLAME_SVG.replace('<svg','<svg class="st-flame"') : ''}${s.big}</div>
+      ${s.title ? `<div class="st-title">${s.title}</div>` : ''}
+      ${s.medals ? `<div class="st-med">${s.medals.map(t=>`<span>${medal(t, true, 54)}<em>${t.n}</em></span>`).join('')}</div>` : ''}
+      ${s.sub ? `<p class="st-sub">${s.sub}</p>` : ''}
+      ${s.end ? `<button class="btn st-dl" data-a="year-dl" id="year-dl">Enregistrer les images</button><button class="link st-again" data-a="year-again">Revoir depuis le début</button>` : ''}
+    </div>
+    <div class="st-foot">Carnet de jeux · ${y}</div></div>`; }
+/* Images 1080×1920 dessinées à la main (pas de capture d'écran possible en web app), puis feuille de partage iOS. */
+async function yearImages(){ const y = S.yy || yearOf(), pid = S.ypid || myPid(), D = yearData(pid, y); if(!D) return;
+  try{ await Promise.all(['400 120px "Instrument Serif"','italic 400 120px "Instrument Serif"','600 40px Figtree','700 40px Figtree'].map(f=>document.fonts.load(f))); }catch(e){}
+  const files = [];
+  for(let i=0;i<D.length;i++){ const s = D[i], cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1920; const c = cv.getContext('2d');
+    c.fillStyle = '#0a0a0a'; c.fillRect(0,0,1080,1920);
+    const gr = c.createRadialGradient(860,300,0,860,300,900); gr.addColorStop(0,'rgba(237,190,54,.16)'); gr.addColorStop(1,'rgba(237,190,54,0)'); c.fillStyle = gr; c.fillRect(0,0,1080,1920);
+    c.fillStyle = '#8f8e93'; c.font = '600 38px Figtree'; c.letterSpacing = '6px'; c.fillText(s.label.toUpperCase(), 96, 700); c.letterSpacing = '0px';
+    const plain = String(s.big).replace(/<[^>]+>/g,'').replace(/&amp;/g,'&');
+    let fs = s.serif ? 150 : 340; c.font = `400 ${fs}px "Instrument Serif"`; while(c.measureText(plain).width > 900 && fs > 60){ fs -= 10; c.font = `400 ${fs}px "Instrument Serif"`; }
+    c.fillStyle = s.flame ? '#EDBE36' : '#f4f4f4'; c.fillText(plain, 90, 700 + fs*.95);
+    let yy = 700 + fs*.95 + 110;
+    if(s.title){ c.fillStyle = '#f4f4f4'; c.font = 'italic 400 96px "Instrument Serif"'; c.fillText(s.title.replace(/&amp;/g,'&').replace(/<[^>]+>/g,''), 96, yy); yy += 90; }
+    if(s.medals){ s.medals.slice(0,12).forEach((t,j) => { const x = 150 + (j%4)*220, cy = yy + 80 + Math.floor(j/4)*200;
+      c.beginPath(); c.arc(x, cy, 74, 0, 6.2832); c.fillStyle = t.gold ? '#EDBE36' : '#f4f4f4'; c.fill();
+      c.fillStyle = t.gold ? '#6B4A06' : '#0a0a0a'; c.font = `700 ${t.g.length>2?40:t.g.length>1?50:62}px Figtree`; c.textAlign = 'center'; c.fillText(t.g, x, cy + 20); c.textAlign = 'left'; });
+      yy += 80 + Math.ceil(Math.min(12,s.medals.length)/4)*200; }
+    if(s.sub){ c.fillStyle = '#b5b4b9'; c.font = '400 46px Figtree'; const words = s.sub.replace(/&amp;/g,'&').split(' '); let line = '';
+      words.forEach(w => { if(c.measureText(line + w).width > 880){ c.fillText(line.trim(), 96, yy + 30); yy += 64; line = ''; } line += w + ' '; }); c.fillText(line.trim(), 96, yy + 30); }
+    c.fillStyle = '#5c5b60'; c.font = '600 32px Figtree'; c.fillText(`CARNET DE JEUX · ${y}`, 96, 1800);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png')); files.push(new File([blob], `carnet-${y}-${i+1}.png`, {type:'image/png'})); }
+  try{ if(navigator.canShare && navigator.canShare({files})){ await navigator.share({files, title:`Mon année ${y} au carnet`}); return; } }catch(e){ if(e && e.name==='AbortError') return; }
+  files.forEach((f,i) => setTimeout(() => { const u = URL.createObjectURL(f), a = document.createElement('a'); a.href = u; a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u), 4000); }, i*300));
+}
+
+/* ---------- Thème de saison : Noël (1er déc → 6 janv), hiver (7 janv → fin février), coupé le 1er mars ---------- */
+const SEASON_KEY = 'yz-season';
+const seasonOff = () => { try{ return !!(JSON.parse(localStorage.getItem(SEASON_KEY)||'null')||{}).off; }catch(e){ return false; } };
+function season(d){ if(seasonOff()) return null; if(S.seasonTest) return S.seasonTest; d = d || new Date(); const m = d.getMonth(), day = d.getDate();
+  if(m===11 || (m===0 && day<=6)) return 'noel'; if(m===0 || m===1) return 'hiver'; return null; }
+function seasonToggle(){ try{ if(seasonOff()) localStorage.removeItem(SEASON_KEY); else localStorage.setItem(SEASON_KEY, JSON.stringify({off:true})); }catch(e){} render(); }
+/* Neige à la place des confettis : flocons plats qui tombent en se balançant. */
+function snowfall(o){ o = o || {};
+  try{ if(matchMedia('(prefers-reduced-motion: reduce)').matches || document.hidden) return; }catch(e){ return; }
+  const run = ++confRun, old = document.getElementById('confetti'); if(old) old.remove();
+  const cv = document.createElement('canvas'); cv.id = 'confetti'; cv.setAttribute('aria-hidden','true');
+  cv.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:35'; document.body.appendChild(cv);
+  const dpr = Math.min(2, devicePixelRatio||1), W = innerWidth, H = innerHeight; cv.width = W*dpr; cv.height = H*dpr; const c = cv.getContext('2d'); c.scale(dpr, dpr);
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches && document.documentElement.dataset.theme!=='light' || document.documentElement.dataset.theme==='dark';
+  const tones = dark ? ['#ffffff','#dfe8f2','#c4d3e3'] : ['#9fb3c8','#b9c9da','#7d95ae'];
+  const N = o.small ? 40 : Math.round(Math.min(130, W/3)), P = [];
+  for(let i=0;i<N;i++){ const big = Math.random()<.35; P.push({x:Math.random()*W, y:-20 - Math.random()*H*.7, r: big ? 6+Math.random()*5 : 2+Math.random()*2.5, big,
+    vy:.9+Math.random()*1.6, sw:Math.random()*6.28, vs:.02+Math.random()*.03, rot:Math.random()*6.28, vr:(Math.random()-.5)*.02, t:tones[(Math.random()*tones.length)|0]}); }
+  const life = o.small ? 2200 : 3600, fade = 700; let t0 = null;
+  const flake = (p) => { c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.strokeStyle = p.t; c.fillStyle = p.t; c.lineWidth = 1.6; c.lineCap = 'round';
+    if(!p.big){ c.beginPath(); c.arc(0,0,p.r,0,6.2832); c.fill(); }
+    else { for(let a=0;a<6;a++){ c.rotate(Math.PI/3); c.beginPath(); c.moveTo(0,0); c.lineTo(0,-p.r); c.moveTo(0,-p.r*.55); c.lineTo(p.r*.28,-p.r*.8); c.moveTo(0,-p.r*.55); c.lineTo(-p.r*.28,-p.r*.8); c.stroke(); } }
+    c.restore(); };
+  const frame = ts => { if(run!==confRun) return; if(t0===null) t0 = ts; const el = ts - t0; c.clearRect(0,0,W,H);
+    c.globalAlpha = el > life-fade ? Math.max(0,(life-el)/fade) : 1;
+    for(const p of P){ p.sw += p.vs; p.y += p.vy; p.x += Math.sin(p.sw)*.7; p.rot += p.vr; flake(p); }
+    if(el < life) requestAnimationFrame(frame); else cv.remove(); };
+  requestAnimationFrame(frame); }
+/* Accueil à Noël : quelques flocons qui tombent doucement derrière les cartes. */
+let snowRAF = 0;
+function homeSnow(){ const on = S.view==='home' && season()==='noel' && !reduceMotion() && !document.hidden; let cv = document.getElementById('home-snow');
+  if(!on){ if(cv){ cancelAnimationFrame(snowRAF); cv.remove(); } return; } if(cv) return;
+  cv = document.createElement('canvas'); cv.id = 'home-snow'; cv.setAttribute('aria-hidden','true'); { const b = document.querySelector('.blobs'); if(b) b.after(cv); else document.body.prepend(cv); }
+  const dpr = Math.min(2, devicePixelRatio||1); let W = 0, H = 0; const c = cv.getContext('2d');
+  const size = () => { W = innerWidth; H = innerHeight; cv.width = W*dpr; cv.height = H*dpr; c.setTransform(dpr,0,0,dpr,0,0); }; size();
+  const col = getComputedStyle(document.documentElement).getPropertyValue('--mute') || '#999';
+  const P = Array.from({length:22}, () => ({x:Math.random()*W, y:Math.random()*H, r:1.4+Math.random()*2.6, vy:.25+Math.random()*.45, sw:Math.random()*6.28}));
+  const frame = () => { if(!document.getElementById('home-snow')) return; if(cv.width !== Math.round(innerWidth*dpr)) size();
+    c.clearRect(0,0,W,H); c.fillStyle = col; c.globalAlpha = .38;
+    for(const p of P){ p.y += p.vy; p.sw += .012; p.x += Math.sin(p.sw)*.25; if(p.y > H+6){ p.y = -6; p.x = Math.random()*W; } c.beginPath(); c.arc(p.x, p.y, p.r, 0, 6.2832); c.fill(); }
+    snowRAF = requestAnimationFrame(frame); };
+  snowRAF = requestAnimationFrame(frame); }
+
+/* v45 : face-à-face sur la fiche joueur. Pour chaque joueur croisé au moins 2 fois (parties à plusieurs, tous jeux) :
+   combien de fois chacun a fini devant l'autre (duel du module, plus petit = mieux), égalités à part. 5 adversaires max. */
+function faceCard(id){ const vs = {};
+  S.games.filter(g => known(g) && (g.results||[]).length>1).forEach(g => { const me = g.results.find(r=>r.id===id); if(!me) return;
+    const du = GAMES[kindOf(g)].duel, a = du(g, me);
+    g.results.forEach(r => { if(r.id===id) return; const b = du(g, r), x = vs[r.id] || (vs[r.id] = {id:r.id, name:r.name, n:0, w:0, l:0});
+      x.n++; x.name = r.name; if(a<b) x.w++; else if(a>b) x.l++; }); });
+  const rows = Object.values(vs).filter(x=>x.n>=2).sort((a,b)=>b.n-a.n).slice(0,5); if(!rows.length) return '';
+  const col = colorOf(id) || 'var(--ink)';
+  return `<h2>Face-à-face</h2><div class="glass" style="padding:4px 16px"><div class="list">${rows.map(x=>{ const nm = pname(x.id, x.name), d = x.n - x.w - x.l;
+    return `<div class="item">${av(x.id, nm)}<div class="grow"><div class="name">${esc(nm)}</div><div class="ff-bar">${x.w ? `<i style="flex:${x.w};background:${col}"></i>` : ''}${d ? `<i style="flex:${d}" class="eq"></i>` : ''}${x.l ? `<i style="flex:${x.l};background:${colorOf(x.id)||'var(--mute)'}"></i>` : ''}</div></div><div class="ff-sc"><b>${x.w}</b><span>–</span><b>${x.l}</b></div></div>`; }).join('')}</div></div>
+  <p class="note">Qui a fini devant l’autre, sur toutes les parties jouées ensemble${rows.some(x=>x.n-x.w-x.l) ? ' (en gris : à égalité)' : ''}.</p>`; }
 function viewPlayer(){
   const id = S.pid, p = S.players[id];
   if(!p) return `<button class="back" data-go="players">← Joueurs</button><div class="glass empty"><div class="serif">Joueur introuvable</div><p>Il a peut-être été retiré.</p></div>`;
@@ -3548,9 +3798,11 @@ function viewPlayer(){
   return `<button class="back" data-go="players">← Joueurs</button>
   <div class="phead">${crowned(av(id, p.name, 'big'), isKing)}<div class="grow"><div class="label">${isKing ? 'Meilleur joueur · ' : ''}${plural(total,'partie')} au total</div><h1 style="margin:4px 0 0">${esc(p.name)}</h1></div>
     <button class="btn ghost" data-a="edit" id="edit-btn" style="padding:10px 16px">Modifier</button></div>
+  ${troRow(id)}
   ${friendCard(p)}
   ${(() => { const on = GAME_ORDER.filter(k=>GAMES[k].stats(id).played), off = GAME_ORDER.filter(k=>!on.includes(k));
     return on.map(k=>GAMES[k].player(id)).join('') + (off.length ? `<p class="hint" style="margin-top:${on.length?18:6}px">Pas encore de partie de ${andList(off.map(k=>GAMES[k].name))}.</p>` : ''); })()}
+  ${faceCard(id)}
   ${mine.length ? `<h2>Dernières parties</h2><div class="glass" style="padding:4px 16px"><div class="list">${mine.slice(0,8).map(g=>`<div class="item"><div class="grow"><div class="name">${GAMES[kindOf(g)].name}</div><div class="meta">${new Date(g.date).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long'})}</div></div><div class="meta" style="text-align:right;color:var(--ink)">${GAMES[kindOf(g)].outcome(g, id)}</div></div>`).join('')}</div></div>` : ''}`;
 }
 
@@ -3600,12 +3852,18 @@ function viewStats(){
 /* ================= history ================= */
 function viewHistory(){
   const f = S.hfilter;
-  const gs = [...S.games].filter(g => known(g) && (f==='all' || kindOf(g)===f)).sort((a,b)=>b.date-a.date);
+  /* v45 : filtre par joueurs (comme dans Stats) : parties où tous les joueurs choisis étaient là. En mémoire seulement. */
+  const base = [...S.games].filter(g => known(g) && (f==='all' || kindOf(g)===f));
+  const seen = new Set(); base.forEach(g => (g.results||[]).forEach(r => seen.add(r.id)));
+  const pickable = sortedPlayers().filter(([id]) => seen.has(id)).map(([id]) => id);
+  const grp = (S.hgroup||[]).filter(id => pickable.includes(id));
+  const gs = base.filter(g => grp.every(id => (g.results||[]).some(r => r.id===id))).sort((a,b)=>b.date-a.date);
+  const hchips = pickable.length>1 ? `<div class="chips sm sgrp" role="group" aria-label="Filtrer par joueurs"><button class="chip${grp.length?'':' on'}" data-hgrp="" aria-pressed="${!grp.length}">Tous</button>${pickable.map(id=>`<button class="chip${grp.includes(id)?' on':''}" data-hgrp="${id}" aria-pressed="${grp.includes(id)}">${dot(id)}${esc(pname(id, lastName(id)))}</button>`).join('')}</div>` : '';
   const top = `<div class="label">${plural(gs.length,'partie')}</div><h1>Les <em>parties</em></h1>
     <p class="sub">La plus récente en premier.</p><div class="hbar">${seg('hfilter',[['all','Tout'], ...GAME_ORDER.map(k=>[k,GAMES[k].name])],'gseg')}${!db && (online() || S.drive.on) ? `<button class="navb sync${S.syncing?' go':''}" data-a="sync-all" id="hsync" aria-label="Synchroniser avec mon compte et mes amis" title="Synchroniser avec mon compte et mes amis" ${S.syncing?'disabled':''}>${SYNC_IC}${syncTodo()?'<span class="obadge" aria-hidden="true"></span>':''}</button>` : ''}</div>`;
-  if(!gs.length) return top + `<div class="glass empty"><div class="serif">Rien d'enregistré</div><p>Chaque partie terminée arrive ici avec la date et les scores de chacun.</p></div>`;
+  if(!gs.length) return top + hchips + (grp.length ? `<div class="glass empty"><div class="serif">Jamais ensemble</div><p>Aucune partie avec ${andList(grp.map(id=>esc(pname(id, lastName(id)))))}${f==='all' ? '' : ' au '+GAMES[f].name}.</p><button class="btn ghost" data-hgrp="">Voir toutes les parties</button></div>` : `<div class="glass empty"><div class="serif">Rien d'enregistré</div><p>Chaque partie terminée arrive ici avec la date et les scores de chacun.</p></div>`);
   const fmt = d => new Date(d).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
-  return top + `<div class="stack">${gs.map(g=>{
+  return top + hchips + `<div class="stack">${gs.map(g=>{
     const k = kindOf(g); const nm = r => dot(r.id)+esc(pname(r.id,r.name));
     const {title, body} = GAMES[k].hist(g, nm);
     return `<div class="gcard glass" data-game="${g.id}"><div class="row" style="justify-content:space-between"><span class="label">${GAMES[k].name} · ${fmt(g.date)}</span>
@@ -3645,10 +3903,11 @@ let toastT; function toast(msg){ clearTimeout(toastT); let t=document.querySelec
 /* ================= compte (Firebase) =================
    Couche facultative AU-DESSUS du stockage local : le compte ne remplace rien, il n'efface rien.
    Sur le serveur : users/{uid} {name, code, createdAt} et codes/{code} {uid}. L'e-mail reste dans Firebase Auth.
-   Le SDK (firebase-13.1.0.js) est servi depuis le site et n'est chargé que si on a (ou crée) un compte. */
+   Le SDK (firebase-13.1.0-ac.js depuis la v46, avec App Check) est servi depuis le site et n'est chargé que si on a (ou crée) un compte. */
 const FB_CFG = {apiKey:"AIzaSyAMSt7s0xJ7cMFZb2UeYNUshNT_NkiZD84", authDomain:"carnet-de-jeu-1333.firebaseapp.com",
   projectId:"carnet-de-jeu-1333", storageBucket:"carnet-de-jeu-1333.firebasestorage.app",
   messagingSenderId:"668352623353", appId:"1:668352623353:web:aa9f112448476a1b3ba828"};
+const APPCHECK_KEY = '6LdiLzUuAAAAAFtO-64lehCCYQiW8zWEGj1_l_xp';
 const ACCT_KEY = 'yz-acct';
 const lsGet = k => { try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){ return null; } };
 const lsSet = (k, v) => { try{ v===null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
@@ -3657,8 +3916,11 @@ if(S.acct.cache) S.acct.profile = {name:S.acct.cache.name, code:S.acct.cache.cod
 let FB = null, fbP = null;
 function fb(){
   if(!fbP){ S.acct.status = 'loading';
-    fbP = import('./firebase-13.1.0.js').then(m => {
+    fbP = import('./firebase-13.1.0-ac.js').then(m => {
       const app = m.initializeApp(FB_CFG);
+      /* v46 : App Check (Fraud Defense / reCAPTCHA Enterprise, invisible). Jeton envoyé avec chaque requête Firebase ;
+         hors ligne ou si Google ne répond pas, les requêtes partent sans jeton (tant que l'application forcée n'est pas activée). */
+      try{ m.initializeAppCheck(app, {provider: new m.ReCaptchaEnterpriseProvider(APPCHECK_KEY), isTokenAutoRefreshEnabled: true}); }catch(e){}
       const auth = m.initializeAuth(app, {persistence:[m.indexedDBLocalPersistence, m.browserLocalPersistence]});
       auth.languageCode = 'fr';
       FB = {m, auth, fs: m.getFirestore(app)};
@@ -4641,6 +4903,7 @@ const CONF_TONES = [['#F7D45C','#C99417'],['#EDBE36','#A87A12'],['#FBE38A','#DDA
 let confRun = 0;
 function celebrate(o){
   o = o || {};
+  if(season()) return snowfall(o);
   try{ if(matchMedia('(prefers-reduced-motion: reduce)').matches || document.hidden) return; }catch(e){ return; }
   const run = ++confRun, old = document.getElementById('confetti'); if(old) old.remove();
   const cv = document.createElement('canvas'); cv.id = 'confetti'; cv.setAttribute('aria-hidden','true');
@@ -4678,8 +4941,9 @@ let finishing = false;
 async function finishGame(k){
   if(finishing || !S.live[k]) return; finishing = true; S.confirm = null;
   try{ const live0 = JSON.parse(JSON.stringify(S.live[k]));
+    const pre = troPre(k);
     const g = await saveFinished(k); const id = await store.addGame(g); watchDone(k, live0, {...g, id}); await store.setLive(k, null);
-    S.yzUndo = null; S.sgame = k; openResult({g:{...g, id}, from:'end', live:live0});
+    S.yzUndo = null; S.sgame = k; const R = {g:{...g, id}, from:'end', live:live0}; openResult(R); try{ troAnnounce(pre, R); }catch(e){}
     if(!db){ const saved = S.games.find(x=>x.id===id); shareGame(saved); }
     if(!db) driveAuto(); }
   catch(err){ toast("La partie n'a pas pu être enregistrée. Réessaie."); render(); }
@@ -4758,7 +5022,7 @@ function render(){
   const same = v===lastView;
   if(!same && lastView!==null) VT = {at:performance.now(), dir:vtDir(lastView, v)};
   lastView = v;
-  $app.innerHTML = v==='players'?viewPlayers():v==='settings'?viewSettings():v==='friends'?viewFriends():v==='friend'?viewFriend():v==='account'?viewAccountPage():v==='backup'?viewBackup():v==='look'?viewLook():v==='feedback'?viewFeedback():v==='fbadmin'?viewFbAdmin():v==='player'?viewPlayer():v==='stats'?viewStats():v==='history'?viewHistory():GAMES[v]?GAMES[v].view():v==='result'?viewResult():v==='watch'?viewWatch():viewHome();
+  $app.innerHTML = v==='trophies'?viewTrophies():v==='year'?viewYear():v==='players'?viewPlayers():v==='settings'?viewSettings():v==='friends'?viewFriends():v==='friend'?viewFriend():v==='account'?viewAccountPage():v==='backup'?viewBackup():v==='look'?viewLook():v==='feedback'?viewFeedback():v==='fbadmin'?viewFbAdmin():v==='player'?viewPlayer():v==='stats'?viewStats():v==='history'?viewHistory():GAMES[v]?GAMES[v].view():v==='result'?viewResult():v==='watch'?viewWatch():viewHome();
   { const t = VT ? performance.now() - VT.at : 1e9;
     if(t < 300 && !reduceMotion()){ $app.dataset.vt = VT.dir; $app.style.setProperty('--vt-off', -Math.round(t)+'ms'); }
     else { delete $app.dataset.vt; VT = null; } }
@@ -4767,6 +5031,8 @@ function render(){
     if(els.length===keep.length) els.forEach((el,i) => { el.scrollLeft = keep[i][0]; el.scrollTop = keep[i][1]; });
     if(keepY!==null && Math.abs(window.scrollY-keepY)>1) window.scrollTo(0, keepY); }
   document.body.dataset.view = v;
+  /* v45 : écran allumé pendant toute partie en cours (la Playlist gère le sien dans plLoop). */
+  if(v!=='playlist') plWake(!!(GAMES[v] && S.live[v]));
   meCheck();
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.v===tabv));
   placeInd();
@@ -4792,7 +5058,7 @@ const reduceMotion = () => { try{ return matchMedia('(prefers-reduced-motion: re
 let VT = null;
 /* Sens d'arrivée du contenu : onglet de droite → de la droite ; écran plus profond → de la droite ; retour → de la gauche. */
 const TAB_ORDER = ['home','stats','history','players'];
-const DEPTH = {settings:1, player:1, friends:1, watch:1, account:2, backup:2, look:2, feedback:2, fbadmin:2, friend:2, result:2};
+const DEPTH = {trophies:2, year:1, settings:1, player:1, friends:1, watch:1, account:2, backup:2, look:2, feedback:2, fbadmin:2, friend:2, result:2};
 GAME_ORDER.forEach(k => { DEPTH[k] = 1; });
 function vtDir(a, b){
   const ia = TAB_ORDER.indexOf(a), ib = TAB_ORDER.indexOf(b);
@@ -4811,6 +5077,7 @@ function tweenNum(el, from, to){
   requestAnimationFrame(step);
 }
 function afterRender(same){
+  try{ homeSnow(); }catch(e){}
   const rm = reduceMotion();
   $app.querySelectorAll('[data-ck]').forEach(el => { const k = el.dataset.ck, to = Number(el.dataset.n), from = NUMS.get(k); NUMS.set(k, to);
     if(same && !rm && from!==undefined && from!==to && isFinite(from)) tweenNum(el, from, to); });
@@ -4881,7 +5148,7 @@ async function saveFinished(k){ return GAMES[k].record(S.live[k]); }
 
 $app.addEventListener('toggle', e => { if(e.target && e.target.id==='privacy') S.privOpen = e.target.open; }, true);
 $app.addEventListener('input', e => { if(e.target && e.target.id==='fb-text'){ S.fbk.draft = e.target.value; if(S.fbk.err){ S.fbk.err = null; const x = document.getElementById('fb-err'); if(x) x.remove(); } } });
-const CLICK_SEL = '[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-mg],[data-mg-yes],[data-rg],[data-rg-yes],[data-seg],[data-player],[data-color],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-lkopen],[data-me],[data-bk],[data-share],[data-frsend],[data-wshare],[data-watch],[data-game],[data-sgrp],[data-look]'
+const CLICK_SEL = '[data-go],[data-a],[data-pick],[data-rm],[data-rm-yes],[data-mg],[data-mg-yes],[data-rg],[data-rg-yes],[data-seg],[data-player],[data-color],[data-drivefile],[data-friend],[data-fra],[data-frx],[data-frlink],[data-frnew],[data-lkopen],[data-me],[data-bk],[data-share],[data-frsend],[data-wshare],[data-watch],[data-game],[data-sgrp],[data-look],[data-hgrp]'
   + GAME_ORDER.map(k=>GAMES[k].sel ? ','+GAMES[k].sel : '').join('');
 $app.addEventListener('click', async e => {
   const el = e.target.closest(CLICK_SEL); if(!el) return;
@@ -4895,6 +5162,7 @@ $app.addEventListener('click', async e => {
   if(el.dataset.player){ S.pid=el.dataset.player; go('player'); return; }
   if(el.dataset.color){ const i=document.getElementById('edit-name'); if(i) S.edit.name=i.value; S.edit.color=el.dataset.color; render(); return; }
   if(el.dataset.seg){ S[el.dataset.seg]=el.dataset.val; render(); return; }
+  if('hgrp' in el.dataset){ const id = el.dataset.hgrp, g = S.hgroup||[]; S.hgroup = !id ? [] : g.includes(id) ? g.filter(x=>x!==id) : [...g, id]; render(); return; }
   if('sgrp' in el.dataset){ const id = el.dataset.sgrp, g = S.sgroup||[]; S.sgroup = !id ? [] : g.includes(id) ? g.filter(x=>x!==id) : [...g, id]; render(); return; }
   if(el.dataset.pick){ const s=S.pick[el.dataset.k]; s.has(el.dataset.pick)?s.delete(el.dataset.pick):s.add(el.dataset.pick); render(); return; }
   if(el.dataset.rm){ S.confirm='rm-'+el.dataset.rm; render(); return; }
@@ -4910,10 +5178,20 @@ $app.addEventListener('click', async e => {
   if(a && a.startsWith('drive-')){ driveAction(a, el); return; }
   if(a && a.startsWith('fb-')){ fbAction(a, el); return; }
   if(a==='cancel'){ S.confirm=null; render(); }
-  else if(a==='start'){ S.yzUndo=null; const order=[...S.pick[k]]; const names={}; order.forEach(id=>names[id]=S.players[id].name);
+  else if(a==='start'){ S.yzUndo=null; const shuf = !!(S.shuf && S.shuf[k]) && k!=='playlist' && S.pick[k].size>1; S.shuf = {};
+    const order = shuf ? shuffled([...S.pick[k]]) : [...S.pick[k]]; const names={}; order.forEach(id=>names[id]=S.players[id].name);
+    if(shuf) setTimeout(() => reduceMotion() ? toast(names[order[0]]+' commence') : moment(esc(names[order[0]]), 'commence'), 320);
     S.pick[k]=new Set(); S.yzp=0; if(GAMES[k].resetUi) GAMES[k].resetUi();
     const L = GAMES[k].newLive(order, names); if(GAMES[k].virtual && virtOn(k)) L.virtual = true; S.virt = {};
     await store.setLive(k, L); }
+  else if(a==='tro-open'){ S.pid = el.dataset.pid; try{ localStorage.setItem('yz-tro','1'); }catch(e){} go('trophies'); }
+  else if(a==='year-open'){ S.ys = 0; S.ypid = null; S.yy = null; go('year'); }
+  else if(a==='year-next' || a==='year-prev'){ S.ys = Math.max(0, (S.ys||0) + (a==='year-next' ? 1 : -1)); const D = yearData(S.ypid || myPid(), S.yy || yearOf()); if(D && S.ys >= D.length){ S.ys = 0; go('home'); return; } render(); }
+  else if(a==='year-close'){ go('home'); }
+  else if(a==='year-again'){ S.ys = 0; render(); }
+  else if(a==='year-dl'){ yearImages(); }
+  else if(a==='season-t'){ seasonToggle(); }
+  else if(a==='shuf'){ S.shuf = {...(S.shuf||{}), [k]: !(S.shuf && S.shuf[k])}; render(); }
   else if(a==='vtoggle'){ S.virt = {...(S.virt||{}), [k]: !virtOn(k)}; render(); }
   else if(a==='w-back'){ S.watch=null; clearTimeout(wPollT); go('home'); }
   else if(a==='res-again'){ replay(); }
@@ -5025,7 +5303,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '44';
+window.APP_VERSION = '46';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

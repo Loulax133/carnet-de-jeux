@@ -95,3 +95,20 @@ Les données de jeu sont stockées dans chaque téléphone, à part : une mise �
 - Yahtzee virtuel : bandeau des dés collé en haut quand on fait défiler la fiche (lecture seule).
 - Yahtzee en paysage : en saisie manuelle, feuille complète avec tous les joueurs en colonnes ; en jeu virtuel, fiche du joueur à gauche, dés à droite.
 - `firestore.rules` ne change pas.
+
+## Pratique (version 45)
+- L'écran reste allumé pendant toute partie en cours (si le téléphone le permet).
+- Option « Tirer au sort qui commence » au lancement (décochée à chaque nouvelle partie, pas en solo ni à la Playlist) : l'ordre des joueurs est mélangé et une carte annonce qui commence.
+- Historique : filtre par joueurs (parties où tous les joueurs choisis étaient là).
+- Fiche joueur : face-à-face avec les 5 joueurs les plus croisés (qui a fini devant l'autre, tous jeux confondus).
+- Flèches de tendance plus contrastées en mode clair.
+- `firestore.rules` ne change pas.
+
+## Trophées, année au carnet, thème de saison, App Check (version 46)
+- **Trophées** : 20 trophées (les plus durs en or), calculés sur tout l'historique, donc parties d'avant comprises. Ligne des derniers trophées sur la fiche joueur, vitrine complète (verrouillés en pointillés, avec la progression), nombre de trophées dans la liste Joueurs, carte « Trophée débloqué » en fin de partie (3 au maximum), carte « Nouveau : les trophées » sur l'accueil une seule fois.
+- **Ton année au carnet** : du 1er décembre au 31 janvier, carte en haut de l'accueil. Écrans à faire défiler (parties, jeu, plus beau score, série, rival, trophées de l'année), et « Enregistrer les images » (7 images 1080×1920 via la feuille de partage).
+- **Thème de saison** : Noël du 1er décembre au 6 janvier (neige en fin de partie au lieu des confettis, flocons sur l'accueil, titre doré), hiver jusqu'à fin février (neige seulement), rien à partir du 1er mars. Interrupteur « Thème de saison » dans Réglages → Apparence.
+- **Yahtzee virtuel** : le Yahtzee bonus est signalé (+100 doré sur la ligne, explication de la règle du joker sous les dés) et la ligne reste corrigeable à la main.
+- **App Check** (Fraud Defense, anciennement reCAPTCHA Enterprise, invisible) : nouveau SDK `firebase-13.1.0-ac.js` (l'ancien `firebase-13.1.0.js` ne sert plus). Ne pas activer « Enforce » dans la console Firebase avant que tout le monde ait cette version.
+- `confidentialite.html` mentionne reCAPTCHA. `firestore.rules` ne change pas.
+- Nouvelles clés locales (à ne pas renommer) : `yz-tro` (carte trophées vue), `yz-season` (thème de saison coupé).

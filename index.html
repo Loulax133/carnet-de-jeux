@@ -268,9 +268,12 @@ td .tr{margin-left:4px;top:-1px} td .tr svg{width:8px;height:7px}
 @keyframes st-in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 #home-snow{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
 body[data-view="year"] nav.tabs{display:none}
-h1.xmas em{color:#B07F0C}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) h1.xmas em{color:#EDBE36}}
-:root[data-theme="dark"] h1.xmas em{color:#EDBE36}
+h1.th-noel em{color:#B07F0C} h1.th-paques em{color:#B07F0C} h1.th-printemps em{color:#C25F7C} h1.th-ete em{color:#B86A12} h1.th-halloween em{color:#BF5A16}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) h1.th-noel em{color:#EDBE36} :root:not([data-theme="light"]) h1.th-paques em{color:#EDBE36} :root:not([data-theme="light"]) h1.th-printemps em{color:#F2A9BE} :root:not([data-theme="light"]) h1.th-ete em{color:#F0A84A} :root:not([data-theme="light"]) h1.th-halloween em{color:#F08A3C}}
+:root[data-theme="dark"] h1.th-noel em{color:#EDBE36} :root[data-theme="dark"] h1.th-paques em{color:#EDBE36} :root[data-theme="dark"] h1.th-printemps em{color:#F2A9BE} :root[data-theme="dark"] h1.th-ete em{color:#F0A84A} :root[data-theme="dark"] h1.th-halloween em{color:#F08A3C}
+.egg-hide{appearance:none;border:0;background:none;padding:6px;display:block;margin:18px 6px 0 auto;cursor:pointer;transform:rotate(-14deg);opacity:.92;animation:egg-wobble 3.2s ease-in-out infinite}
+@keyframes egg-wobble{0%,86%,100%{transform:rotate(-14deg)}90%{transform:rotate(-4deg)}94%{transform:rotate(-22deg)}}
+@media (prefers-reduced-motion: reduce){.egg-hide{animation:none}}
 .moment .medal{display:block;margin:0 auto 8px}.moment b .m-t{display:block;font-size:40px;line-height:1.05}
 @media (prefers-reduced-motion: reduce){.st-body{animation:none}}
 .ff-bar{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--chip);margin-top:7px;gap:2px}.ff-bar i{display:block;height:100%}.ff-bar i.eq{background:var(--line)}
@@ -713,7 +716,7 @@ function homeOrder(){
 }
 function viewHome(){
   const n = k => S.games.filter(g=>kindOf(g)===k).length;
-  return `<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div><div class="label">Carnet de jeux</div><h1${season()==='noel' ? ' class="xmas"' : ''}>On joue <em>à quoi</em> ?</h1></div>${setBtn('home-settings')}</div>
+  return `<div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div><div class="label">Carnet de jeux</div><h1${season() ? ' class="th-'+season()+'"' : ''}>On joue <em>à quoi</em> ?</h1></div>${setBtn('home-settings')}</div>
   <p class="sub">Choisis un jeu. Les parties en cours t'attendent là où tu les as laissées.</p>
   ${plInviteCards()}
   ${S.watchList.map(d=>`<button class="wcard glass" data-watch="${d.id}"><span class="grow"><span class="label"><span class="live-dot"></span>En direct</span><b>${GAMES[d.k].name} de ${esc(d.ownerName)}</b><span class="hint">${watchWith(d)}</span></span><span class="pill">Suivre</span></button>`).join('')}
@@ -3475,7 +3478,7 @@ function viewLook(){
     <div class="swatches">${sw(null,'Sans couleur','var(--bg)','var(--ink)')}${LOOKS().map(c=>sw(c.id, c.n, c.c, inkOn(c.c))).join('')}</div>
     <p class="hint" style="margin:14px 0 0">Réglage gardé sur ce téléphone seulement. Il ne change rien à tes parties.</p>
   </div>
-  <button class="vtoggle glass${seasonOff()?'':' on'}" data-a="season-t" role="switch" aria-checked="${!seasonOff()}" id="season-t" style="margin-top:14px"><span class="grow"><b>Thème de saison</b><span class="hint">Neige à la place des confettis de décembre à fin février, flocons sur l’accueil</span></span><span class="sw-ui" aria-hidden="true"></span></button>`;
+  <button class="vtoggle glass${seasonOff()?'':' on'}" data-a="season-t" role="switch" aria-checked="${!seasonOff()}" id="season-t" style="margin-top:14px"><span class="grow"><b>Thème de saison</b><span class="hint">Petites animations quelques jours par an : Noël, printemps, Pâques (avec un œuf caché), été et Halloween</span></span><span class="sw-ui" aria-hidden="true"></span></button>`;
 }
 function viewBackup(){
   return `<button class="back" data-go="settings">← Réglages</button>
@@ -3602,7 +3605,8 @@ const TRO = [
   {id:'tpb', k:'tarot', n:'Petit au bout', d:'Mener le petit au bout en attaque', g:'PB'},
   {id:'q3', k:'421', n:'Triple 421', d:'Faire trois 421 dans une partie', g:'421', gold:1},
   {id:'plf', k:'playlist', n:'Introuvable', d:'Personne n’a trouvé ton morceau', g:'?'},
-  {id:'plo', k:'playlist', n:'Oreille absolue', d:'Trouver tous les morceaux d’une partie', g:'♪', gold:1}];
+  {id:'plo', k:'playlist', n:'Oreille absolue', d:'Trouver tous les morceaux d’une partie', g:'♪', gold:1},
+  {id:'egg', n:'Chasse aux œufs', d:'Trouver l’œuf caché à Pâques', g:'œuf', gold:1}];
 function trophiesOf(pid){
   const gs = S.games.filter(g=>known(g) && (g.results||[]).some(r=>r.id===pid)).sort((a,b)=>a.date-b.date);
   const got = {}, hit = (id, g) => { if(!got[id]) got[id] = {at:g.date}; };
@@ -3620,6 +3624,7 @@ function trophiesOf(pid){
     else if(k==='playlist'){ if((r.fooled||0)>0) hit('plf', g); if(r.opp && r.found===r.opp) hit('plo', g); }
     else if(k==='tarot'){ ((g.sheet && g.sheet.rounds)||[]).forEach(d => { const att = d.t===pid || d.p===pid, made = d.pts >= TAR_NEED[d.b];
       if(d.t===pid && (d.ch===1 || d.ch===2)) hit('tch', g); if(d.t===pid && d.c===3 && made) hit('tgc', g); if(att && d.pab==='a') hit('tpb', g); }); } }
+  if(pid && pid===myPid()){ const ys = Object.values(eggGet()).filter(Number.isFinite); if(ys.length) got.egg = {at:Math.min(...ys)}; }
   const prog = {p50:[Math.min(n,50),50], p100:[Math.min(n,100),100], five:[Math.min(kinds.size,5),5], fire:[Math.min(best,5),5], skf:[Math.min(ferm,5),5]};
   return {got, prog, n:Object.keys(got).length};
 }
@@ -3628,8 +3633,9 @@ function medal(t, on, sz){ sz = sz || 34; const g = esc(t.g), fs = g.length>2 ? 
   const fill = !on ? 'none' : t.gold ? '#EDBE36' : 'var(--inv-bg)', stroke = !on ? 'var(--line)' : t.gold ? '#C99417' : 'var(--inv-bg)', ink = !on ? 'var(--mute)' : t.gold ? '#6B4A06' : 'var(--inv-ink)';
   return `<svg class="medal" viewBox="0 0 36 36" width="${sz}" height="${sz}" aria-hidden="true"><circle cx="18" cy="18" r="16.5" fill="${fill}" stroke="${stroke}" stroke-width="1.5"${on?'':' stroke-dasharray="3 2.5"'}/>${on && t.gold ? '<circle cx="18" cy="18" r="12.6" fill="none" stroke="#FBE38A" stroke-width="1"/>' : ''}<text x="18" y="${18+fs*.36}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="${ink}" font-family="Figtree,-apple-system,system-ui,sans-serif">${g}</text></svg>`; }
 /* Ligne de la fiche joueur : les 3 derniers trophées + le total, ouvre la vitrine. */
-function troRow(id){ const T = trophiesOf(id), last = TRO.filter(t=>T.got[t.id]).sort((a,b)=>T.got[b.id].at-T.got[a.id].at).slice(0,3);
-  return `<button class="trow glass" data-a="tro-open" data-pid="${id}">${last.length ? `<span class="tr-m">${last.map(t=>medal(t, true, 30)).join('')}</span>` : ''}<span class="grow"><b>${T.n ? plural(T.n,'trophée') : 'Pas encore de trophée'}</b><span class="hint">${T.n ? `sur ${TRO.length} · le dernier : ${last[0].n.toLowerCase()}` : 'La vitrine se remplit en jouant'}</span></span><span class="chev" aria-hidden="true">›</span></button>`; }
+const troList = id => TRO.filter(t => t.id!=='egg' || id===myPid());
+function troRow(id){ const T = trophiesOf(id), last = troList(id).filter(t=>T.got[t.id]).sort((a,b)=>T.got[b.id].at-T.got[a.id].at).slice(0,3);
+  return `<button class="trow glass" data-a="tro-open" data-pid="${id}">${last.length ? `<span class="tr-m">${last.map(t=>medal(t, true, 30)).join('')}</span>` : ''}<span class="grow"><b>${T.n ? plural(T.n,'trophée') : 'Pas encore de trophée'}</b><span class="hint">${T.n ? `sur ${troList(id).length} · le dernier : ${last[0].n.toLowerCase()}` : 'La vitrine se remplit en jouant'}</span></span><span class="chev" aria-hidden="true">›</span></button>`; }
 const troCount = id => { const n = trophiesOf(id).n; return n ? `<span class="tcount" aria-label="${plural(n,'trophée')}">${medal({g:'', gold:1}, true, 14)}${n}</span>` : ''; };
 function viewTrophies(){ const id = S.pid, p = S.players[id]; if(!p) return viewPlayers();
   const T = trophiesOf(id), fmt = d => new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});
@@ -3637,9 +3643,9 @@ function viewTrophies(){ const id = S.pid, p = S.players[id]; if(!p) return view
     return `<div class="tcell${g?'':' off'}">${medal(t, !!g, 52)}<b>${t.n}</b><span class="hint">${g ? fmt(g.at) : t.d}</span>${!g && pr ? `<span class="tprog"><i style="width:${Math.round(pr[0]/pr[1]*100)}%"></i></span><span class="hint">${pr[0]} / ${pr[1]}</span>` : ''}</div>`; };
   const sec = (title, list) => list.length ? `<h2>${title}</h2><div class="glass tgrid">${list.map(cell).join('')}</div>` : '';
   return `<button class="back" data-go="player">← ${esc(p.name)}</button>
-  <div class="label">${esc(p.name)} · ${T.n} sur ${TRO.length}</div><h1>Les <em>trophées</em></h1>
+  <div class="label">${esc(p.name)} · ${T.n} sur ${troList(id).length}</div><h1>Les <em>trophées</em></h1>
   <p class="sub">Ils se débloquent en jouant, parties d’avant comprises. Les plus durs sont en or.</p>
-  ${sec('Tous les jeux', TRO.filter(t=>!t.k))}${GAME_ORDER.map(k => sec(GAMES[k].name, TRO.filter(t=>t.k===k))).join('')}`; }
+  ${sec('Tous les jeux', troList(id).filter(t=>!t.k))}${GAME_ORDER.map(k => sec(GAMES[k].name, TRO.filter(t=>t.k===k))).join('')}`; }
 /* Fin de partie : trophées débloqués par cette partie, annoncés après les confettis. */
 function troAnnounce(pre, R){ const L = R.live; if(!L || !pre) return;
   const news = []; L.order.forEach(pid => { const now = trophiesOf(pid).got; TRO.forEach(t => { if(now[t.id] && !pre[pid].has(t.id)) news.push({t, pid}); }); });
@@ -3725,11 +3731,10 @@ async function yearImages(){ const y = S.yy || yearOf(), pid = S.ypid || myPid()
   files.forEach((f,i) => setTimeout(() => { const u = URL.createObjectURL(f), a = document.createElement('a'); a.href = u; a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u), 4000); }, i*300));
 }
 
-/* ---------- Thème de saison : Noël (1er déc → 6 janv), hiver (7 janv → fin février), coupé le 1er mars ---------- */
+/* ---------- Thème de saison (v46, calendrier v48 : voir season()) ---------- */
 const SEASON_KEY = 'yz-season';
 const seasonOff = () => { try{ return !!(JSON.parse(localStorage.getItem(SEASON_KEY)||'null')||{}).off; }catch(e){ return false; } };
-function season(d){ if(seasonOff()) return null; if(S.seasonTest) return S.seasonTest; d = d || new Date(); const m = d.getMonth(), day = d.getDate();
-  if(m===11 || (m===0 && day<=6)) return 'noel'; if(m===0 || m===1) return 'hiver'; return null; }
+
 function seasonToggle(){ try{ if(seasonOff()) localStorage.removeItem(SEASON_KEY); else localStorage.setItem(SEASON_KEY, JSON.stringify({off:true})); }catch(e){} render(); }
 /* Neige à la place des confettis : flocons plats qui tombent en se balançant. */
 function snowfall(o){ o = o || {};
@@ -3753,8 +3758,77 @@ function snowfall(o){ o = o || {};
     for(const p of P){ p.sw += p.vs; p.y += p.vy; p.x += Math.sin(p.sw)*.7; p.rot += p.vr; flake(p); }
     if(el < life) requestAnimationFrame(frame); else cv.remove(); };
   requestAnimationFrame(frame); }
-/* Accueil en saison (v47, Louis : « pousser un peu plus ») : flocons derrière les cartes, petits points et quelques
-   vrais flocons à 6 branches qui tournent doucement. Noël : plus nombreux ; hiver : plus discret. */
+/* v48 (Louis, 27/11) : une animation ne dure que quelques jours à un mois, avec des périodes sans thème entre deux.
+   Calendrier : Noël 1er déc → 6 janv · printemps 20 mars → 19 avril · Pâques (des Rameaux au lundi de Pâques, prioritaire
+   sur le printemps) · été 21 juin → 14 juillet · Halloween 24 oct → 1er nov. Le reste de l'année : rien. */
+function easterDate(y){ const a = y%19, b = Math.floor(y/100), c = y%100, d = Math.floor(b/4), e = b%4, f = Math.floor((b+8)/25), g = Math.floor((b-f+1)/3),
+  h = (19*a+b-d-g+15)%30, i = Math.floor(c/4), k = c%4, l = (32+2*e+2*i-h-k)%7, m = Math.floor((a+11*h+22*l)/451), mo = Math.floor((h+l-7*m+114)/31), da = ((h+l-7*m+114)%31)+1;
+  return new Date(y, mo-1, da); }
+function season(d){ if(seasonOff()) return null; if(S.seasonTest) return S.seasonTest; d = d || new Date();
+  const m = d.getMonth(), day = d.getDate(), t = new Date(d.getFullYear(), m, day).getTime(), E = easterDate(d.getFullYear()).getTime(), D = 864e5;
+  if(m===11 || (m===0 && day<=6)) return 'noel';
+  if(t >= E - 7*D && t <= E + D) return 'paques';
+  if((m===2 && day>=20) || (m===3 && day<=19)) return 'printemps';
+  if((m===5 && day>=21) || (m===6 && day<=14)) return 'ete';
+  if((m===9 && day>=24) || (m===10 && day<=1)) return 'halloween';
+  return null; }
+const isDark = () => { const t = document.documentElement.dataset.theme; return t==='dark' || (t!=='light' && matchMedia('(prefers-color-scheme: dark)').matches); };
+/* Formes partagées (flat, comme les confettis). */
+const SH = {
+  petal(c, p, col){ c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.scale(1, Math.max(.25, Math.abs(Math.cos(p.flip||0))));
+    c.fillStyle = col; c.beginPath(); c.moveTo(0, -p.r); c.bezierCurveTo(p.r*.9, -p.r*.6, p.r*.7, p.r*.7, 0, p.r); c.bezierCurveTo(-p.r*.7, p.r*.7, -p.r*.9, -p.r*.6, 0, -p.r); c.fill(); c.restore(); },
+  egg(c, p, col, ink){ const w = p.r*.78, h = p.r; c.save(); c.translate(p.x, p.y); c.rotate(p.rot);
+    c.beginPath(); c.moveTo(0, -h); c.bezierCurveTo(w*1.05, -h, w*1.15, h*.85, 0, h); c.bezierCurveTo(-w*1.15, h*.85, -w*1.05, -h, 0, -h); c.closePath();
+    c.fillStyle = col; c.fill(); c.save(); c.clip(); c.strokeStyle = ink; c.lineWidth = Math.max(1.2, p.r*.14); c.lineJoin = 'round'; c.beginPath();
+    const n = 5, y0 = h*.05; for(let i=0;i<=n;i++){ const x = -w*1.2 + i*(w*2.4/n), y = y0 + (i%2 ? -h*.18 : h*.18); i ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke(); c.restore(); c.restore(); },
+  star(c, p, col){ c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.fillStyle = col; const r = p.r, s = r*.28; c.beginPath();
+    c.moveTo(0, -r); c.quadraticCurveTo(s, -s, r, 0); c.quadraticCurveTo(s, s, 0, r); c.quadraticCurveTo(-s, s, -r, 0); c.quadraticCurveTo(-s, -s, 0, -r); c.fill(); c.restore(); },
+  ice(c, p, scoop, dk){ const r = p.r; c.save(); c.translate(p.x, p.y); c.rotate(p.rot);
+    c.fillStyle = '#D9A15B'; c.beginPath(); c.moveTo(-r*.62, -r*.05); c.lineTo(r*.62, -r*.05); c.lineTo(0, r*1.5); c.closePath(); c.fill();
+    c.save(); c.clip(); c.strokeStyle = '#B97E3A'; c.lineWidth = Math.max(1, r*.09); for(let i=-3;i<=3;i++){ c.beginPath(); c.moveTo(i*r*.35-r, -r*.1); c.lineTo(i*r*.35+r, r*1.6); c.stroke(); c.beginPath(); c.moveTo(i*r*.35+r, -r*.1); c.lineTo(i*r*.35-r, r*1.6); c.stroke(); } c.restore();
+    c.fillStyle = scoop; c.beginPath(); c.arc(0, -r*.45, r*.7, Math.PI*.95, Math.PI*2.05); c.lineTo(r*.7, -r*.05);
+    for(let i=0;i<4;i++){ const x0 = r*.7 - i*r*.35; c.quadraticCurveTo(x0 - r*.17, r*.22, x0 - r*.35, -r*.05); } c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.ellipse(-r*.25, -r*.72, r*.16, r*.09, -.5, 0, 6.2832); c.fill(); c.restore(); },
+  shades(c, p, dk){ const r = p.r; c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.fillStyle = dk ? '#2a2a2e' : '#111'; c.strokeStyle = '#C99417'; c.lineWidth = Math.max(1.2, r*.12);
+    for(const sx of [-1, 1]){ c.beginPath(); c.ellipse(sx*r*.55, 0, r*.5, r*.38, 0, 0, 6.2832); c.fill(); c.stroke(); }
+    c.beginPath(); c.moveTo(-r*.1, -r*.08); c.quadraticCurveTo(0, -r*.25, r*.1, -r*.08); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,.35)'; for(const sx of [-1, 1]){ c.beginPath(); c.ellipse(sx*r*.55 - r*.18, -r*.12, r*.12, r*.06, -.4, 0, 6.2832); c.fill(); } c.restore(); },
+  bat(c, p, col, t){ const f = Math.sin(t/90 + p.sw)*.8, r = p.r; c.save(); c.translate(p.x, p.y); c.scale(p.dir, 1); c.fillStyle = col; c.beginPath();
+    c.ellipse(0, 0, r*.28, r*.4, 0, 0, 6.2832); c.fill();
+    for(const sgn of [-1, 1]){ c.beginPath(); c.moveTo(0, -r*.1); c.quadraticCurveTo(sgn*r*.6, -r*(.7+f*.5), sgn*r*1.25, -r*(.15+f*.6)); c.quadraticCurveTo(sgn*r*.95, r*.05, sgn*r*.8, r*.25);
+      c.quadraticCurveTo(sgn*r*.55, 0, sgn*r*.35, r*.28); c.quadraticCurveTo(sgn*r*.2, r*.05, 0, r*.15); c.fill(); }
+    c.restore(); } };
+const SEASON_ACC = {printemps:['#C9708A','#F2A9BE'], paques:['#B07F0C','#EDBE36'], ete:['#C8761A','#F0A84A'], halloween:['#C9601A','#F08A3C'], noel:['#B07F0C','#EDBE36']};
+/* Fin de partie en saison : neige à Noël, sinon pétales / œufs qui rebondissent / étincelles / confettis orange et noirs. */
+function seasonBurst(o, se){ o = o || {}; if(se==='noel') return snowfall(o);
+  try{ if(matchMedia('(prefers-reduced-motion: reduce)').matches || document.hidden) return; }catch(e){ return; }
+  const run = ++confRun, old = document.getElementById('confetti'); if(old) old.remove();
+  const cv = document.createElement('canvas'); cv.id = 'confetti'; cv.setAttribute('aria-hidden','true');
+  cv.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:35'; document.body.appendChild(cv);
+  const dpr = Math.min(2, devicePixelRatio||1), W = innerWidth, H = innerHeight; cv.width = W*dpr; cv.height = H*dpr; const c = cv.getContext('2d'); c.scale(dpr, dpr);
+  const dk = isDark(), N = se==='ete' ? (o.small ? 16 : Math.round(Math.min(46, W/8.5))) : o.small ? 30 : Math.round(Math.min(90, W/4.2)), P = [], floor = H - 30;
+  const pal = {printemps: dk ? ['#F7C4D2','#F2A9BE','#FBE3EA','#E98AA6'] : ['#F2A9BE','#E98AA6','#F7C4D2','#D9738F'],
+    paques: ['#EDBE36','#F4D77A','#FBE38A','#E8B4C4','#BFD9C8'], ete: ['#F2A9BE','#BFE3CF','#FBE9B7','#8B5A3C','#F7C873'], halloween: [dk?'#f4f4f4':'#0c0c0c','#F08A3C','#E07B24','#C9601A']}[se] || CONF_TONES.flat();
+  for(let i=0;i<N;i++){ const fromTop = se!=='halloween';
+    P.push({x: fromTop ? Math.random()*W : W/2 + (Math.random()-.5)*60, y: fromTop ? -20 - Math.random()*H*.6 : (o.small ? H*.38 : Math.min(H*.24, 200)),
+      vx: fromTop ? (Math.random()-.5)*.6 : (Math.random()-.5)*11, vy: fromTop ? 1.2+Math.random()*1.8 : -6 - Math.random()*8,
+      r: se==='paques' ? 9+Math.random()*6 : se==='ete' ? 9+Math.random()*6 : 6+Math.random()*5, kind: se==='ete' && Math.random()<.18 ? 'shades' : 'ice', rot:Math.random()*6.28, vr:(Math.random()-.5)*.12,
+      flip:Math.random()*6.28, vf:.06+Math.random()*.1, sw:Math.random()*6.28, col:pal[(Math.random()*pal.length)|0], bounce:0}); }
+  const life = o.small ? 2000 : 3400, fade = 700; let t0 = null;
+  const frame = ts => { if(run!==confRun) return; if(t0===null) t0 = ts; const el = ts - t0; c.clearRect(0,0,W,H);
+    c.globalAlpha = el > life-fade ? Math.max(0,(life-el)/fade) : 1;
+    for(const p of P){
+      if(se==='paques'){ p.vy += .28; p.x += p.vx; p.y += p.vy; p.rot += p.vx*.02;
+        if(p.y > floor - p.r && p.vy > 0){ p.y = floor - p.r; p.vy *= -.48; p.vx *= .8; p.bounce++; if(Math.abs(p.vy) < 1) p.vy = 0; }
+        SH.egg(c, p, p.col, dk ? '#0a0a0a' : '#ffffff'); }
+      else if(se==='printemps'){ p.sw += .03; p.flip += p.vf; p.x += p.vx + Math.sin(p.sw)*1.1; p.y += p.vy; p.rot += p.vr; SH.petal(c, p, p.col); }
+      else if(se==='ete'){ p.sw += .025; p.y += p.vy*1.5; p.x += p.vx + Math.sin(p.sw)*.6; p.rot = Math.sin(p.sw)*.5; p.kind==='shades' ? SH.shades(c, p, dk) : SH.ice(c, p, p.col, dk); }
+      else { p.vy += .3; p.vx *= .985; p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.flip += p.vf; const f = Math.cos(p.flip);
+        c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.scale(1, Math.max(.08, Math.abs(f))); c.fillStyle = p.col; c.fillRect(-p.r/2, -p.r, p.r, p.r*1.7); c.restore(); } }
+    if(el < life) requestAnimationFrame(frame); else cv.remove(); };
+  requestAnimationFrame(frame); }
+/* Accueil en saison : animation derrière les cartes. Noël : flocons · printemps : pétales · Pâques : quelques œufs qui
+   descendent doucement · été : lucioles (sombre) / étincelles (clair) · Halloween : chauves-souris qui traversent. */
 let snowRAF = 0, snowSeason = null;
 function homeSnow(){ const se = season(), on = S.view==='home' && se && !reduceMotion() && !document.hidden; let cv = document.getElementById('home-snow');
   if(cv && (!on || snowSeason!==se)){ cancelAnimationFrame(snowRAF); cv.remove(); cv = null; }
@@ -3762,24 +3836,60 @@ function homeSnow(){ const se = season(), on = S.view==='home' && se && !reduceM
   cv = document.createElement('canvas'); cv.id = 'home-snow'; cv.setAttribute('aria-hidden','true'); { const b = document.querySelector('.blobs'); if(b) b.after(cv); else document.body.prepend(cv); }
   const dpr = Math.min(2, devicePixelRatio||1); let W = 0, H = 0; const c = cv.getContext('2d');
   const size = () => { W = innerWidth; H = innerHeight; cv.width = W*dpr; cv.height = H*dpr; c.setTransform(dpr,0,0,dpr,0,0); }; size();
-  const dark = () => { const t = document.documentElement.dataset.theme; return t==='dark' || (t!=='light' && matchMedia('(prefers-color-scheme: dark)').matches); };
-  const noel = se==='noel', N = Math.round((noel ? 46 : 26) * Math.min(1.4, Math.max(.8, W/390)));
-  const mk = top => { const big = Math.random() < (noel ? .3 : .18);
-    return {x:Math.random()*W, y: top ? -12 : Math.random()*H, big, r: big ? 5+Math.random()*5 : 1.3+Math.random()*2.2,
-      vy: big ? .35+Math.random()*.4 : .25+Math.random()*.55, sw:Math.random()*6.28, vs:.008+Math.random()*.012, rot:Math.random()*6.28, vr:(Math.random()-.5)*.012,
-      a: big ? (noel ? .6 : .45) : (noel ? .5 : .35)}; };
+  const k = Math.min(1.4, Math.max(.8, W/390)), N = Math.round(({noel:46, printemps:26, paques:9, ete:0, halloween:5})[se] * k);
+  const mk = top => { const p = {x:Math.random()*W, y: top ? -16 : Math.random()*H, sw:Math.random()*6.28, rot:Math.random()*6.28, flip:Math.random()*6.28};
+    if(se==='noel'){ p.big = Math.random() < .3; p.r = p.big ? 5+Math.random()*5 : 1.3+Math.random()*2.2; p.vy = p.big ? .35+Math.random()*.4 : .25+Math.random()*.55; p.vs = .008+Math.random()*.012; p.vr = (Math.random()-.5)*.012; p.a = p.big ? .6 : .5; }
+    else if(se==='printemps'){ p.r = 4+Math.random()*4; p.vy = .35+Math.random()*.45; p.vx = .15+Math.random()*.35; p.vs = .01+Math.random()*.015; p.vr = (Math.random()-.5)*.02; p.vf = .015+Math.random()*.02; p.a = .55; p.col = ['#F2A9BE','#E98AA6','#F7C4D2'][(Math.random()*3)|0]; }
+    else if(se==='paques'){ p.r = 7+Math.random()*5; p.vy = .25+Math.random()*.3; p.vs = .01; p.vr = (Math.random()-.5)*.01; p.a = .5; p.col = ['#EDBE36','#F4D77A','#E8B4C4','#BFD9C8'][(Math.random()*4)|0]; }
+    else if(se==='ete'){ p.r = 1.6+Math.random()*2.4; p.vx = (Math.random()-.5)*.3; p.vy = (Math.random()-.5)*.3; p.ph = Math.random()*6.28; p.vp = .012+Math.random()*.02; p.a = .9; }
+    else { p.r = 9+Math.random()*7; p.dir = Math.random()<.5 ? 1 : -1; p.x = p.dir>0 ? -40 - Math.random()*W : W + 40 + Math.random()*W; p.y = 40 + Math.random()*H*.75; p.vx = p.dir*(.6+Math.random()*.6); p.a = .5; }
+    return p; };
   const P = Array.from({length:N}, () => mk(false));
   const flake = p => { c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.lineWidth = 1.3; c.lineCap = 'round';
     for(let a=0;a<6;a++){ c.rotate(Math.PI/3); c.beginPath(); c.moveTo(0,0); c.lineTo(0,-p.r); c.moveTo(0,-p.r*.55); c.lineTo(p.r*.3,-p.r*.82); c.moveTo(0,-p.r*.55); c.lineTo(-p.r*.3,-p.r*.82); c.stroke(); }
     c.restore(); };
-  const frame = () => { if(!document.getElementById('home-snow')) return; if(cv.width !== Math.round(innerWidth*dpr)) size();
-    const dk = dark(), col = dk ? '#ffffff' : '#8aa0b8'; c.clearRect(0,0,W,H); c.fillStyle = col; c.strokeStyle = col;
-    for(let i=0;i<P.length;i++){ const p = P[i]; p.y += p.vy; p.sw += p.vs; p.x += Math.sin(p.sw)*.35; p.rot += p.vr;
-      if(p.y > H+14){ P[i] = mk(true); continue; }
-      c.globalAlpha = p.a * (dk ? .8 : 1);
-      if(p.big) flake(p); else { c.beginPath(); c.arc(p.x, p.y, p.r, 0, 6.2832); c.fill(); } }
+  const frame = ts => { if(!document.getElementById('home-snow')) return; if(cv.width !== Math.round(innerWidth*dpr)) size();
+    const dk = isDark(); c.clearRect(0,0,W,H);
+    if(se==='ete') summer(c, W, H, ts, dk);
+    for(let i=0;i<P.length;i++){ const p = P[i];
+      if(se==='noel'){ p.y += p.vy; p.sw += p.vs; p.x += Math.sin(p.sw)*.35; p.rot += p.vr; if(p.y > H+14){ P[i] = mk(true); continue; }
+        const col = dk ? '#ffffff' : '#8aa0b8'; c.globalAlpha = p.a*(dk?.8:1); c.fillStyle = col; c.strokeStyle = col;
+        if(p.big) flake(p); else { c.beginPath(); c.arc(p.x, p.y, p.r, 0, 6.2832); c.fill(); } }
+      else if(se==='printemps'){ p.sw += p.vs; p.flip += p.vf; p.y += p.vy; p.x += p.vx + Math.sin(p.sw)*.4; p.rot += p.vr; if(p.y > H+14 || p.x > W+14){ P[i] = mk(true); P[i].x = Math.random()*W*1.1 - W*.1; continue; }
+        c.globalAlpha = p.a*(dk?.85:1); SH.petal(c, p, p.col); }
+      else if(se==='paques'){ p.y += p.vy; p.sw += p.vs; p.x += Math.sin(p.sw)*.25; p.rot = Math.sin(p.sw)*.25; if(p.y > H+20){ P[i] = mk(true); continue; }
+        c.globalAlpha = p.a; SH.egg(c, p, p.col, dk ? '#0a0a0a' : '#ffffff'); }
+      else if(se==='ete'){ p.ph += p.vp; p.vx += (Math.random()-.5)*.03; p.vy += (Math.random()-.5)*.03; p.vx *= .98; p.vy *= .98; p.x += p.vx; p.y += p.vy;
+        if(p.x < -10) p.x = W+10; if(p.x > W+10) p.x = -10; if(p.y < -10) p.y = H+10; if(p.y > H+10) p.y = -10;
+        const tw = .5 + .5*Math.sin(p.ph);
+        if(dk){ const g = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r*5); g.addColorStop(0, `rgba(255,226,122,${.55*tw})`); g.addColorStop(1, 'rgba(255,226,122,0)');
+          c.globalAlpha = 1; c.fillStyle = g; c.beginPath(); c.arc(p.x, p.y, p.r*5, 0, 6.2832); c.fill(); c.fillStyle = `rgba(255,240,170,${.9*tw})`; c.beginPath(); c.arc(p.x, p.y, p.r*.6, 0, 6.2832); c.fill(); }
+        else { c.globalAlpha = .25 + .55*tw; SH.star(c, {x:p.x, y:p.y, r:p.r*1.8, rot:0}, '#E9A23B'); } }
+      else { p.x += p.vx; p.y += Math.sin(ts/600 + p.sw)*.35; if((p.dir>0 && p.x > W+40) || (p.dir<0 && p.x < -40)){ P[i] = mk(true); continue; }
+        c.globalAlpha = p.a*(dk?.9:1); SH.bat(c, p, dk ? '#f4f4f4' : '#0c0c0c', ts); } }
     snowRAF = requestAnimationFrame(frame); };
   snowRAF = requestAnimationFrame(frame); }
+/* Été (Louis : soleil en haut, vagues en bas) : grand soleil à moitié caché dans le coin, rayons qui tournent lentement ;
+   trois vagues qui ondulent en bas de l'écran, derrière la liste et la barre d'onglets. */
+function summer(c, W, H, ts, dk){ const t = ts/1000, cx = W - 26, cy = 62, R = 46;
+  c.save(); c.translate(cx, cy); c.rotate(t*.08); c.globalAlpha = dk ? .55 : .8; c.fillStyle = dk ? '#F0A84A' : '#F4B63F';
+  for(let i=0;i<12;i++){ c.rotate(Math.PI/6); c.beginPath(); c.moveTo(-7, -R-8); c.lineTo(0, -R-30); c.lineTo(7, -R-8); c.closePath(); c.fill(); }
+  c.restore(); c.save(); c.globalAlpha = dk ? .6 : .85; const g = c.createRadialGradient(cx-10, cy-10, 4, cx, cy, R); g.addColorStop(0, dk ? '#F7C873' : '#FBD56B'); g.addColorStop(1, dk ? '#E8962F' : '#F2A93B');
+  c.fillStyle = g; c.beginPath(); c.arc(cx, cy, R, 0, 6.2832); c.fill(); c.restore();
+  const waves = [[H-118, 9, 230, .55, dk ? 'rgba(96,150,190,.16)' : 'rgba(120,178,214,.20)'], [H-92, 11, 190, -.75, dk ? 'rgba(84,140,184,.20)' : 'rgba(104,166,206,.24)'], [H-64, 8, 260, .95, dk ? 'rgba(72,128,176,.26)' : 'rgba(88,152,198,.30)']];
+  for(const [y0, A, L, sp, col] of waves){ c.globalAlpha = 1; c.fillStyle = col; c.beginPath(); c.moveTo(0, H);
+    for(let x=0; x<=W+10; x+=8){ c.lineTo(x, y0 + Math.sin(x/L*6.2832 + t*sp) * A + Math.sin(x/(L*.53)*6.2832 - t*sp*.6) * A*.35); }
+    c.lineTo(W, H); c.closePath(); c.fill(); } }
+/* Pâques : un œuf caché dans l'app (accueil, Stats ou Joueurs selon le jour), à toucher une fois par an → trophée « Chasse aux œufs ».
+   Gardé sur ce téléphone (clé yz-egg {année: date}), compté pour « Toi dans le carnet ». */
+const EGG_KEY = 'yz-egg';
+const eggGet = () => { try{ return JSON.parse(localStorage.getItem(EGG_KEY)||'null') || {}; }catch(e){ return {}; } };
+function eggHere(view){ if(season()!=='paques' || db) return ''; const y = new Date().getFullYear(); if(eggGet()[y]) return '';
+  const spots = ['home','stats','players'], spot = spots[new Date().getDate() % 3]; if(view!==spot) return '';
+  return `<button class="egg-hide" data-a="egg-found" aria-label="Un œuf de Pâques !"><svg viewBox="0 0 30 38" width="30" height="38" aria-hidden="true"><path d="M15 1C24 1 29 17 29 25C29 32 22.7 37 15 37S1 32 1 25C1 17 6 1 15 1Z" fill="#EDBE36" stroke="#C99417" stroke-width="1.2"/><path d="M1.6 21l4.6-3.4 4.6 3.4 4.6-3.4 4.6 3.4 4.6-3.4 4.4 3.2" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg></button>`; }
+function eggFound(){ const y = new Date().getFullYear(), e = eggGet(); e[y] = Date.now(); try{ localStorage.setItem(EGG_KEY, JSON.stringify(e)); }catch(x){}
+  seasonBurst({small:true}, 'paques'); setTimeout(() => reduceMotion() ? toast('Œuf trouvé ! Trophée Chasse aux œufs') : moment(`${medal(TRO.find(t=>t.id==='egg'), true, 40)}<span class="m-t">Œuf trouvé !</span>`, 'Trophée · Chasse aux œufs', true), 250); render(); }
+
 
 /* v45 : face-à-face sur la fiche joueur. Pour chaque joueur croisé au moins 2 fois (parties à plusieurs, tous jeux) :
    combien de fois chacun a fini devant l'autre (duel du module, plus petit = mieux), égalités à part. 5 adversaires max. */
@@ -4930,7 +5040,7 @@ const CONF_TONES = [['#F7D45C','#C99417'],['#EDBE36','#A87A12'],['#FBE38A','#DDA
 let confRun = 0;
 function celebrate(o){
   o = o || {};
-  if(season()) return snowfall(o);
+  { const se = season(); if(se) return seasonBurst(o, se); }
   try{ if(matchMedia('(prefers-reduced-motion: reduce)').matches || document.hidden) return; }catch(e){ return; }
   const run = ++confRun, old = document.getElementById('confetti'); if(old) old.remove();
   const cv = document.createElement('canvas'); cv.id = 'confetti'; cv.setAttribute('aria-hidden','true');
@@ -5105,6 +5215,7 @@ function tweenNum(el, from, to){
 }
 function afterRender(same){
   try{ homeSnow(); }catch(e){}
+  try{ const eg = eggHere(S.view); if(eg && !document.querySelector('.egg-hide')) $app.insertAdjacentHTML('beforeend', eg); }catch(e){}
   const rm = reduceMotion();
   $app.querySelectorAll('[data-ck]').forEach(el => { const k = el.dataset.ck, to = Number(el.dataset.n), from = NUMS.get(k); NUMS.set(k, to);
     if(same && !rm && from!==undefined && from!==to && isFinite(from)) tweenNum(el, from, to); });
@@ -5218,6 +5329,7 @@ $app.addEventListener('click', async e => {
   else if(a==='year-again'){ S.ys = 0; render(); }
   else if(a==='year-dl'){ yearImages(); }
   else if(a==='season-t'){ seasonToggle(); }
+  else if(a==='egg-found'){ eggFound(); }
   else if(a==='shuf'){ S.shuf = {...(S.shuf||{}), [k]: !(S.shuf && S.shuf[k])}; render(); }
   else if(a==='vtoggle'){ S.virt = {...(S.virt||{}), [k]: !virtOn(k)}; render(); }
   else if(a==='w-back'){ S.watch=null; clearTimeout(wPollT); go('home'); }
@@ -5330,7 +5442,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '47';
+window.APP_VERSION = '48';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

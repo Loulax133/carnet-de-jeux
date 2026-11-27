@@ -118,3 +118,14 @@ Les données de jeu sont stockées dans chaque téléphone, à part : une mise �
 - Liste Joueurs : le nombre de trophées n'est plus affiché (il reste sur la fiche de chaque joueur).
 - Yahtzee bonus, règle de la bande (Louis) : pour prendre les +100 d'un nouveau Yahtzee (case Yahtzee déjà à 50), on barre une case libre au choix (0). Sinon les dés comptent normalement, sans bonus. Plus de joker. En jeu virtuel : toucher +100, puis la case à barrer (retoucher +100 pour annuler). Règles en bref mises à jour. Interrupteur dans le code : `YZ_HOUSE`.
 - `firestore.rules` ne change pas.
+
+## Animations de l'année (version 48)
+- Chaque thème dure de quelques jours à un mois, rien entre deux :
+  - **Noël** : 1er décembre → 6 janvier (neige sur l'accueil et en fin de partie, titre doré). La phase « hiver » jusqu'à fin février est supprimée.
+  - **Printemps** : 20 mars → 19 avril (pétales sur l'accueil et en fin de partie).
+  - **Pâques** : des Rameaux au lundi de Pâques, date calculée chaque année, prioritaire sur le printemps (œufs qui descendent, œufs qui rebondissent en fin de partie). Un œuf doré est caché une fois par an en bas de l'accueil, de Stats ou de Joueurs (selon le jour) : le toucher donne le trophée « Chasse aux œufs » (sur sa propre fiche).
+  - **Été** : 21 juin → 14 juillet (soleil en haut et vagues en bas de l'accueil, glaces et lunettes de soleil en fin de partie).
+  - **Halloween** : 24 octobre → 1er novembre (chauves-souris sur l'accueil, confettis orange et noirs).
+- « à quoi » prend la couleur du thème. Tout se coupe avec « Réduire les animations » et l'interrupteur « Thème de saison » (Réglages → Apparence).
+- Nouvelle clé locale (à ne pas renommer) : `yz-egg` (œufs trouvés, par année).
+- `firestore.rules` ne change pas.

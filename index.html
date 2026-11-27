@@ -235,6 +235,11 @@ td .tr{margin-left:4px;top:-1px} td .tr svg{width:8px;height:7px}
 .streak svg{width:14px;height:16px;flex:none}
 .recb{display:inline-flex;align-items:center;gap:5px;margin-top:5px;font:700 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--gold-ink);background:color-mix(in srgb,var(--gold) 18%,transparent);border:1px solid color-mix(in srgb,var(--gold) 55%,transparent);padding:4px 9px 4px 7px;border-radius:999px}
 .recb svg{width:12px;height:12px}
+.stile .v.w{font-size:26px;line-height:1.15;margin-top:8px;overflow-wrap:anywhere}
+.tcon{padding:14px 16px;margin-top:10px}
+.tc-row{display:grid;grid-template-columns:96px 1fr auto;align-items:center;gap:12px;padding:8px 0}
+.tc-n{font-weight:600;font-size:14px}.tc-row .bar{margin:0}.tc-v{font-family:var(--serif);font-size:22px;font-variant-numeric:tabular-nums}.tc-v small{font-family:var(--sans);font-size:12px;color:var(--mute)}
+.tcon .meta{margin-top:6px}
 .sw{appearance:none;width:44px;height:44px;border-radius:50%;border:2px solid transparent;cursor:pointer;font-family:var(--serif);font-size:22px;display:grid;place-items:center;box-shadow:0 0 0 1px var(--line)}
 .sw.on{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--ink)}
 .sw:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
@@ -285,6 +290,14 @@ td .tr{margin-left:4px;top:-1px} td .tr svg{width:8px;height:7px}
 .gamecard{appearance:none;text-align:left;width:100%;color:var(--ink);font:inherit;cursor:pointer;padding:20px;display:flex;gap:16px;align-items:center}
 .gamecard .t{font-family:var(--serif);font-size:34px;line-height:1}
 .gamecard.locked{opacity:.42}
+.gamelist{margin-top:12px;padding:4px 16px}
+.gamerow{appearance:none;background:none;border:0;border-bottom:1px solid var(--line);width:100%;color:var(--ink);font:inherit;cursor:pointer;display:flex;align-items:center;gap:14px;padding:14px 2px;text-align:left;min-height:56px}
+.gamerow:last-child{border-bottom:0}
+.gamerow .t{font-family:var(--serif);font-size:24px;line-height:1}
+.gamerow .chev{font-size:22px;color:var(--mute);line-height:1;margin-left:2px}
+.gamerow.locked{opacity:.42}
+.gamerow:active{opacity:.6}
+.dice.sm{transform:scale(.62);transform-origin:left center;width:62px;display:flex;gap:6px;flex:none}
 .pl-ic{place-items:center;grid-template:1fr/1fr;color:var(--inv-ink)}
 .pl-box{padding:16px 18px;margin:6px 0 14px;border-radius:22px}
 .pl-h{font-family:var(--serif);font-size:30px;line-height:1.1;margin:2px 0 8px}
@@ -441,6 +454,15 @@ h1.rv{animation:rv-in .4s cubic-bezier(.2,.8,.3,1) backwards}
 .q-float.glass{background:var(--glass-solid)}
 .q-float .pchip{padding:7px 11px}
 .q-float .pchip.out{opacity:.45}
+.yz-float{flex-wrap:nowrap;align-items:center;justify-content:center;gap:10px;width:auto;padding:8px 14px;pointer-events:none}
+.yzf-g{display:flex;gap:5px}.yzf-g .die{width:26px;height:26px;border-radius:7px;padding:4px}
+.yzf-sep{width:1px;align-self:stretch;background:var(--line)}
+.yzf-r{font:600 12px var(--sans);color:var(--mute);font-variant-numeric:tabular-nums;margin-left:2px}
+.yz-full .sheet td.cell,.yz-full td.cell{min-width:64px}
+.yz-full th.cur,.yz-full td.cur{background:color-mix(in srgb,var(--chip) 70%,transparent)}
+.yz-full thead th{font-size:13px}
+.yz-land{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:20px;align-items:start}
+.yz-right{position:sticky;top:8px}.yz-right .vtray{margin:0}
 main[data-vt]>.q-float{animation:none}
 /* 421 : jetons qui passent du pot (ou du meilleur) au plus faible */
 .fly-tok{position:fixed;left:0;top:0;z-index:34;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;pointer-events:none;background:var(--inv-bg);box-shadow:0 0 0 2px var(--bg),0 2px 6px rgba(0,0,0,.25)}
@@ -637,7 +659,7 @@ async function resumeGame(id){
    4. à égalité : le plus joué en tout · 5. sinon l'ordre d'origine
    6. jeu nouveau (première partie il y a moins de 14 jours) : remonté au moins au milieu de la liste,
       sans passer devant une partie en cours. Au-delà de 14 jours, il garde la place que lui donnent ses parties. */
-const HOME_DAYS = 90, HOME_HALF = 30, HOME_NEW = 14;
+const HOME_DAYS = 90, HOME_HALF = 30, HOME_NEW = 14, HOME_BIG = 3;
 function homeOrder(){
   const now = Date.now(), score = {}, total = {}, first = {};
   S.games.forEach(g => { const k = kindOf(g), t = g.date || 0, age = (now - t) / 864e5;
@@ -658,14 +680,16 @@ function viewHome(){
   ${plInviteCards()}
   ${S.watchList.map(d=>`<button class="wcard glass" data-watch="${d.id}"><span class="grow"><span class="label"><span class="live-dot"></span>En direct</span><b>${GAMES[d.k].name} de ${esc(d.ownerName)}</b><span class="hint">${watchWith(d)}</span></span><span class="pill">Suivre</span></button>`).join('')}
   ${homeAlert()}
-  <div class="games">
-    ${homeOrder().map(k => { const G = GAMES[k], c = G.card(S.live[k]);
+  ${(() => { /* v43 (Louis, 27/11) : les 3 premiers jeux (et toute partie en cours) en grande carte, les autres en lignes compactes. */
+    const order = homeOrder(), big = order.filter((k,i) => i < HOME_BIG || S.live[k]), rest = order.filter(k => !big.includes(k));
+    return `<div class="games">${big.map(k => { const G = GAMES[k], c = G.card(S.live[k]);
       return `<button class="gamecard glass${G.locked && G.locked() ? ' locked' : ''}" data-go="${k}" id="g-${k}">
       <span class="dice">${c.dice}</span>
       <span class="grow"><span class="t">${G.name}</span><span class="hint">${c.hint}</span>
       ${c.pill ? `<span class="pill">${c.pill}</span>` : `<span class="pill soft">${plural(n(k),'partie')}</span>`}</span>
-    </button>`; }).join('')}
-  </div>
+    </button>`; }).join('')}</div>
+    ${rest.length ? `<div class="glass gamelist">${rest.map(k => { const G = GAMES[k], c = G.card(null);
+      return `<button class="gamerow${G.locked && G.locked() ? ' locked' : ''}" data-go="${k}" id="g-${k}"><span class="dice sm">${c.dice}</span><span class="grow"><span class="t">${G.name}</span></span><span class="meta">${n(k) ? plural(n(k),'partie') : 'Jamais joué'}</span><span class="chev" aria-hidden="true">›</span></button>`; }).join('')}</div>` : ''}`; })()}
   ${pausedCards() ? `<div class="label" style="margin:22px 0 10px">En pause</div>${pausedCards()}` : ''}`;
 }
 
@@ -740,7 +764,7 @@ const bestOf = (rows, f) => [...rows].sort((a,b)=>b[f]-a[f])[0];
 const stile = (lab, val, sub) => `<div class="stile"><div class="label">${lab}</div><div class="v">${val}</div>${sub?`<div class="meta">${sub}</div>`:''}</div>`;
 const pct = x => Math.round(x*100)+' %';
 /* v43 : section d'un jeu dans la fiche joueur. Avec k et id : pastille de série en face du titre, courbe de forme sous les tuiles. */
-const psection = (name, played, tiles, k, id) => `${k ? `<div class="sec-h"><h2>${name}</h2>${streakPill(k, id)}</div>` : `<h2>${name}</h2>`}${played ? `<div class="stiles">${tiles}</div>${k ? forme(k, id) : ''}` : `<p class="hint">Pas encore de partie de ${name}.</p>`}`;
+const psection = (name, played, tiles, k, id, more) => `${k ? `<div class="sec-h"><h2>${name}</h2>${streakPill(k, id)}</div>` : `<h2>${name}</h2>`}${played ? `<div class="stiles">${tiles}</div>${more||''}${k ? forme(k, id) : ''}` : `<p class="hint">Pas encore de partie de ${name}.</p>`}`;
 /* ===== v43 : tendance, forme, série, record (Louis, 27/11, maquettes validées) =====
    Module : trend {low, min, dec} = le jeu a un score par partie (r.total) ; low = plus bas c'est mieux ; min = écart minimum ;
    dec = une décimale. Sans trend : ni flèche, ni courbe, ni badge record. */
@@ -748,6 +772,36 @@ const TR_SVG = up => `<svg viewBox="0 0 11 10" aria-hidden="true"><path d="${up?
 const FLAME_SVG = `<svg viewBox="0 0 14 16" aria-hidden="true"><path d="M7 .5c.4 2.4 2.2 3.6 3.6 5.3 1.5 1.8 2 3.4 1.7 5.2C11.9 13.7 9.7 15.5 7 15.5S2 13.7 1.7 11c-.2-1.6.3-3 1.2-4.1.3 1.2.9 2 1.8 2.4C4.3 6.3 5.4 3.2 7 .5z" fill="var(--gold)"/><path d="M7 8.2c.3 1.2 1.4 1.8 1.8 3 .4 1.3-.5 2.8-1.8 2.8s-2.2-1.2-1.9-2.5c.2-1.2 1.4-1.9 1.9-3.3z" fill="#FBE38A"/></svg>`;
 const STAR_SVG = `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 .6l1.6 3.4 3.7.4-2.8 2.5.8 3.7L6 8.7 2.7 10.6l.8-3.7L.7 4.4l3.7-.4z" fill="var(--gold)"/></svg>`;
 const numFr = (x, dec) => dec ? String(Math.round(x*10)/10).replace('.', ',') : String(Math.round(x));
+/* v43 : stats propres à chaque jeu. Celles qui lisent le détail des manches (sheet, depuis la v16) disent sur combien de parties. */
+const stileW = (lab, val, sub) => `<div class="stile"><div class="label">${lab}</div><div class="v w">${val}</div>${sub?`<div class="meta">${sub}</div>`:''}</div>`;
+const mineOf = (k, id) => S.games.filter(g=>kindOf(g)===k).map(g=>({g, r:(g.results||[]).find(r=>r.id===id)})).filter(x=>x.r);
+const detailNote = (n, all) => n < all ? ` · sur ${plural(n,'partie')} détaillée${n>1?'s':''}` : '';
+function yzExtra(id){ const L = mineOf('yahtzee', id), ups = L.map(x=>x.r.up).filter(v=>typeof v==='number');
+  const cnt = {}; let d = 0;
+  L.forEach(({g}) => { const sc = g.sheet && g.sheet.scores && g.sheet.scores[id]; if(!sc) return; d++; ALL.forEach(c => { if(sc[c.id]===0) cnt[c.id] = (cnt[c.id]||0)+1; }); });
+  const worst = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+  return (ups.length ? stile('Section haute', Math.round(ups.reduce((a,b)=>a+b,0)/ups.length), 'pts en moyenne') : '')
+    + (worst ? stileW('Case barrée', ALL.find(c=>c.id===worst[0]).label, `${worst[1]} fois${detailNote(d, L.length)}`) : ''); }
+function skyExtra(id){ const L = mineOf('skyjo', id); let won = 0, rounds = 0, d = 0, closed = 0, dbl = 0;
+  L.forEach(({g, r}) => { closed += r.closed||0; dbl += r.doubled||0;
+    const sh = g.sheet && g.sheet.rounds; if(!sh || !sh.length) return; d++;
+    const st = runSky({order:(g.results||[]).map(x=>x.id), rounds:sh});
+    st.log.forEach(x => { if(!(id in x.fin)) return; rounds++; if(x.fin[id] === Math.min(...Object.values(x.fin))) won++; }); });
+  return (rounds ? stile('Manches gagnées', won, `${pct(won/rounds)} des manches${detailNote(d, L.length)}`) : '')
+    + (closed ? stile('Fermetures', pct((closed-dbl)/closed), `${closed-dbl} sur ${closed} sans être doublé`) : ''); }
+function sbLeftMost(id){ const L = mineOf('shutbox', id), cnt = {}; let d = 0;
+  L.forEach(({g}) => { const t = g.sheet && g.sheet.turns && g.sheet.turns[id]; if(!t) return; d++;
+    for(let v=1; v<=9; v++) if(!(t.closed||[]).includes(v)) cnt[v] = (cnt[v]||0)+1; });
+  const m = Object.entries(cnt).sort((a,b)=>b[1]-a[1] || b[0]-a[0])[0];
+  return m ? stile('Reste le plus', m[0], `sur la boîte, ${m[1]} fois${detailNote(d, L.length)}`) : ''; }
+/* Tarot : réussite par contrat (preneur seulement), une barre par contrat pris. */
+function tarContracts(id){ const L = mineOf('tarot', id), c = TAR_C.map(()=>({n:0, ok:0})); let d = 0;
+  L.forEach(({g}) => { const sh = g.sheet && g.sheet.rounds; if(!sh) return; d++;
+    sh.forEach(r => { if(r.t!==id || !c[r.c]) return; c[r.c].n++; if(r.pts >= TAR_NEED[r.b]) c[r.c].ok++; }); });
+  const rows = c.map((x,i)=>({...x, name:TAR_C[i].n})).filter(x=>x.n); if(!rows.length) return '';
+  const fav = [...rows].sort((a,b)=>b.n-a.n)[0], col = colorOf(id) || 'var(--ink)';
+  return `<div class="glass tcon"><div class="label">Prises par contrat</div>${rows.map(x=>`<div class="tc-row"><span class="tc-n">${x.name}</span><span class="bar"><i style="width:${Math.round(x.ok/x.n*100)}%;background:${col}"></i></span><span class="tc-v">${x.ok}<small> / ${x.n}</small></span></div>`).join('')}
+  <div class="meta">Contrat préféré : ${fav.name.toLowerCase()}${detailNote(d, L.length)}</div></div>`; }
 function scoresOf(k, id, pool){ return (pool||S.games).filter(g=>kindOf(g)===k).sort((a,b)=>a.date-b.date)
   .map(g=>(g.results||[]).find(r=>r.id===id)).filter(r=>r && typeof r.total==='number').map(r=>r.total); }
 /* Moyenne des 3 dernières parties contre celle d'avant, dès 5 parties ; rien sous max(min, 5 % de la moyenne d'avant). */
@@ -1267,7 +1321,17 @@ function viewYahtzee(){
   const sum = (label, val, hint) => `<tr class="sum"><td class="cat">${label}${hint?`<span class="hint">${hint}</span>`:''}</td><td class="big">${val}</td></tr>`;
   const nb = sc.yb||0;
   const anim = S.yzAnim ? ` slide-${S.yzAnim}` : ''; S.yzAnim = null;
-  return `<button class="back" data-go="home">← Jeux</button>
+  /* v43 (Louis, 27/11) : en paysage, saisie manuelle = vraie feuille avec tous les joueurs en colonnes ;
+     jeu virtuel = fiche du joueur à gauche, dés à droite. */
+  const land = isLand();
+  if(land && !V) return `<button class="back" data-go="home">← Jeux</button>
+  <div class="label">${done ? 'Partie terminée' : 'Tour '+Math.min(turn,13)+' sur 13'}</div>
+  <h1>Le <em>Yahtzee</em></h1>
+  ${S.yzUndo && L.order.includes(S.yzUndo.pid) ? `<div class="undo-bar glass"><span class="meta">${dot(S.yzUndo.pid)}${esc(pname(S.yzUndo.pid,L.names[S.yzUndo.pid]))} · ${S.yzUndo.label} : <b>${S.yzUndo.txt}</b></span><button class="link" data-a="yz-undo" id="yz-undo">Annuler</button></div>` : ''}
+  ${yzLandSheet(L, S.yzp)}
+  <p class="note">Touche une case pour noter le score. Tourne le téléphone pour revenir à la fiche d’un joueur.</p>
+  ${endControls('yahtzee', done, done?'Enregistrer cette partie dans l\'historique ?':'Toutes les cases ne sont pas remplies. Enregistrer quand même avec les scores actuels ?')}`;
+  return `${V && V.roll ? yzFloatBand(V) : ''}${land ? '<div class="yz-land"><div class="yz-left">' : ''}<button class="back" data-go="home">← Jeux</button>
   <div class="label">${done ? 'Partie terminée' : 'Tour '+Math.min(turn,13)+' sur 13'}</div>
   <h1>Le <em>Yahtzee</em></h1>
   <div class="pnav glass">
@@ -1277,7 +1341,7 @@ function viewYahtzee(){
   </div>
   ${n>1 ? `<div class="pstrip">${ids.map((x,i)=>`<button class="pchip${i===S.yzp?' on':''}" data-yzp="${i}">${dot(x)}${esc(pname(x,L.names[x]))} <b data-ck="yzc:${x}" data-n="${tots[i]}">${tots[i]}</b></button>`).join('')}</div>` : ''}
   ${S.yzUndo && L.order.includes(S.yzUndo.pid) ? `<div class="undo-bar glass"><span class="meta">${dot(S.yzUndo.pid)}${esc(pname(S.yzUndo.pid,L.names[S.yzUndo.pid]))} · ${S.yzUndo.label} : <b>${S.yzUndo.txt}</b></span><button class="link" data-a="yz-undo" id="yz-undo">Annuler</button></div>` : ''}
-  ${V ? yzTrayCard(V) : ''}
+  ${V && !land ? yzTrayCard(V) : ''}
   <div class="sheet-wrap glass dense${anim}" id="yzsheet"><table class="sheet solo">
     <tbody>
       <tr class="section"><td class="cat label">Section haute</td><td></td></tr>
@@ -1290,6 +1354,7 @@ function viewYahtzee(){
       ${sum('Section basse', t.low)}
       <tr class="total"><td class="cat">Total</td><td data-ck="yzt:${id}" data-n="${t.total}">${t.total}</td></tr>
     </tbody></table></div>
+  ${land ? `</div><div class="yz-right">${yzTrayCard(V)}</div></div>` : ''}
   <p class="note">${V ? 'Lance les dés, puis touche une case : le score s’inscrit tout seul, Yahtzee bonus compris. Touche une case déjà remplie pour la corriger.' : 'Touche une ligne pour noter le score. Après chaque nouveau score, on passe au joueur suivant. Glisse ou utilise les flèches pour corriger.'}</p>
   ${endControls('yahtzee', done, done?'Enregistrer cette partie dans l\'historique ?':'Toutes les cases ne sont pas remplies. Enregistrer quand même avec les scores actuels ?')}
   ${rulesYahtzee(false)}`;
@@ -1353,7 +1418,7 @@ function statsYzView(top, ids, nameOf, gs){
 }
 function playerYz(id){
   const y = statsY(id);
-  return psection('Yahtzee', y.played, stile('Victoires', y.wins, pct(y.rate)) + stile('Parties', y.played) + stile('Moyenne', avgT('yahtzee', id, y.avg), 'pts par partie') + stile('Record', y.best, 'pts') + stile('Yahtzees', y.yahtzees, 'bonus compris') + stile('Prime de 35', y.bonuses, 'fois'), 'yahtzee', id);
+  return psection('Yahtzee', y.played, stile('Victoires', y.wins, pct(y.rate)) + stile('Parties', y.played) + stile('Moyenne', avgT('yahtzee', id, y.avg), 'pts par partie') + stile('Record', y.best, 'pts') + stile('Yahtzees', y.yahtzees, 'bonus compris') + stile('Prime de 35', pct(y.bonuses/y.played), `${y.bonuses} fois`) + yzExtra(id), 'yahtzee', id);
 }
 function sheetYz(g, sh, ids, nmOf, head, el, title){
   const sc = id => (sh.scores||{})[id] || {}, t = id => totals(sc(id));
@@ -1475,7 +1540,32 @@ function yzTrayCard(V){
   const hint = busy ? '' : !V.roll ? '' : V.roll<3 ? 'Touche un dé pour le garder, ou choisis ta case' : 'Choisis ta case dans la grille';
   return vdCard(top, `<span class="hint">${hint}</span><button class="btn" data-a="vroll" id="vroll" ${V.roll>=3||busy?'disabled':''}>${V.roll ? 'Relancer' : 'Lancer'}</button>`);
 }
-function yzAfter(){ const V = yzV(); if(!V || !document.getElementById('vd-slot')) return;
+/* v43 : paysage (même règle que le CSS paysage). Un changement d'orientation redessine la vue. */
+const LAND_Q = matchMedia('(orientation:landscape) and (max-height:520px)');
+const isLand = () => LAND_Q.matches;
+LAND_Q.addEventListener && LAND_Q.addEventListener('change', () => { if(S.view==='yahtzee') render(); });
+/* Feuille complète (paysage, saisie manuelle) : cases en lignes, joueurs en colonnes, toucher une case = saisir. */
+function yzLandSheet(L, cur){ const ids = L.order, T = ids.map(x=>totals(L.scores[x]||{}));
+  const cell = (x, c) => { const v = (L.scores[x]||{})[c.id], has = v!==undefined && v!==null;
+    return `<td class="cell${has?(v===0?' zero':''):' empty-c'}${S.just===x+c.id?' just':''}${ids[cur]===x?' cur':''}" tabindex="0" role="button" data-p="${x}" data-c="${c.id}" aria-label="${esc(pname(x,L.names[x]))}, ${c.label}">${has?v:'–'}</td>`; };
+  const row = c => `<tr><td class="cat">${c.face ? `<span class="catrow">${dieMini(c.face)}<span>${c.label}</span></span>` : c.label}</td>${ids.map(x=>cell(x,c)).join('')}</tr>`;
+  const sum = (lab, f, cls) => `<tr class="${cls||'sum'}"><td class="cat">${lab}</td>${ids.map((x,i)=>`<td${ids[cur]===x?' class="cur"':''}>${f(T[i], x)}</td>`).join('')}</tr>`;
+  return `<div class="sheet-wrap glass dense yz-full"><table class="sheet"><thead><tr><th class="cat"></th>${ids.map((x,i)=>`<th${i===cur?' class="cur"':''}>${av(x, pname(x,L.names[x]))}${esc(pname(x,L.names[x]))}</th>`).join('')}</tr></thead><tbody>
+    ${UPPER.map(row).join('')}${sum('Prime', t=>t.bonus ? 35 : `<span class="meta">${t.up}/63</span>`)}
+    ${LOWER.map(row).join('')}
+    <tr><td class="cat">Yahtzee bonus</td>${ids.map(x=>{ const nb=(L.scores[x]||{}).yb||0; return `<td class="cell${nb?'':' empty-c'}${ids[cur]===x?' cur':''}" tabindex="0" role="button" data-p="${x}" data-c="yb" aria-label="${esc(pname(x,L.names[x]))}, Yahtzee bonus">${nb?'+'+nb*100:'–'}</td>`; }).join('')}</tr>
+    ${sum('Total', t=>t.total, 'total')}</tbody></table></div>`; }
+/* Bandeau des dés (Yahtzee virtuel) : collé en haut quand le plateau sort de l'écran. Lecture seule. Gardés à gauche. */
+function yzFloatBand(V){ const h = V.vals.map((v,i)=>({v, held:!!V.held[i]}));
+  const grp = a => a.map(d=>dieFace(d.v)).join('');
+  const kept = h.filter(d=>d.held), free = h.filter(d=>!d.held);
+  return `<div class="q-float yz-float glass${yzOn?' on':''}" id="yz-float" aria-hidden="true">${kept.length ? `<span class="yzf-g">${grp(kept)}</span><span class="yzf-sep"></span>` : ''}<span class="yzf-g">${grp(free)}</span><span class="yzf-r">${V.roll>=3 ? '3/3' : V.roll+'/3'}</span></div>`; }
+let yzOn = false;
+function yzFloat(){ const t = document.getElementById('vd-slot'), f = document.getElementById('yz-float');
+  if(!t || !f || isLand()){ yzOn = false; if(f) f.classList.remove('on'); return; }
+  const on = yzOn = t.getBoundingClientRect().bottom < 40; if(f.classList.contains('on')!==on) f.classList.toggle('on', on); }
+addEventListener('scroll', yzFloat, {passive:true});
+function yzAfter(){ yzFloat(); const V = yzV(); if(!V || !document.getElementById('vd-slot')) return;
   vdMount(V.vals.map((v,i) => ({v: V.roll ? v : 0, held: !!V.held[i]})), {label:'Gardés', onTap: yzHold, onThrow: yzRoll}); }
 function clickYz(el, a){
   if(el.dataset.vc){ yzCommit(el.dataset.vc); return true; }
@@ -1714,7 +1804,7 @@ defGame('421', {
       n421: st.log.filter(r=>r.w===id && r.c==='421').length}));
     return {game:'421', date:Date.now(), startedAt:L.startedAt, results, loser:st.loser, firstOut:st.out[0]||null, rounds:st.log.length, sheet:{rounds:JSON.parse(JSON.stringify(L.rounds||[])), rules:rulesOf(L)}}; },
   stats: stats4, statsView: stats421View,
-  player: id => { const q = stats4(id); return psection('421', q.played, stile('Défaites', q.losses, pct(q.lossRate)) + stile('Parties', q.played) + stile('Sorti en 1er', q.first, 'fois') + stile('421 faits', q.n421, 'gagnants'), '421', id); },
+  player: id => { const q = stats4(id); return psection('421', q.played, stile('Défaites', q.losses, pct(q.lossRate)) + stile('Parties', q.played) + stile('Sorti en 1er', q.first, `${pct(q.first/q.played)} des parties`) + stile('421 faits', q.n421, 'gagnants'), '421', id); },
   outcome: (g, id) => { const r = g.results.find(r=>r.id===id); return g.loser===id ? '<b>Perd</b>' : `Sorti ${r.rank===1?'1er':r.rank+'e'}`; },
   win: (g, id) => g.loser!==id ? 1 : 0,
   duel: (g, r) => g.loser===r.id ? 1e9 : (r.rank||99), duelNote:' (au 421 : sorti le plus tôt)',
@@ -1925,7 +2015,7 @@ defGame('skyjo', {
     const results = L.order.map(id=>({id, name:pname(id,L.names[id]), total:st.tot[id], closed:st.closed[id], doubled:st.doubled[id], bestRound:st.bestRound[id]}));
     return {game:'skyjo', date:Date.now(), startedAt:L.startedAt, results, winners:st.winners, rounds:st.log.length, sheet:{rounds:JSON.parse(JSON.stringify(L.rounds||[]))}}; },
   stats: statsS, statsView: statsSkyView,
-  player: id => { const s = statsS(id); return psection('Skyjo', s.played, stile('Victoires', s.wins, pct(s.rate)) + stile('Parties', s.played) + stile('Moyenne', avgT('skyjo', id, s.avg), 'pts en fin de partie') + stile('Record', s.best ?? '–', 'total le plus bas') + stile('Plus belle manche', s.bestRound ?? '–', 'pts') + stile('Doublé', s.doubled, 'fois'), 'skyjo', id); },
+  player: id => { const s = statsS(id); return psection('Skyjo', s.played, stile('Victoires', s.wins, pct(s.rate)) + stile('Parties', s.played) + stile('Moyenne', avgT('skyjo', id, s.avg), 'pts en fin de partie') + stile('Record', s.best ?? '–', 'total le plus bas') + stile('Plus belle manche', s.bestRound ?? '–', 'pts') + stile('Doublé', s.doubled, 'fois') + skyExtra(id), 'skyjo', id); },
   outcome: (g, id) => outcomePts(g, id, true),
   win: (g, id) => (g.winners||[]).includes(id) ? 1 : 0,
   duel: (g, r) => r.total,
@@ -2087,7 +2177,7 @@ defGame('shutbox', {
     const min = Math.min(...results.map(r=>r.total)), turns = {}; L.order.forEach(id => { turns[id] = {closed:[...sbT(L,id).closed]}; });
     return {game:'shutbox', date:Date.now(), startedAt:L.startedAt, results, winners: results.length>1 ? results.filter(r=>r.total===min).map(r=>r.id) : [], ...(L.virtual?{virtual:true}:{}), sheet:{turns}}; },
   stats: statsSB, statsView: statsSBView,
-  player: id => { const s = statsSB(id); return psection('Shut the Box', s.played, stile('Record', s.best ?? '–', 'points, le plus bas') + stile('Moyenne', avgT('shutbox', id, String(s.avg).replace('.',',')), 'pts') + stile('Parties', s.played) + stile('Boîte fermée', s.shuts, 'fois') + (s.multi ? stile('Victoires', s.wins, pct(s.rate)+' à plusieurs') : ''), 'shutbox', id); },
+  player: id => { const s = statsSB(id); return psection('Shut the Box', s.played, stile('Record', s.best ?? '–', 'points, le plus bas') + stile('Moyenne', avgT('shutbox', id, String(s.avg).replace('.',',')), 'pts') + stile('Parties', s.played) + stile('Boîte fermée', pct(s.shuts/s.played), `${s.shuts} fois`) + (s.multi ? stile('Victoires', s.wins, pct(s.rate)+' à plusieurs') : '') + sbLeftMost(id), 'shutbox', id); },
   outcome: (g, id) => sbSolo(g) ? `${(g.results[0].total)} pts${g.results[0].total===0?' · <b>boîte fermée</b>':''}` : outcomePts(g, id, true),
   win: (g, id) => sbSolo(g) ? null : ((g.winners||[]).includes(id) ? 1 : 0),
   duel: (g, r) => r.total,
@@ -2277,7 +2367,7 @@ defGame('farkle', {
     const results = L.order.map(id => ({id, name:pname(id, L.names[id]), total:st.tot[id], turns:st.n[id], best:st.best[id], farkles:st.fk[id]}));
     return {game:'farkle', date:Date.now(), startedAt:L.startedAt, results, winners: L.order.length>1 ? st.winners : [], rounds: Math.max(...L.order.map(id=>st.n[id])), ...(L.virtual?{virtual:true}:{}), sheet:{turns:JSON.parse(JSON.stringify(L.turns||[]))}}; },
   stats: statsFK, statsView: statsFKView,
-  player: id => { const s = statsFK(id); return psection('Farkle', s.played, (s.multi ? stile('Victoires', s.wins, pct(s.rate)) : '') + stile('Parties', s.played) + stile('Meilleur tour', fkFmt(s.bestTurn), 'pts') + stile('Record solo', s.solo ?? '–', s.solo!=null ? 'tours pour 10 000' : '') + stile('Farkles', s.farkles, 'tours perdus'), 'farkle', id); },
+  player: id => { const s = statsFK(id); return psection('Farkle', s.played, (s.multi ? stile('Victoires', s.wins, pct(s.rate)) : '') + stile('Parties', s.played) + stile('Meilleur tour', fkFmt(s.bestTurn), 'pts') + stile('Record solo', s.solo ?? '–', s.solo!=null ? 'tours pour 10 000' : '') + stile('Farkles', numFr(s.farkles/s.played, true), `par partie · ${s.farkles} tours perdus`), 'farkle', id); },
   outcome: (g, id) => { const r = g.results.find(r=>r.id===id); return fkSolo(g) ? `10 000 en <b>${plural(r.turns,'tour')}</b>` : outcomePts(g, id, false); },
   win: (g, id) => fkSolo(g) ? null : ((g.winners||[]).includes(id) ? 1 : 0),
   duel: (g, r) => -r.total,
@@ -3114,7 +3204,7 @@ defGame('tarot', {
     const results = L.order.map(id => ({id, name:pname(id, L.names[id]), total:st.tot[id], takes:st.takes[id], made:st.made[id]}));
     return {game:'tarot', date:Date.now(), startedAt:L.startedAt, results, winners:st.winners, rounds:st.log.length, sheet:{rounds:JSON.parse(JSON.stringify(L.rounds||[]))}}; },
   stats: statsT, statsView: statsTarView,
-  player: id => { const s = statsT(id); return psection('Tarot', s.played, stile('Victoires', s.wins, pct(s.rate)) + stile('Parties', s.played) + stile('Moyenne', avgT('tarot', id, s.avg), 'pts en fin de partie') + stile('Record', s.best ?? '–', 'pts') + stile('Prises', s.takes, s.takeRate===null ? '' : pct(s.takeRate)+' réussies'), 'tarot', id); },
+  player: id => { const s = statsT(id); return psection('Tarot', s.played, stile('Victoires', s.wins, pct(s.rate)) + stile('Parties', s.played) + stile('Moyenne', avgT('tarot', id, s.avg), 'pts en fin de partie') + stile('Record', s.best ?? '–', 'pts') + stile('Prises', s.takes, s.takeRate===null ? '' : pct(s.takeRate)+' réussies'), 'tarot', id, tarContracts(id)); },
   outcome: (g, id) => outcomePts(g, id, false),
   win: (g, id) => (g.winners||[]).includes(id) ? 1 : 0,
   duel: (g, r) => -r.total,
@@ -3493,12 +3583,15 @@ function viewStats(){
   const names = andList(grp.map(id=>esc(nameOf(id))));
   const chips = pickable.length>1 ? `<div class="chips sm sgrp" role="group" aria-label="Filtrer par joueurs"><button class="chip${grp.length?'':' on'}" data-sgrp="" aria-pressed="${!grp.length}">Tous</button>${pickable.map(id=>`<button class="chip${grp.includes(id)?' on':''}" data-sgrp="${id}" aria-pressed="${grp.includes(id)}">${dot(id)}${esc(nameOf(id))}</button>`).join('')}</div>` : '';
   const sub = !grp.length ? "Sur l'ensemble des parties enregistrées." : grp.length===1 ? `Seulement les parties avec ${names}.` : `Seulement les parties jouées ensemble par ${names}.`;
-  const top = `<div class="label">${plural(gs.length,'partie')} de ${GAMES[k].name}${grp.length>1?' ensemble':''}</div><h1>Les <em>stats</em></h1>
+  let top = `<div class="label">${plural(gs.length,'partie')} de ${GAMES[k].name}${grp.length>1?' ensemble':''}</div><h1>Les <em>stats</em></h1>
     <p class="sub">${sub}</p>${seg('sgame',GAME_ORDER.map(k=>[k,GAMES[k].name]),'gseg')}${chips}`;
   if(!all.length) return top + `<div class="glass empty"><div class="serif">Pas encore de partie</div><p>Termine une première partie de ${GAMES[k].name} et le classement apparaîtra ici.</p><button class="btn" data-go="${k}">Lancer une partie</button></div>`;
   if(!gs.length) return top + `<div class="glass empty"><div class="serif">Jamais ensemble</div><p>${names} n'ont pas encore fait de partie de ${GAMES[k].name} tous ensemble.</p><button class="btn ghost" data-sgrp="">Voir tout le monde</button></div>`;
   const ids = new Set(); if(grp.length>1) grp.forEach(id=>ids.add(id)); else gs.forEach(g=>(g.results||[]).forEach(r=>ids.add(r.id)));
   const vs = grp.length>1 ? groupDuel(k, gs, grp, nameOf) : '';
+  /* v43 : un seul joueur choisi → ses stats de ce jeu (comme dans sa fiche) avant le classement. */
+  const solo = grp.length===1 ? GAMES[k].player(grp[0]).replace(`<h2>${GAMES[k].name}</h2>`, `<h2>${esc(nameOf(grp[0]))}</h2>`) : '';
+  if(solo) top += solo + `<h2>Podium</h2>`;
   /* v43 : carte « En série » en fin de podium (pleine largeur). */
   const sc = streakCard(k, ids, nameOf, gs), html = GAMES[k].statsView(top + vs, ids, nameOf, gs);
   return sc ? html.replace(/(<div class="podium">[\s\S]*?)(\s*<\/div>\s*<h2>)/, (m, a, b) => a + sc + b) : html;
@@ -4932,7 +5025,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '43';
+window.APP_VERSION = '44';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

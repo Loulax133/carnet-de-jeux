@@ -88,3 +88,10 @@ Les données de jeu sont stockées dans chaque téléphone, à part : une mise �
 - Série en cours : à partir de 3 victoires d'affilée dans un jeu, à plusieurs seulement (au 421 : « parties sans perdre »). Pastille sur la fiche joueur, carte « En série » dans les Stats.
 - Écran de fin : badge doré « Record du carnet » ou « Record perso » (jamais à la première partie d'un joueur).
 - `firestore.rules` ne change pas. Aucune donnée nouvelle : tout est calculé à partir des parties déjà enregistrées.
+
+## Améliorations (version 44)
+- Stats propres à chaque jeu, dans la fiche joueur et dans Stats quand un seul joueur est choisi : Yahtzee (prime en %, section haute moyenne, case la plus souvent barrée), Skyjo (manches gagnées, fermetures sans être doublé), Tarot (réussite par contrat, contrat préféré), Shut the Box (boîte fermée en %, chiffre qui reste le plus), Farkle (Farkles par partie), 421 (sorti en premier en %). Les stats qui lisent le détail des manches ne comptent que les parties qui l'ont (depuis fin octobre 2026).
+- Accueil : les 3 jeux les plus joués (et toute partie en cours) en grande carte, les autres en lignes compactes.
+- Yahtzee virtuel : bandeau des dés collé en haut quand on fait défiler la fiche (lecture seule).
+- Yahtzee en paysage : en saisie manuelle, feuille complète avec tous les joueurs en colonnes ; en jeu virtuel, fiche du joueur à gauche, dés à droite.
+- `firestore.rules` ne change pas.

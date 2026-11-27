@@ -220,13 +220,24 @@ nav.tabs{bottom:calc(8px + env(safe-area-inset-bottom,0px));padding:4px;width:mi
 .stile{padding:14px 16px;border-radius:20px;background:var(--glass);border:1px solid var(--glass-edge);box-shadow:var(--glass-shadow);min-width:0}
 .stile .v{font-family:var(--serif);font-size:34px;line-height:1.05;margin-top:6px;font-variant-numeric:tabular-nums}
 .swatches{display:flex;flex-wrap:wrap;gap:10px}
+:root{--up:#23955A;--down:#D8433E;--gold:#E2AE1F;--gold-ink:#8A6200}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--up:#45C47E;--down:#F0605A;--gold:#EDBE36;--gold-ink:#F3CF5E}}
+:root[data-theme="dark"]{--up:#45C47E;--down:#F0605A;--gold:#EDBE36;--gold-ink:#F3CF5E}
+.tr{display:inline-flex;align-items:center;gap:3px;margin-left:8px;font:600 13px var(--sans);vertical-align:middle;position:relative;top:-5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tr svg{width:11px;height:10px;display:block}
+.tr.good{color:var(--up)} .tr.bad{color:var(--down)}
+td .tr{margin-left:4px;top:-1px} td .tr svg{width:8px;height:7px}
+.forme{padding:14px 16px 10px;margin-top:10px}
+.forme svg{display:block;width:100%;height:auto;margin-top:8px;overflow:visible}
+.forme .fl{display:flex;justify-content:space-between;font-size:11px;color:var(--mute);margin-top:2px;font-variant-numeric:tabular-nums}
+.sec-h{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;column-gap:10px}
+.streak{display:inline-flex;align-items:center;gap:6px;font:600 13px var(--sans);color:var(--ink);padding:6px 11px 6px 9px;border-radius:999px;background:var(--glass);border:1px solid var(--glass-edge);white-space:nowrap}
+.streak svg{width:14px;height:16px;flex:none}
+.recb{display:inline-flex;align-items:center;gap:5px;margin-top:5px;font:700 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--gold-ink);background:color-mix(in srgb,var(--gold) 18%,transparent);border:1px solid color-mix(in srgb,var(--gold) 55%,transparent);padding:4px 9px 4px 7px;border-radius:999px}
+.recb svg{width:12px;height:12px}
 .sw{appearance:none;width:44px;height:44px;border-radius:50%;border:2px solid transparent;cursor:pointer;font-family:var(--serif);font-size:22px;display:grid;place-items:center;box-shadow:0 0 0 1px var(--line)}
 .sw.on{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--ink)}
 .sw:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
-.spark{display:flex;align-items:flex-end;gap:6px;height:110px;margin-top:12px}
-.sb{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;min-width:0}
-.sb span{display:block;width:100%;border-radius:6px 6px 3px 3px}
-.sb em{font-style:normal;font-size:10.5px;color:var(--mute);font-variant-numeric:tabular-nums}
 .catrow{display:flex;align-items:center;gap:10px}
 .mdie{flex:none;width:26px;height:26px;border-radius:7px;padding:4px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);
   background:linear-gradient(#ffffff,#e9e9eb);box-shadow:0 2px 5px rgba(0,0,0,.28),0 0 0 .5px rgba(0,0,0,.12),inset 0 1px 0 #fff,inset 0 -1.5px 0 rgba(0,0,0,.08)}
@@ -728,7 +739,54 @@ const known = g => !!GAMES[kindOf(g)];
 const bestOf = (rows, f) => [...rows].sort((a,b)=>b[f]-a[f])[0];
 const stile = (lab, val, sub) => `<div class="stile"><div class="label">${lab}</div><div class="v">${val}</div>${sub?`<div class="meta">${sub}</div>`:''}</div>`;
 const pct = x => Math.round(x*100)+' %';
-const psection = (name, played, tiles) => `<h2>${name}</h2>${played ? `<div class="stiles">${tiles}</div>` : `<p class="hint">Pas encore de partie de ${name}.</p>`}`;
+/* v43 : section d'un jeu dans la fiche joueur. Avec k et id : pastille de série en face du titre, courbe de forme sous les tuiles. */
+const psection = (name, played, tiles, k, id) => `${k ? `<div class="sec-h"><h2>${name}</h2>${streakPill(k, id)}</div>` : `<h2>${name}</h2>`}${played ? `<div class="stiles">${tiles}</div>${k ? forme(k, id) : ''}` : `<p class="hint">Pas encore de partie de ${name}.</p>`}`;
+/* ===== v43 : tendance, forme, série, record (Louis, 27/11, maquettes validées) =====
+   Module : trend {low, min, dec} = le jeu a un score par partie (r.total) ; low = plus bas c'est mieux ; min = écart minimum ;
+   dec = une décimale. Sans trend : ni flèche, ni courbe, ni badge record. */
+const TR_SVG = up => `<svg viewBox="0 0 11 10" aria-hidden="true"><path d="${up?'M5.5 .6 10.6 9.4H.4z':'M5.5 9.4 .4 .6h10.2z'}" fill="currentColor" stroke="currentColor" stroke-width=".8" stroke-linejoin="round"/></svg>`;
+const FLAME_SVG = `<svg viewBox="0 0 14 16" aria-hidden="true"><path d="M7 .5c.4 2.4 2.2 3.6 3.6 5.3 1.5 1.8 2 3.4 1.7 5.2C11.9 13.7 9.7 15.5 7 15.5S2 13.7 1.7 11c-.2-1.6.3-3 1.2-4.1.3 1.2.9 2 1.8 2.4C4.3 6.3 5.4 3.2 7 .5z" fill="var(--gold)"/><path d="M7 8.2c.3 1.2 1.4 1.8 1.8 3 .4 1.3-.5 2.8-1.8 2.8s-2.2-1.2-1.9-2.5c.2-1.2 1.4-1.9 1.9-3.3z" fill="#FBE38A"/></svg>`;
+const STAR_SVG = `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 .6l1.6 3.4 3.7.4-2.8 2.5.8 3.7L6 8.7 2.7 10.6l.8-3.7L.7 4.4l3.7-.4z" fill="var(--gold)"/></svg>`;
+const numFr = (x, dec) => dec ? String(Math.round(x*10)/10).replace('.', ',') : String(Math.round(x));
+function scoresOf(k, id, pool){ return (pool||S.games).filter(g=>kindOf(g)===k).sort((a,b)=>a.date-b.date)
+  .map(g=>(g.results||[]).find(r=>r.id===id)).filter(r=>r && typeof r.total==='number').map(r=>r.total); }
+/* Moyenne des 3 dernières parties contre celle d'avant, dès 5 parties ; rien sous max(min, 5 % de la moyenne d'avant). */
+function trendOf(k, id, pool){ const c = GAMES[k].trend; if(!c) return null;
+  const s = scoresOf(k, id, pool); if(s.length < 5) return null;
+  const m = a => a.reduce((x,y)=>x+y,0)/a.length, old = m(s.slice(0,-3)), d = m(s.slice(-3)) - old;
+  if(Math.abs(d) < Math.max(c.min||1, Math.abs(old)*.05)) return null;
+  return {d, up:d>0, good: c.low ? d<0 : d>0, dec:c.dec}; }
+const trendTag = (t, small) => !t ? '' : `<span class="tr ${t.good?'good':'bad'}" title="${t.d>0?'+':'−'}${numFr(Math.abs(t.d), t.dec)} sur les 3 dernières parties">${TR_SVG(t.up)}${small ? '' : (t.d>0?'+':'−')+numFr(Math.abs(t.d), t.dec)}</span>`;
+const avgT = (k, id, val, pool) => val + trendTag(trendOf(k, id, pool), !!pool);
+/* Courbe de forme : 10 dernières parties, moyenne en pointillés, dernier point plein. */
+function forme(k, id){ const c = GAMES[k].trend; if(!c) return ''; const s = scoresOf(k, id).slice(-10); if(s.length < 3) return '';
+  const W = 320, H = 86, pad = 6, mn = Math.min(...s), mx = Math.max(...s), sp = (mx-mn)||1;
+  const X = i => pad + i*(W-2*pad)/(s.length-1), Y = v => pad + (1-(v-mn)/sp)*(H-2*pad);
+  const avg = s.reduce((a,b)=>a+b,0)/s.length, col = colorOf(id) || 'var(--ink)';
+  const d = s.map((v,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
+  return `<div class="glass forme"><div class="label">Forme · ${s.length} dernières</div>
+  <svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><line x1="0" x2="${W}" y1="${Y(avg).toFixed(1)}" y2="${Y(avg).toFixed(1)}" stroke="var(--mute)" stroke-width="1" stroke-dasharray="3 4" opacity=".7"/>
+  <path d="${d}" fill="none" stroke="${col}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+  ${s.map((v,i)=> i===s.length-1 ? `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="4.5" fill="${col}" stroke="var(--bg)" stroke-width="2"/>` : `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="2.2" fill="${col}" opacity=".45"/>`).join('')}
+  </svg><div class="fl"><span>${numFr(s[0], c.dec)}</span><span>moy. ${numFr(avg, c.dec)}</span><span style="color:var(--ink);font-weight:600">${numFr(s[s.length-1], c.dec)}</span></div></div>`; }
+/* Série en cours : victoires d'affilée dans ce jeu, parties à plusieurs seulement (jamais en solo), à partir de 3.
+   Au 421, « gagner » = ne pas perdre (win du module) : la série se dit « sans perdre ». */
+function streakOf(k, id, pool){ let n = 0;
+  const gs = (pool||S.games).filter(g=>kindOf(g)===k && (g.results||[]).length>1 && g.results.some(r=>r.id===id)).sort((a,b)=>b.date-a.date);
+  for(const g of gs){ const w = GAMES[k].win(g, id); if(w===null) continue; if(w) n++; else break; } return n; }
+const streakText = (k, n) => k==='421' ? `${n} parties sans perdre` : `${n} victoires d’affilée`;
+const streakPill = (k, id) => { const n = streakOf(k, id); return n>=3 ? `<span class="streak">${FLAME_SVG}${streakText(k, n)}</span>` : ''; };
+function streakCard(k, ids, nameOf, pool){ const top = [...ids].map(id=>({id, name:nameOf(id), n:streakOf(k, id, pool)})).sort((a,b)=>b.n-a.n)[0];
+  return top && top.n>=3 ? `<div style="grid-column:1/-1">${award('En série', top, FLAME_SVG.replace('<svg','<svg style="width:12px;height:14px;vertical-align:-2px;margin-right:4px"') + streakText(k, top.n), '')}</div>` : ''; }
+/* Badge record sur l'écran de fin : record du carnet (mieux que tous les scores d'avant dans ce jeu) sinon record perso
+   (mieux que ses propres parties d'avant ; jamais à sa première partie). Égalité = pas de record. */
+function recordOf(g, r){ const k = kindOf(g), c = GAMES[k].trend; if(!c || typeof r.total!=='number') return '';
+  const before = S.games.filter(x=>kindOf(x)===k && x.id!==g.id && x.date<g.date);
+  const all = before.flatMap(x=>(x.results||[]).map(y=>y.total)).filter(v=>typeof v==='number');
+  const mine = before.map(x=>(x.results||[]).find(y=>y.id===r.id)).filter(y=>y && typeof y.total==='number').map(y=>y.total);
+  const better = (v, list) => list.length && (c.low ? v < Math.min(...list) : v > Math.max(...list));
+  const lab = better(r.total, all) ? 'Record du carnet' : better(r.total, mine) ? 'Record perso' : '';
+  return lab ? `<span class="recb">${STAR_SVG}${lab}</span>` : ''; }
 /* Place et points d'un joueur dans une partie au total (plus haut gagne, ou plus bas si low). */
 function outcomePts(g, id, low){ const r = g.results.find(r=>r.id===id), n = g.results.length;
   const sorted = [...g.results].sort((a,b)=> low ? a.total-b.total : b.total-a.total);
@@ -1289,17 +1347,13 @@ function statsYzView(top, ids, nameOf, gs){
   <h2>Classement</h2>
   <div class="glass dense tbl-wrap" style="padding:4px 12px"><table class="stats">
     <thead><tr><th></th><th>Joueur</th><th>V.</th><th>Parties</th><th>Moy.</th><th>Record</th><th>Total</th></tr></thead>
-    <tbody>${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px">${dot(r.id)}<b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round(r.avg/maxAvg*100)}%${barC(r.id)}"></i></div></td><td>${r.wins}</td><td>${r.played}</td><td>${r.avg}</td><td>${r.best}</td><td>${r.points.toLocaleString('fr-FR')}</td></tr>`).join('')}</tbody>
+    <tbody>${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px">${dot(r.id)}<b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round(r.avg/maxAvg*100)}%${barC(r.id)}"></i></div></td><td>${r.wins}</td><td>${r.played}</td><td>${avgT('yahtzee', r.id, r.avg, gs)}</td><td>${r.best}</td><td>${r.points.toLocaleString('fr-FR')}</td></tr>`).join('')}</tbody>
   </table></div>
   <p class="note">Classement par victoires, puis taux de victoire, puis moyenne. La barre montre la moyenne par partie.</p>`;
 }
 function playerYz(id){
-  const y = statsY(id), accent = colorOf(id) || 'var(--ink)';
-  const yScores = S.games.filter(g=>kindOf(g)==='yahtzee').sort((a,b)=>a.date-b.date).map(g=>(g.results||[]).find(r=>r.id===id)).filter(Boolean).map(r=>r.total).slice(-12);
-  const yMax = Math.max(...yScores, 1);
-  return psection('Yahtzee', y.played, stile('Victoires', y.wins, pct(y.rate)) + stile('Parties', y.played) + stile('Moyenne', y.avg, 'pts par partie') + stile('Record', y.best, 'pts') + stile('Yahtzees', y.yahtzees, 'bonus compris') + stile('Prime de 35', y.bonuses, 'fois'))
-  + (yScores.length>1 ? `<div class="glass" style="padding:14px 16px;margin-top:10px"><div class="label">Derniers scores</div>
-    <div class="spark">${yScores.map((v,i)=>`<div class="sb" title="${v} pts"><span style="height:${Math.max(4,Math.round(v/yMax*100))}%;background:${i===yScores.length-1?accent:'color-mix(in srgb,'+accent+' 35%, transparent)'}"></span><em>${v}</em></div>`).join('')}</div></div>` : '');
+  const y = statsY(id);
+  return psection('Yahtzee', y.played, stile('Victoires', y.wins, pct(y.rate)) + stile('Parties', y.played) + stile('Moyenne', avgT('yahtzee', id, y.avg), 'pts par partie') + stile('Record', y.best, 'pts') + stile('Yahtzees', y.yahtzees, 'bonus compris') + stile('Prime de 35', y.bonuses, 'fois'), 'yahtzee', id);
 }
 function sheetYz(g, sh, ids, nmOf, head, el, title){
   const sc = id => (sh.scores||{})[id] || {}, t = id => totals(sc(id));
@@ -1442,7 +1496,7 @@ $app.addEventListener('touchstart', e => { if(e.target.closest('#yzsheet') && e.
 $app.addEventListener('touchend', e => { if(!sw0) return; const t=e.changedTouches[0], dx=t.clientX-sw0.x, dy=t.clientY-sw0.y;
   if(Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.5 && Date.now()-sw0.t<600) yzMove(dx<0?1:-1); sw0=null; }, {passive:true});
 defGame('yahtzee', {
-  name:'Yahtzee', doc:'current', min:1, manualEnd:true, virtual:true, virtualHint:'5 dés sur le téléphone, tu touches la case pour noter',
+  name:'Yahtzee', doc:'current', min:1, trend:{min:6}, manualEnd:true, virtual:true, virtualHint:'5 dés sur le téléphone, tu touches la case pour noter',
   card: L => ({dice:`${dieFace(5)}${dieFace(5)}`, hint:'5 dés · 13 tours · le plus gros total gagne',
     pill: L ? `En cours · tour ${Math.min(13, Math.min(...L.order.map(id=>filled(L.scores[id])))+1)}` : ''}),
   setupNote:'', setupRules: () => rulesYahtzee(true),
@@ -1660,7 +1714,7 @@ defGame('421', {
       n421: st.log.filter(r=>r.w===id && r.c==='421').length}));
     return {game:'421', date:Date.now(), startedAt:L.startedAt, results, loser:st.loser, firstOut:st.out[0]||null, rounds:st.log.length, sheet:{rounds:JSON.parse(JSON.stringify(L.rounds||[])), rules:rulesOf(L)}}; },
   stats: stats4, statsView: stats421View,
-  player: id => { const q = stats4(id); return psection('421', q.played, stile('Défaites', q.losses, pct(q.lossRate)) + stile('Parties', q.played) + stile('Sorti en 1er', q.first, 'fois') + stile('421 faits', q.n421, 'gagnants')); },
+  player: id => { const q = stats4(id); return psection('421', q.played, stile('Défaites', q.losses, pct(q.lossRate)) + stile('Parties', q.played) + stile('Sorti en 1er', q.first, 'fois') + stile('421 faits', q.n421, 'gagnants'), '421', id); },
   outcome: (g, id) => { const r = g.results.find(r=>r.id===id); return g.loser===id ? '<b>Perd</b>' : `Sorti ${r.rank===1?'1er':r.rank+'e'}`; },
   win: (g, id) => g.loser!==id ? 1 : 0,
   duel: (g, r) => g.loser===r.id ? 1e9 : (r.rank||99), duelNote:' (au 421 : sorti le plus tôt)',
@@ -1779,7 +1833,7 @@ function statsSkyView(top, ids, nameOf, pool, extra){
   <h2>Classement</h2>
   <div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats">
     <thead><tr><th></th><th>Joueur</th><th>V.</th><th>Parties</th><th>Moy.</th><th>Record</th><th>×2</th></tr></thead>
-    <tbody>${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px">${dot(r.id)}<b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round(r.rate*100)}%${barC(r.id)}"></i></div></td><td>${r.wins}</td><td>${r.played}</td><td>${r.avg}</td><td>${r.best}</td><td>${r.doubled}</td></tr>`).join('')}</tbody>
+    <tbody>${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px">${dot(r.id)}<b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round(r.rate*100)}%${barC(r.id)}"></i></div></td><td>${r.wins}</td><td>${r.played}</td><td>${avgT('skyjo', r.id, r.avg, pool)}</td><td>${r.best}</td><td>${r.doubled}</td></tr>`).join('')}</tbody>
   </table></div>
   <p class="note">Au Skyjo, moins on a de points, mieux c'est. Classement par victoires, puis taux de victoire, puis moyenne la plus basse. La barre montre le taux de victoire.</p>`;
 }
@@ -1858,7 +1912,7 @@ function clickSky(el, a){
   return false;
 }
 defGame('skyjo', {
-  name:'Skyjo', doc:'gsky', min:2, rounds:true, low:true,
+  name:'Skyjo', doc:'gsky', min:2, rounds:true, low:true, trend:{low:true, min:5},
   card: L => ({dice:[-2,5,12].map(v=>`<span class="card">${v}</span>`).join(''), hint:'Cartes de −2 à 12 · le plus petit total gagne',
     pill: L ? `En cours · manche ${(L.rounds||[]).length+1}` : ''}),
   setupNote:' De 2 à 8 joueurs.', setupRules: () => rulesSky(true),
@@ -1871,7 +1925,7 @@ defGame('skyjo', {
     const results = L.order.map(id=>({id, name:pname(id,L.names[id]), total:st.tot[id], closed:st.closed[id], doubled:st.doubled[id], bestRound:st.bestRound[id]}));
     return {game:'skyjo', date:Date.now(), startedAt:L.startedAt, results, winners:st.winners, rounds:st.log.length, sheet:{rounds:JSON.parse(JSON.stringify(L.rounds||[]))}}; },
   stats: statsS, statsView: statsSkyView,
-  player: id => { const s = statsS(id); return psection('Skyjo', s.played, stile('Victoires', s.wins, pct(s.rate)) + stile('Parties', s.played) + stile('Moyenne', s.avg, 'pts en fin de partie') + stile('Record', s.best ?? '–', 'total le plus bas') + stile('Plus belle manche', s.bestRound ?? '–', 'pts') + stile('Doublé', s.doubled, 'fois')); },
+  player: id => { const s = statsS(id); return psection('Skyjo', s.played, stile('Victoires', s.wins, pct(s.rate)) + stile('Parties', s.played) + stile('Moyenne', avgT('skyjo', id, s.avg), 'pts en fin de partie') + stile('Record', s.best ?? '–', 'total le plus bas') + stile('Plus belle manche', s.bestRound ?? '–', 'pts') + stile('Doublé', s.doubled, 'fois'), 'skyjo', id); },
   outcome: (g, id) => outcomePts(g, id, true),
   win: (g, id) => (g.winners||[]).includes(id) ? 1 : 0,
   duel: (g, r) => r.total,
@@ -2004,7 +2058,7 @@ function statsSBView(top, ids, nameOf, gs){
   <h2>Classement</h2>
   <div class="glass dense tbl-wrap" style="padding:4px 12px"><table class="stats">
     <thead><tr><th></th><th>Joueur</th><th>Record</th><th>Moy.</th><th>Parties</th><th>Fermées</th><th>V.</th></tr></thead>
-    <tbody>${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px">${dot(r.id)}<b>${esc(r.name)}</b></td><td>${r.best??'–'}</td><td>${String(r.avg).replace('.',',')}</td><td>${r.played}</td><td>${r.shuts}</td><td>${r.multi?r.wins:'–'}</td></tr>`).join('')}</tbody>
+    <tbody>${rows.map((r,i)=>`<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px">${dot(r.id)}<b>${esc(r.name)}</b></td><td>${r.best??'–'}</td><td>${avgT('shutbox', r.id, String(r.avg).replace('.',','), gs)}</td><td>${r.played}</td><td>${r.shuts}</td><td>${r.multi?r.wins:'–'}</td></tr>`).join('')}</tbody>
   </table></div>
   <p class="note">Au Shut the Box, moins il reste de points, mieux c'est. Classement par record, puis moyenne. Les victoires ne comptent que les parties à plusieurs.</p>`;
 }
@@ -2021,7 +2075,7 @@ function watchSB(L, P){
     ${V && V.roll ? `<div class="row" style="justify-content:center;gap:10px;margin-top:12px">${V.vals.slice(0, V.one ? 1 : 2).map(v=>dieFace(v)).join('')}<span class="meta">${V.vals.slice(0, V.one ? 1 : 2).reduce((a,b)=>a+b,0)}</span></div>` : ''}</div>` : ''}`;
 }
 defGame('shutbox', {
-  name:'Shut the Box', doc:'gsb', min:1, low:true, virtual:true, virtualHint:'2 dés sur le téléphone, tu baisses les tuiles à l’écran',
+  name:'Shut the Box', doc:'gsb', min:1, low:true, trend:{low:true, min:1, dec:true}, virtual:true, virtualHint:'2 dés sur le téléphone, tu baisses les tuiles à l’écran',
   card: L => ({dice:`<span class="sb-mini">${[1,2,3].map(n=>`<span class="sbt sm${n===2?' shut':''}">${n}</span>`).join('')}</span>`, hint:'Tuiles 1 à 9 · 2 dés · le plus petit reste gagne',
     pill: L ? (L.order.length>1 ? `En cours · tour ${Math.max(1, sbTurnOf(L)+1)} sur ${L.order.length}` : 'En cours') : ''}),
   setupNote:' Seul ou à plusieurs, chacun joue un tour.', setupRules: () => rulesSB(true),
@@ -2033,7 +2087,7 @@ defGame('shutbox', {
     const min = Math.min(...results.map(r=>r.total)), turns = {}; L.order.forEach(id => { turns[id] = {closed:[...sbT(L,id).closed]}; });
     return {game:'shutbox', date:Date.now(), startedAt:L.startedAt, results, winners: results.length>1 ? results.filter(r=>r.total===min).map(r=>r.id) : [], ...(L.virtual?{virtual:true}:{}), sheet:{turns}}; },
   stats: statsSB, statsView: statsSBView,
-  player: id => { const s = statsSB(id); return psection('Shut the Box', s.played, stile('Record', s.best ?? '–', 'points, le plus bas') + stile('Moyenne', String(s.avg).replace('.',','), 'pts') + stile('Parties', s.played) + stile('Boîte fermée', s.shuts, 'fois') + (s.multi ? stile('Victoires', s.wins, pct(s.rate)+' à plusieurs') : '')); },
+  player: id => { const s = statsSB(id); return psection('Shut the Box', s.played, stile('Record', s.best ?? '–', 'points, le plus bas') + stile('Moyenne', avgT('shutbox', id, String(s.avg).replace('.',',')), 'pts') + stile('Parties', s.played) + stile('Boîte fermée', s.shuts, 'fois') + (s.multi ? stile('Victoires', s.wins, pct(s.rate)+' à plusieurs') : ''), 'shutbox', id); },
   outcome: (g, id) => sbSolo(g) ? `${(g.results[0].total)} pts${g.results[0].total===0?' · <b>boîte fermée</b>':''}` : outcomePts(g, id, true),
   win: (g, id) => sbSolo(g) ? null : ((g.winners||[]).includes(id) ? 1 : 0),
   duel: (g, r) => r.total,
@@ -2223,7 +2277,7 @@ defGame('farkle', {
     const results = L.order.map(id => ({id, name:pname(id, L.names[id]), total:st.tot[id], turns:st.n[id], best:st.best[id], farkles:st.fk[id]}));
     return {game:'farkle', date:Date.now(), startedAt:L.startedAt, results, winners: L.order.length>1 ? st.winners : [], rounds: Math.max(...L.order.map(id=>st.n[id])), ...(L.virtual?{virtual:true}:{}), sheet:{turns:JSON.parse(JSON.stringify(L.turns||[]))}}; },
   stats: statsFK, statsView: statsFKView,
-  player: id => { const s = statsFK(id); return psection('Farkle', s.played, (s.multi ? stile('Victoires', s.wins, pct(s.rate)) : '') + stile('Parties', s.played) + stile('Meilleur tour', fkFmt(s.bestTurn), 'pts') + stile('Record solo', s.solo ?? '–', s.solo!=null ? 'tours pour 10 000' : '') + stile('Farkles', s.farkles, 'tours perdus')); },
+  player: id => { const s = statsFK(id); return psection('Farkle', s.played, (s.multi ? stile('Victoires', s.wins, pct(s.rate)) : '') + stile('Parties', s.played) + stile('Meilleur tour', fkFmt(s.bestTurn), 'pts') + stile('Record solo', s.solo ?? '–', s.solo!=null ? 'tours pour 10 000' : '') + stile('Farkles', s.farkles, 'tours perdus'), 'farkle', id); },
   outcome: (g, id) => { const r = g.results.find(r=>r.id===id); return fkSolo(g) ? `10 000 en <b>${plural(r.turns,'tour')}</b>` : outcomePts(g, id, false); },
   win: (g, id) => fkSolo(g) ? null : ((g.winners||[]).includes(id) ? 1 : 0),
   duel: (g, r) => -r.total,
@@ -2841,12 +2895,12 @@ function statsPLView(top, ids, nameOf, pool){
   <h2>Classement</h2>
   <div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats">
     <thead><tr><th></th><th>Joueur</th><th>V.</th><th>Parties</th><th>Moy.</th><th>Trouvés</th><th>Introuv.</th></tr></thead>
-    <tbody>${rows.map((r,i) => `<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px">${dot(r.id)}<b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round(r.rate*100)}%${barC(r.id)}"></i></div></td><td>${r.wins}</td><td>${r.played}</td><td>${plNum(r.avg)}</td><td>${pct(r.acc)}</td><td>${r.fooled}</td></tr>`).join('')}</tbody>
+    <tbody>${rows.map((r,i) => `<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px">${dot(r.id)}<b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round(r.rate*100)}%${barC(r.id)}"></i></div></td><td>${r.wins}</td><td>${r.played}</td><td>${avgT('playlist', r.id, plNum(r.avg), pool)}</td><td>${pct(r.acc)}</td><td>${r.fooled}</td></tr>`).join('')}</tbody>
   </table></div>
   <p class="note">Classement par victoires, puis taux de victoire, puis moyenne. « Trouvés » : part des morceaux des autres que le joueur a trouvés. « Introuv. » : ses morceaux que personne n’a trouvés.</p>`;
 }
 defGame('playlist', {
-  name:'Playlist', doc:'gpl', min:3, needsNet:true,
+  name:'Playlist', doc:'gpl', min:3, trend:{min:1, dec:true}, needsNet:true,
   locked: plLocked,
   card: L => ({dice:`<span class="die pl-ic">${PL_IC}</span>`,
     hint: 'YouTube Music · devine qui a mis quoi' + (navigator.onLine ? '' : ' · internet nécessaire') + (plAdmin() && !plOpen() && !PL_OPEN_ALL ? ' · en test, visible par toi seul' : ''),
@@ -2864,7 +2918,7 @@ defGame('playlist', {
     return {game:'playlist', date:Date.now(), startedAt:L.startedAt, results, winners:st.winners, tracks:(L.tracks||[]).length, bonus:st.B,
       sheet:{tracks: st.log.map(x => ({t:x.t, v:x.v, by:nmx(x.by), ok:x.ok.map(nmx), bonus:x.bonus}))}}; },
   stats: statsPL, statsView: statsPLView,
-  player: id => { const s = statsPL(id); return psection('Playlist', s.played, stile('Victoires', s.wins, pct(s.rate)) + stile('Parties', s.played) + stile('Moyenne', plNum(s.avg), 'pts par partie') + stile('Oreille', pct(s.acc), 'des morceaux trouvés') + stile('Introuvables', s.fooled, 'morceaux que personne n’a trouvés')); },
+  player: id => { const s = statsPL(id); return psection('Playlist', s.played, stile('Victoires', s.wins, pct(s.rate)) + stile('Parties', s.played) + stile('Moyenne', avgT('playlist', id, plNum(s.avg)), 'pts par partie') + stile('Oreille', pct(s.acc), 'des morceaux trouvés') + stile('Introuvables', s.fooled, 'morceaux que personne n’a trouvés'), 'playlist', id); },
   outcome: (g, id) => outcomePts(g, id, false),
   win: (g, id) => (g.winners||[]).includes(id) ? 1 : 0,
   duel: (g, r) => -r.total,
@@ -3021,7 +3075,7 @@ function statsTarView(top, ids, nameOf, pool){
   <h2>Classement</h2>
   <div class="glass tbl-wrap" style="padding:4px 12px"><table class="stats">
     <thead><tr><th></th><th>Joueur</th><th>V.</th><th>Parties</th><th>Moy.</th><th>Prises</th><th>Réussies</th></tr></thead>
-    <tbody>${rows.map((r,i) => `<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px">${dot(r.id)}<b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round(r.rate*100)}%${barC(r.id)}"></i></div></td><td>${r.wins}</td><td>${r.played}</td><td>${r.avg}</td><td>${r.takes}</td><td>${r.takeRate===null ? '–' : pct(r.takeRate)}</td></tr>`).join('')}</tbody>
+    <tbody>${rows.map((r,i) => `<tr><td class="rank">${i+1}</td><td style="text-align:left;min-width:110px">${dot(r.id)}<b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.round(r.rate*100)}%${barC(r.id)}"></i></div></td><td>${r.wins}</td><td>${r.played}</td><td>${avgT('tarot', r.id, r.avg, pool)}</td><td>${r.takes}</td><td>${r.takeRate===null ? '–' : pct(r.takeRate)}</td></tr>`).join('')}</tbody>
   </table></div>
   <p class="note">Classement par victoires, puis taux de victoire, puis moyenne. « Le plus sûr » compte à partir de 3 prises. La barre montre le taux de victoire.</p>`;
 }
@@ -3047,7 +3101,7 @@ function watchTar(L, P){
     <p class="hint" style="margin:8px 0">${tarLegend(L.order.length)}</p></div>` : ''}`;
 }
 defGame('tarot', {
-  name:'Tarot', doc:'gtar', min:3, max:5, rounds:true,
+  name:'Tarot', doc:'gtar', min:3, max:5, rounds:true, trend:{min:30},
   get manualEnd(){ return !!(S.live.tarot && (S.live.tarot.rounds||[]).length); },
   card: L => ({dice:['1','21','★'].map(v => `<span class="card">${v}</span>`).join(''), hint:'De 3 à 5 joueurs · le plus gros total gagne',
     pill: L ? `En cours · donne ${(L.rounds||[]).length+1}` : ''}),
@@ -3060,7 +3114,7 @@ defGame('tarot', {
     const results = L.order.map(id => ({id, name:pname(id, L.names[id]), total:st.tot[id], takes:st.takes[id], made:st.made[id]}));
     return {game:'tarot', date:Date.now(), startedAt:L.startedAt, results, winners:st.winners, rounds:st.log.length, sheet:{rounds:JSON.parse(JSON.stringify(L.rounds||[]))}}; },
   stats: statsT, statsView: statsTarView,
-  player: id => { const s = statsT(id); return psection('Tarot', s.played, stile('Victoires', s.wins, pct(s.rate)) + stile('Parties', s.played) + stile('Moyenne', s.avg, 'pts en fin de partie') + stile('Record', s.best ?? '–', 'pts') + stile('Prises', s.takes, s.takeRate===null ? '' : pct(s.takeRate)+' réussies')); },
+  player: id => { const s = statsT(id); return psection('Tarot', s.played, stile('Victoires', s.wins, pct(s.rate)) + stile('Parties', s.played) + stile('Moyenne', avgT('tarot', id, s.avg), 'pts en fin de partie') + stile('Record', s.best ?? '–', 'pts') + stile('Prises', s.takes, s.takeRate===null ? '' : pct(s.takeRate)+' réussies'), 'tarot', id); },
   outcome: (g, id) => outcomePts(g, id, false),
   win: (g, id) => (g.winners||[]).includes(id) ? 1 : 0,
   duel: (g, r) => -r.total,
@@ -3445,7 +3499,9 @@ function viewStats(){
   if(!gs.length) return top + `<div class="glass empty"><div class="serif">Jamais ensemble</div><p>${names} n'ont pas encore fait de partie de ${GAMES[k].name} tous ensemble.</p><button class="btn ghost" data-sgrp="">Voir tout le monde</button></div>`;
   const ids = new Set(); if(grp.length>1) grp.forEach(id=>ids.add(id)); else gs.forEach(g=>(g.results||[]).forEach(r=>ids.add(r.id)));
   const vs = grp.length>1 ? groupDuel(k, gs, grp, nameOf) : '';
-  return GAMES[k].statsView(top + vs, ids, nameOf, gs);
+  /* v43 : carte « En série » en fin de podium (pleine largeur). */
+  const sc = streakCard(k, ids, nameOf, gs), html = GAMES[k].statsView(top + vs, ids, nameOf, gs);
+  return sc ? html.replace(/(<div class="podium">[\s\S]*?)(\s*<\/div>\s*<h2>)/, (m, a, b) => a + sc + b) : html;
 }
 
 /* ================= history ================= */
@@ -4585,7 +4641,7 @@ function viewResult(){
   <div class="label">${GAMES[k].name} · ${when}${extra?' · '+extra:''}</div>
   <h1 class="${rv((n-1)*RV_STEP + 60)}">${head}</h1>
   <p class="sub">${R.from==='end' ? 'Partie enregistrée dans l\'historique.' : spect ? `Partie de ${esc(R.owner||'ton ami')} terminée.${myPid() ? ' Elle va arriver dans ton historique.' : ''}` : 'Classement final.'}</p>
-  <div class="glass" style="padding:8px 16px"><div class="list res-list">${rows.map((x,i)=>`<div class="item${x.win?' win':''}${rv((n-1-i)*RV_STEP)}"><span class="rk">${x.rk}</span>${spect ? wav((g.cols||{})[x.r.id], x.r.name) : av(x.r.id, pname(x.r.id,x.r.name))}<div class="grow"><div class="name">${nm(x.r)}</div>${x.meta?`<div class="meta">${x.meta}</div>`:''}</div>${x.big?`<div class="tok">${x.big}</div>`:''}</div>`).join('')}</div></div>
+  <div class="glass" style="padding:8px 16px"><div class="list res-list">${rows.map((x,i)=>`<div class="item${x.win?' win':''}${rv((n-1-i)*RV_STEP)}"><span class="rk">${x.rk}</span>${spect ? wav((g.cols||{})[x.r.id], x.r.name) : av(x.r.id, pname(x.r.id,x.r.name))}<div class="grow"><div class="name">${nm(x.r)}</div>${x.meta?`<div class="meta">${x.meta}</div>`:''}${spect ? '' : recordOf(g, x.r)}</div>${x.big?`<div class="tok">${x.big}</div>`:''}</div>`).join('')}</div></div>
   ${g.src ? `<p class="hint">Reçue de ${esc(g.src.name)}</p>` : ''}
   ${R.from==='end' && !db ? viewResCloud() : ''}
   ${viewSheet(g, el)}
@@ -4876,7 +4932,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '42';
+window.APP_VERSION = '43';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });

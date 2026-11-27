@@ -81,3 +81,10 @@ Les données de jeu sont stockées dans chaque téléphone, à part : une mise �
 - Fin de partie à la main, le plus gros total gagne. Une donne se corrige en la touchant dans le tableau.
 - `firestore.rules` change (règle `watch` : ajout de `tarot` pour la partie en direct) : à recoller dans Firebase avant d'uploader. **Remettre ton code ami à la place de `TON_CODE_AMI`.**
 
+
+## Stats (version 43)
+- Flèche à côté de la moyenne (fiche joueur et colonne « Moy. » des Stats) : elle suit le score (▲ monte, ▼ baisse), sa couleur dit si c'est bien (vert) ou pas (rouge) selon le jeu. Calcul : moyenne des 3 dernières parties contre celle d'avant, dès 5 parties, rien sous un petit écart (5 % de la moyenne). Pas au 421 ni au Farkle (pas de score comparable).
+- Courbe « Forme » des 10 dernières parties sous chaque jeu de la fiche joueur (remplace les barres « Derniers scores » du Yahtzee).
+- Série en cours : à partir de 3 victoires d'affilée dans un jeu, à plusieurs seulement (au 421 : « parties sans perdre »). Pastille sur la fiche joueur, carte « En série » dans les Stats.
+- Écran de fin : badge doré « Record du carnet » ou « Record perso » (jamais à la première partie d'un joueur).
+- `firestore.rules` ne change pas. Aucune donnée nouvelle : tout est calculé à partir des parties déjà enregistrées.

@@ -2710,7 +2710,7 @@ async function plCheck(force){
       if(open!==plOpen()){ plSet({open}); ch = true; } }catch(e){}
     const snap = await m.getDocs(m.query(m.collection(fs, 'pl'), m.where('viewers', 'array-contains', me)));
     const now = Date.now(), before = JSON.stringify(S.plInv.map(d=>d.id));
-    S.plInv = snap.docs.map(x => ({id:x.id, ...x.data()})).filter(d => d.owner!==me && now - tsMs(d.updatedAt) < PL_MAX_AGE)
+    S.plInv = snap.docs.map(x => ({id:x.id, ...x.data()})).filter(d => d.owner!==me && friendUids().has(d.owner) && now - tsMs(d.updatedAt) < PL_MAX_AGE)
       .map(d => { let st = null; try{ st = JSON.parse(d.state); }catch(e){} return {...d, st}; })
       .filter(d => d.st && d.st.order && !d.st.done && Object.values(d.uids||{}).includes(me));
     if(JSON.stringify(S.plInv.map(d=>d.id))!==before) ch = true;
@@ -3501,7 +3501,9 @@ const COLORS = [
   {id:'gris', n:'Gris', c:'#8C8C92'}];
 const inkOn = hex => { const n=parseInt(hex.slice(1),16), r=n>>16, g=n>>8&255, b=n&255; return (0.299*r+0.587*g+0.114*b) > 170 ? '#111111' : '#ffffff'; };
 const colorOf = id => { const p = S.players[id]; const c = p && COLORS.find(x=>x.id===p.color); return c && c.c ? c.c : null; };
-const photoOf = id => (S.players[id] && S.players[id].photo) || null;
+/* v49 (sécurité) : une photo n'est acceptée que si c'est une vraie image en data URL (un fichier importé piégé ne peut plus casser l'attribut style). */
+const PHOTO_OK = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/;
+const photoOf = id => { const ph = S.players[id] && S.players[id].photo; return typeof ph==='string' && PHOTO_OK.test(ph) ? ph : null; };
 const photoStyle = (ph, c) => `background:var(--chip) center/cover no-repeat url('${ph}');color:transparent;box-shadow:0 0 0 2px var(--bg),0 0 0 3.5px ${c||'var(--line)'}`;
 const avStyle = id => { const c = colorOf(id), ph = photoOf(id); if(ph) return photoStyle(ph, c); return c ? `background:${c};color:${inkOn(c)}` : ''; };
 /* Best player: highest win rate across all games played with others (not solo), at least CROWN_MIN games. Tie-break: more wins. No crown on a tie. */
@@ -4454,7 +4456,12 @@ const pairId = (a, b) => a < b ? a+'_'+b : b+'_'+a;
 const myUid = () => (S.acct.user || S.acct.cache || {}).uid || null;
 const online = () => !!(myUid() && S.acct.profile && !S.acct.needsProfile);
 S.fr = {list:[], res:{}, sent:{}, auto:[], at:0, busy:false, err:null, info:null, code:''};
-{ const c = lsGet(FR_KEY); if(c && c.owner && c.owner===myUid()){ S.fr.list = c.list||[]; S.fr.res = c.res||{}; S.fr.sent = c.sent||{}; S.fr.auto = c.auto||[]; } }
+/* v49 (sécurité) : les résultats publiés par un ami sont réduits à des nombres et à un nom de jeu connu avant tout affichage. */
+const numOr = v => typeof v==='number' && isFinite(v) ? v : null;
+const resClean = l => Array.isArray(l) ? l.filter(x => x && typeof x==='object' && typeof x.k==='string' && /^[a-z0-9]{1,20}$/.test(x.k)).slice(0, 2000)
+  .map(x => { const o = {k:x.k, d:numOr(x.d)||0, w:x.w ? 1 : 0}; const pp = numOr(x.p), r = numOr(x.r); if(pp!==null) o.p = pp; if(r!==null) o.r = r; return o; }) : null;
+const resMapClean = m => Object.fromEntries(Object.entries(m && typeof m==='object' ? m : {}).map(([u, v]) => [u, {list: resClean(v && v.list), at: (v && numOr(v.at)) || 0}]));
+{ const c = lsGet(FR_KEY); if(c && c.owner && c.owner===myUid()){ S.fr.list = c.list||[]; S.fr.res = resMapClean(c.res); S.fr.sent = c.sent||{}; S.fr.auto = c.auto||[]; } }
 const frSave = () => lsSet(FR_KEY, {owner:myUid(), list:S.fr.list, res:S.fr.res, sent:S.fr.sent, auto:S.fr.auto});
 function frReset(){ S.fr.list = []; S.fr.res = {}; S.fr.sent = {}; S.fr.auto = []; S.fr.at = 0; lsSet(FR_KEY, null); lsSet(PUB_KEY, null); }
 const friendsOk = () => S.fr.list.filter(f=>f.status==='ok').sort((a,b)=>a.name.localeCompare(b.name,'fr'));
@@ -4479,7 +4486,7 @@ async function frLoad(force){
       return {id:x.id, uid:other, name:(d.names && d.names[other]) || (old && old.name) || 'Ami', status: d.status==='ok' ? 'ok' : d.from===me ? 'out' : 'in'}; });
     await Promise.all(list.filter(f=>f.status==='ok').map(async f => {
       try{ const u = await m.getDoc(m.doc(fs, 'users', f.uid)); if(u.exists()) f.name = u.data().name; }catch(e){}
-      try{ const r = await m.getDoc(m.doc(fs, 'results', f.uid)); S.fr.res[f.uid] = {list: r.exists() ? (r.data().list||[]) : null, at:Date.now()}; }catch(e){} }));
+      try{ const r = await m.getDoc(m.doc(fs, 'results', f.uid)); S.fr.res[f.uid] = {list: r.exists() ? resClean(r.data().list||[]) : null, at:Date.now()}; }catch(e){} }));
     /* Ma demande vient d'être acceptée : on propose tout de suite de relier l'ami à son joueur (v29). */
     list.forEach(f => { if(f.status==='ok' && was.get(f.uid)==='out' && !pidOfUid(f.uid)) linkAsk(f.uid); });
     S.fr.list = list; frSave(); render(); linkNext();
@@ -4488,7 +4495,7 @@ async function frLoad(force){
 async function frFetchRes(uid){
   if(!online() || !navigator.onLine) return;
   try{ const {m, fs} = await fb(); const s = await m.getDoc(m.doc(fs, 'results', uid));
-    S.fr.res[uid] = {list: s.exists() ? (s.data().list||[]) : null, at:Date.now()}; frSave(); render();
+    S.fr.res[uid] = {list: s.exists() ? resClean(s.data().list||[]) : null, at:Date.now()}; frSave(); render();
   }catch(e){}
 }
 async function frAdd(){
@@ -4701,7 +4708,7 @@ function viewFriend(){
     ${linked ? '' : `<span class="hint">Si ${esc(f.name)} est déjà dans tes joueurs (même en invité), choisis sa fiche : vos parties ensemble lui seront envoyées. Sinon, crée-lui un joueur.</span>`}</div></div>
   ${!r ? `<p class="hint" style="margin-top:18px">Chargement de ses résultats…</p>` : !list ? `<div class="glass empty" style="margin-top:14px"><div class="serif">Pas encore de résultats</div><p>${esc(f.name)} n'a pas encore choisi son joueur dans le carnet, ou ne partage pas ses résultats.</p></div>`
     : `${GAME_ORDER.map(section).join('')}
-    ${list.length ? `<h2>Dernières parties</h2><div class="glass" style="padding:4px 16px"><div class="list">${list.slice(0,10).map(x=>`<div class="item"><div class="grow"><div class="name">${GAMES[x.k] ? GAMES[x.k].name : x.k}</div><div class="meta">${new Date(x.d).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long'})}</div></div><div class="meta" style="text-align:right;color:var(--ink)">${outc(x)}</div></div>`).join('')}</div></div>` : ''}`}
+    ${list.length ? `<h2>Dernières parties</h2><div class="glass" style="padding:4px 16px"><div class="list">${list.slice(0,10).map(x=>`<div class="item"><div class="grow"><div class="name">${GAMES[x.k] ? GAMES[x.k].name : esc(x.k)}</div><div class="meta">${new Date(x.d).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long'})}</div></div><div class="meta" style="text-align:right;color:var(--ink)">${outc(x)}</div></div>`).join('')}</div></div>` : ''}`}
   <div style="margin-top:18px;text-align:center">${S.confirm==='frrm' ? `<div class="confirm" style="justify-content:center"><span class="meta">Retirer ${esc(f.name)} de tes amis ?</span><button class="btn ghost" data-frx="${esc(f.id)}" data-msg="Ami retiré">Retirer</button><button class="link" data-a="cancel">Non</button></div>`
     : `<button class="link" data-a="fr-rm">Retirer cet ami</button>`}</div>`;
 }
@@ -4973,7 +4980,7 @@ async function watchCheck(force){
     const snap = await m.getDocs(m.query(m.collection(fs, 'watch'), m.where('viewers', 'array-contains', me)));
     const before = JSON.stringify(S.watchList.map(d=>d.id+d.st.startedAt));
     S.watchList = snap.docs.map(x => ({id:x.id, ...x.data()}))
-      .filter(d => d.status==='live' && d.owner!==me && GAMES[d.k] && now - tsMs(d.updatedAt) < WATCH_MAX_AGE)
+      .filter(d => d.status==='live' && d.owner!==me && friendUids().has(d.owner) && GAMES[d.k] && now - tsMs(d.updatedAt) < WATCH_MAX_AGE)
       .map(d => { let st = null; try{ st = JSON.parse(d.state); }catch(e){} return {...d, st}; }).filter(d => d.st && d.st.order);
     if(S.view==='home' && JSON.stringify(S.watchList.map(d=>d.id+d.st.startedAt))!==before) render();
     const fresh = S.watchList.find(d => !S.watchSeen.has(d.id+':'+d.st.startedAt));
@@ -5442,7 +5449,7 @@ boot();
 
 <script>
 /* Offline + updates. Updating only replaces the app files; game data lives in localStorage and is never touched. */
-window.APP_VERSION = '48';
+window.APP_VERSION = '49';
 if('serviceWorker' in navigator){
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if(reloading) return; reloading = true; location.reload(); });
